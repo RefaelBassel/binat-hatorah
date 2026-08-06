@@ -42,6 +42,7 @@ interface WordMenuState {
 
 interface Props {
   taskId: number;
+  studentName?: string | null;
   content: TaskContent;
   mainPassage: PassageBlock;
   initialAnswers: Record<string, string>;
@@ -63,6 +64,7 @@ const MARK_STYLE: Record<string, { bg: string; border: string; label: string; em
 
 export default function TaskRunner({
   taskId,
+  studentName,
   content,
   mainPassage,
   initialAnswers,
@@ -133,6 +135,9 @@ export default function TaskRunner({
   const [questionDraft, setQuestionDraft] = useState("");
   const [banked, setBanked] = useState<string[]>([]);
   const readOnly = submitted;
+  // How to label the student's own messages in the assist chat — first name
+  // when we have it, otherwise the dual form (never a gendered guess).
+  const meLabel = (studentName ?? "").trim().split(/\s+/)[0] || "את/ה";
 
   // ---------- clock + work stopwatch ----------
   const pendingSeconds = useRef(0);
@@ -841,7 +846,7 @@ export default function TaskRunner({
                     : "bg-[color:var(--accent)]/10 text-[color:var(--foreground)]/85",
                 ].join(" ")}
               >
-                {m.role === "user" && <b className="me-1 text-[color:var(--accent)]">את:</b>}
+                {m.role === "user" && <b className="me-1 text-[color:var(--accent)]">{meLabel}:</b>}
                 {m.content}
               </p>
             ))}

@@ -75,6 +75,7 @@ export default async function TaskPage({
 
         <TaskRunner
           taskId={taskId}
+          studentName={user.fullName ?? null}
           content={reg.content}
           mainPassage={reg.mainPassage}
           initialAnswers={answers}
