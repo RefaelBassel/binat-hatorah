@@ -89,6 +89,11 @@ export default function TaskRunner({
     contextLabel: string;
   } | null>(null);
   const [qComposerDraft, setQComposerDraft] = useState("");
+  // The composer card can be dragged away (e.g. to peek at the passage while
+  // phrasing the question). null = default centered/bottom-sheet position.
+  const [qPos, setQPos] = useState<{ x: number; y: number } | null>(null);
+  const qDrag = useRef<{ dx: number; dy: number } | null>(null);
+  const qCardRef = useRef<HTMLDivElement | null>(null);
   // Claude assist — a real conversation: the student can reply and be guided
   // step by step ("אני עשיתי לבד אבל לא פגשתי קיר"). The panel opens next to
   // the word that triggered it (that's where the eye is) and can be dragged
@@ -333,6 +338,33 @@ export default function TaskRunner({
       contextLabel: `שאלה על ${ref} — מילה, חלק מפסוק או פסוק שלם`,
     });
     setQComposerDraft("");
+    setQPos(null);
+  };
+
+  const onQDragStart = (e: React.PointerEvent) => {
+    const card = qCardRef.current;
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    setQPos({ x: r.left, y: r.top });
+    qDrag.current = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // fine without capture
+    }
+  };
+  const onQDragMove = (e: React.PointerEvent) => {
+    if (!qDrag.current) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const cardW = Math.min(448, w - 16);
+    setQPos({
+      x: Math.max(8, Math.min(e.clientX - qDrag.current.dx, w - cardW - 8)),
+      y: Math.max(8, Math.min(e.clientY - qDrag.current.dy, h - 180)),
+    });
+  };
+  const onQDragEnd = () => {
+    qDrag.current = null;
   };
 
   // ---------- question bank ----------
@@ -695,17 +727,49 @@ export default function TaskRunner({
       {/* ===== question composer — word / verse, any stage ===== */}
       {qComposer && !readOnly && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-          onClick={() => setQComposer(null)}
+          className={
+            qPos
+              ? "pointer-events-none fixed inset-0 z-50"
+              : "fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+          }
+          onClick={qPos ? undefined : () => setQComposer(null)}
         >
           <div
-            className="w-full max-w-md rounded-t-2xl p-5 shadow-2xl sm:rounded-2xl"
-            style={{ backgroundColor: "var(--card)" }}
+            ref={qCardRef}
+            className="pointer-events-auto w-full max-w-md rounded-t-2xl p-5 shadow-2xl sm:rounded-2xl"
+            style={
+              qPos
+                ? {
+                    position: "fixed",
+                    left: qPos.x,
+                    top: qPos.y,
+                    width: "min(448px, calc(100vw - 16px))",
+                    backgroundColor: "var(--card)",
+                  }
+                : { backgroundColor: "var(--card)" }
+            }
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="mb-1 font-display text-base font-bold text-[color:var(--primary)]">
-              ❓ {qComposer.contextLabel}
-            </p>
+            <div
+              className="mb-1 flex cursor-move items-start justify-between gap-2"
+              style={{ touchAction: "none" }}
+              onPointerDown={onQDragStart}
+              onPointerMove={onQDragMove}
+              onPointerUp={onQDragEnd}
+              onPointerCancel={onQDragEnd}
+            >
+              <p className="font-display text-base font-bold text-[color:var(--primary)]">
+                ❓ {qComposer.contextLabel}
+              </p>
+              <button
+                onClick={() => setQComposer(null)}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label="סגירת חלונית השאלה"
+                className="-mt-1 rounded-full px-1.5 py-0.5 text-base leading-none text-[color:var(--primary)]/50 transition hover:text-[color:var(--primary)]"
+              >
+                ✕
+              </button>
+            </div>
             <p className="mb-3 text-[11px] text-[color:var(--primary)]/55">
               השאלה נכנסת למאגר השאלות האישי — ובסוף השנה בוחרים ממנו שאלה אחת
               לעבודה אישית 🌟
