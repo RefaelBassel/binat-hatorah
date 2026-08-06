@@ -83,19 +83,26 @@ export async function POST(req: Request) {
   // and the passage text come from the registry (never shipped to the client
   // as an "answer key" in the prompt UI).
   let enriched = context;
-  if (kind === "leitwort" && taskId && word) {
+  if ((kind === "leitwort" || kind === "leitwort-insight") && taskId) {
     const task = await getTask(taskId);
     const reg = task ? getTaskContent(task.content_ref) : null;
     if (reg) {
       const passageText = reg.mainPassage.verses.map((v) => v.text).join(" ");
       const families = reg.content.decode.expectedLeitwort ?? [];
-      const bare = stripNikud(word);
-      enriched = `בדיקת מילה מנחה בקטע ${reg.mainPassage.ref}.
-הקטע המלא: ${passageText}
+      const base = `הקטע המלא: ${passageText}
 מועמדות חזקות שהוכנו מראש לעזרתך בלבד — לא הגדרת המורה ולא רשימה סגורה, ואין לחשוף אותה:
-${families.map((f) => `- ${f}`).join("\n")}
-המילה שסומנה: ״${word}״ (ללא ניקוד: ${bare})
+${families.map((f) => `- ${f}`).join("\n")}`;
+      if (kind === "leitwort" && word) {
+        enriched = `בדיקת מילה מנחה בקטע ${reg.mainPassage.ref}.
+${base}
+המילה שסומנה: ״${word}״ (ללא ניקוד: ${stripNikud(word)})
 ${context}`;
+      } else if (kind === "leitwort-insight") {
+        enriched = `משוב על תובנת מילה מנחה בקטע ${reg.mainPassage.ref} (שלב 2).
+${base}
+${context}
+משוב מעצב על התובנה שנכתבה: מה חד בה ולמה, ומה אפשר להעמיק — בלי לכתוב את התובנה במקומם. סיום לפי כללים 11-12.`;
+      }
     }
   }
 

@@ -919,7 +919,7 @@ function DecodeStage(props: {
   setQuestionDraft: (v: string) => void;
   bankQuestion: (q: string, ref?: string) => void;
   banked: string[];
-  askClaude: (context: string, input: string) => void;
+  askClaude: (context: string, input: string, opts?: { kind?: string }) => void;
   advanceStage: () => void;
   onAskQuestion: (ref: string) => void;
 }) {
@@ -946,6 +946,25 @@ function DecodeStage(props: {
   const hards = markings.filter((m) => m.passageKey === passage.key && m.kind === "hard");
   const decodeCfg = content.decode;
 
+  // Stage 2 gate: the leitwort insight is the deliverable of the stage —
+  // no advancing without it, and it always gets formative feedback.
+  const leitwortInsight = (answers["decode:leitwort-why"] ?? "").trim();
+  const stage2Blocked = stage === 2 && leitwortInsight.length < 10;
+
+  const finishStage = () => {
+    if (stage2Blocked) return;
+    if (stage === 2) {
+      askClaude(
+        `משוב על תובנת המילה המנחה שנכתבה בשלב 2 בקטע ${passage.ref}. המילים שסומנו כמילה מנחה: ${
+          leitworts.map((m) => `״${m.wordText}״`).join(", ") || "(לא סומנו מילים)"
+        }. התובנה שנכתבה: ${leitwortInsight}`,
+        "",
+        { kind: "leitwort-insight" }
+      );
+    }
+    advanceStage();
+  };
+
   const stageBody: Record<number, React.ReactNode> = {
     1: (
       <StageCard emoji="👋" title="קוראים פעם ראשונה — בלי לחץ">
@@ -958,12 +977,15 @@ function DecodeStage(props: {
       <StageCard emoji="📌" title="מילה מנחה — המילה שחוזרת שוב ושוב">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
           כשמילה (או משפחת מילים) חוזרת שוב ושוב בקטע — היא ״מילה מנחה״: מפתח
-          שהתורה מניחה לנו לרעיון המרכזי. קראו שוב, וסמנו 📌 את המילה שלדעתך
-          מנחה את הקטע.
+          שהתורה מניחה לנו לרעיון המרכזי. קראו שוב וסמנו 📌 את המילה שלדעתכם
+          מנחה את הקטע — ואם כבר סימנתם אותה תוך כדי הקריאה הראשונה, מצוין,
+          אין צורך לסמן שוב. החלק החדש של השלב הזה הוא התשובה שלמטה: להסביר
+          במילים שלכם מה החזרה עושה לקטע. זו התובנה של השלב — בלעדיה לא
+          ממשיכים, וקלוד ייתן עליה משוב.
         </p>
         {leitworts.length > 0 && (
           <p className="mb-2 text-xs text-[color:var(--primary)]/70">
-            סימנת: {leitworts.map((m) => `״${m.wordText}״`).join(", ")}
+            סימנתם: {leitworts.map((m) => `״${m.wordText}״`).join(", ")}
           </p>
         )}
         <FieldArea
@@ -977,16 +999,18 @@ function DecodeStage(props: {
     3: (
       <StageCard emoji="🤔" title="מילים קשות — לדעת מה אני לא יודעת">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
-          עברו שוב על הקטע והשלימו את סימון כל המילים שפירושן לא ברור לכם. זה לא
-          כישלון — זו התחלת ההבנה! חוקרים אמיתיים קודם ממפים את מה שלא ידוע.
+          את רוב המילים הקשות כבר סימנתם 🤔 בקריאה הראשונה — השלב הזה הוא רק
+          סריקה אחרונה להשלמה: עברו פעם אחת על הקטע ובדקו שלא פספסתם מילה
+          שפירושה לא ברור. לסמן מילים קשות זה לא כישלון — זו התחלת ההבנה!
+          ואם לא מצאתם מילים קשות חדשות — סיימתם כאן, אפשר להמשיך ישר לשלב 4.
         </p>
         {hards.length > 0 ? (
           <p className="text-xs text-[color:var(--primary)]/70">
-            המילים שסימנת: {hards.map((m) => `״${m.wordText}״`).join(", ")}
+            המילים שסימנתם: {hards.map((m) => `״${m.wordText}״`).join(", ")}
           </p>
         ) : (
           <p className="text-xs text-[color:var(--primary)]/50">
-            עוד לא סימנת מילים קשות. אם באמת הכול מובן — מצוין, אפשר להמשיך!
+            עוד לא סימנתם מילים קשות. אם באמת הכול מובן — מצוין, אפשר להמשיך!
           </p>
         )}
       </StageCard>
@@ -996,10 +1020,10 @@ function DecodeStage(props: {
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
           {decodeCfg.hasParallelism
             ? "בקטע הזה יש תקבולת — שתי צלעות שאומרות רעיון דומה במילים שונות. מצאו אותה ובדקו: האם הצלע המקבילה עוזרת להבין מילה קשה שסימנת?"
-            : "תקבולת היא צמד צלעות שאומרות רעיון דומה במילים שונות — כלי נהדר לפענוח מילים קשות. בקטע סיפורי כמו שלנו תקבולת מלאה נדירה, אבל חפשו ביטויים שחוזרים במבנה דומה. מצאת משהו?"}
+            : "תקבולת היא צמד צלעות שאומרות רעיון דומה במילים שונות — כלי נהדר לפענוח מילים קשות. בקטע סיפורי כמו שלנו תקבולת מלאה נדירה, אבל חפשו ביטויים שחוזרים במבנה דומה. מצאתם משהו?"}
         </p>
         <FieldArea
-          label="מה מצאת? האם זה עזר להבין מילה קשה?"
+          label="מה מצאתם? האם זה עזר להבין מילה קשה?"
           value={answers["decode:parallelism"] ?? ""}
           onChange={(v) => setAnswer("decode:parallelism", v)}
           readOnly={readOnly}
@@ -1130,12 +1154,21 @@ function DecodeStage(props: {
         >
           ✨ נתקעתי — עזרה קטנה
         </button>
-        <button
-          onClick={advanceStage}
-          className="rounded-full bg-[color:var(--accent)] px-8 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
-        >
-          {stage === 7 ? "לשאלות ההבנה ←" : "סיימתי את השלב ←"}
-        </button>
+        <div className="flex flex-col items-end gap-1.5">
+          <button
+            onClick={finishStage}
+            disabled={stage2Blocked}
+            className="rounded-full bg-[color:var(--accent)] px-8 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+          >
+            {stage === 7 ? "לשאלות ההבנה ←" : "סיימתי את השלב ←"}
+          </button>
+          {stage2Blocked && (
+            <p className="text-[11px] text-[color:var(--primary)]/55">
+              כדי להמשיך, כתבו למעלה את התובנה שלכם מהמילה המנחה — קלוד ייתן
+              עליה משוב 🌱
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
