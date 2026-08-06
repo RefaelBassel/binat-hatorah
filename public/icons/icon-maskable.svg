@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maskable PWA icon for "בינת התורה".
+  - viewBox 512x512, full-bleed almond background (palette 4 גפן ותאנה) —
+    required for maskable: after Android clips it there is no transparent gap.
+  - Artwork inside the 80% safe zone (≈ 51..461).
+  - Letter ת (for תורה) in deep grape with a warm copper ring, chunky
+    Assistant-like construction: top bar, right leg, and the left leg with
+    the characteristic foot jutting out to the left.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="בינת התורה">
+  <rect width="512" height="512" fill="#fbf6f1"/>
+
+  <!-- Soft inner border in warm copper, inside the safe zone -->
+  <rect x="76" y="76" width="360" height="360" rx="56" ry="56"
+        fill="none" stroke="#b96a3b" stroke-width="6" opacity="0.5"/>
+
+  <g fill="#413055">
+    <!-- Top bar -->
+    <rect x="146" y="170" width="228" height="38" rx="6"/>
+    <!-- Right leg -->
+    <rect x="336" y="170" width="38" height="172" rx="6"/>
+    <!-- Left leg (hangs from the top bar) -->
+    <rect x="178" y="200" width="38" height="110" rx="6"/>
+    <!-- The foot of the ת — juts left from the bottom of the left leg -->
+    <rect x="130" y="304" width="86" height="38" rx="6"/>
+  </g>
+</svg>

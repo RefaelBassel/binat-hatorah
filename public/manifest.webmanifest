@@ -1,0 +1,21 @@
+{
+  "name": "בינת התורה",
+  "short_name": "בינת התורה",
+  "description": "תורה ונביאים לבגרות בכיתה י, תיכון שחרית — פענוח פשט, משימות, דיבייט וכתיבה טיעונית.",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#413055",
+  "background_color": "#fbf6f1",
+  "icons": [
+    {
+      "src": "/icons/icon-maskable.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -53,11 +53,11 @@ export default async function HomePage() {
           </h1>
 
           <p className="mt-10 max-w-2xl text-center text-lg leading-relaxed text-[color:var(--foreground)]/85 sm:text-xl">
-            תורה ונביאים לבגרות בכיתה י, תיכון שחרית.
+            תורה ונביאים לבגרות בכיתה י, תיכון שחרית
           </p>
-          <p className="mt-4 max-w-2xl text-center text-sm leading-relaxed text-[color:var(--foreground)]/65 sm:text-base">
+          <p className="mt-4 max-w-3xl text-center text-sm leading-relaxed text-[color:var(--foreground)]/65 sm:text-base">
             בדגש על מיומנויות לימוד עצמי של פשט התורה (שאלת שאלות, זיהוי מילה
-            מנחה, תקבולות, מילים קשות וכיוצ״ב) וכתיבה טיעונית.
+            מנחה, ועוד) וכתיבה טיעונית.
           </p>
 
           <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">

@@ -60,7 +60,10 @@ export default async function TopNav() {
     : "";
 
   return (
-    <header className="pwa-safe-top sticky top-0 z-30 border-b border-[color:var(--border)] bg-[color:var(--card)]/95 backdrop-blur">
+    <header
+      className="pwa-safe-top sticky top-0 z-30 border-b border-[color:var(--border)] backdrop-blur"
+      style={{ backgroundColor: "var(--card)" }}
+    >
       {studentMode && (
         <div className="flex items-center justify-center gap-3 bg-[color:var(--warning)] px-4 py-1.5 text-center text-xs font-bold text-white">
           <span>👩‍🎓 מצב תלמיד פעיל — את/ה חווה את האתר בדיוק כמו תלמידה</span>

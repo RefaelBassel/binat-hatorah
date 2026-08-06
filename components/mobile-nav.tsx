@@ -73,12 +73,15 @@ export default function MobileNav({
         />
       )}
 
-      {/* Drawer — anchored to the start (right in RTL). */}
+      {/* Drawer — anchored to the start (right in RTL). Solid background is
+          set inline so it can never render transparent (some mobile browsers
+          mishandle the color-mix() Tailwind emits for var()-based classes). */}
       <aside
-        className={[
-          "pwa-safe-drawer fixed inset-y-0 start-0 z-50 flex w-80 max-w-[85vw] flex-col bg-[color:var(--card)] shadow-2xl transition-transform duration-200 ease-out",
-          open ? "translate-x-0" : "translate-x-full",
-        ].join(" ")}
+        className="pwa-safe-drawer fixed inset-y-0 start-0 z-50 flex w-80 max-w-[85vw] flex-col shadow-2xl transition-transform duration-200 ease-out"
+        style={{
+          backgroundColor: "var(--card)",
+          transform: open ? "translateX(0)" : "translateX(110%)",
+        }}
         aria-hidden={!open}
       >
         <div className="flex items-center justify-between border-b border-[color:var(--border)] px-5 py-4">
