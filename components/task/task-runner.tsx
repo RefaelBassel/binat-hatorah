@@ -870,13 +870,21 @@ export default function TaskRunner({
             )}
           </div>
           {!readOnly && (
-            <div className="mt-2 flex gap-2">
-              <input
+            <div className="mt-2 flex items-end gap-2">
+              <textarea
                 value={assistDraft}
                 onChange={(e) => setAssistDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && replyToClaude()}
-                placeholder="תשובה לקלוד..."
-                className="flex-1 rounded-full border border-[color:var(--border)] bg-white px-3.5 py-1.5 text-xs outline-none focus:border-[color:var(--accent)]"
+                onKeyDown={(e) => {
+                  // Enter sends; Shift+Enter makes a new line (students write
+                  // multi-line questions here).
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    replyToClaude();
+                  }
+                }}
+                rows={Math.min(4, Math.max(1, assistDraft.split("\n").length))}
+                placeholder="תשובה לקלוד... (שיפט+אנטר לשורה חדשה)"
+                className="flex-1 resize-none rounded-2xl border border-[color:var(--border)] bg-white px-3.5 py-1.5 text-xs leading-5 outline-none focus:border-[color:var(--accent)]"
               />
               <button
                 onClick={replyToClaude}
@@ -1036,14 +1044,20 @@ function DecodeStage(props: {
           מתוכו שאלה אחת לעבודה שלך. נסו לנסח לפחות {decodeCfg.minQuestions}{" "}
           שאלות.
         </p>
-        <div className="mb-2 flex gap-2">
-          <input
+        <div className="mb-2 flex items-end gap-2">
+          <textarea
             value={questionDraft}
             onChange={(e) => setQuestionDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && bankQuestion(questionDraft, passage.ref)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                bankQuestion(questionDraft, passage.ref);
+              }
+            }}
+            rows={Math.min(4, Math.max(1, questionDraft.split("\n").length))}
             disabled={readOnly}
             placeholder="כתבו שאלה... (למשל: למה דווקא הם פנו למשה?)"
-            className="flex-1 rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]"
+            className="flex-1 resize-none rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
           />
           <button
             onClick={() => bankQuestion(questionDraft, passage.ref)}

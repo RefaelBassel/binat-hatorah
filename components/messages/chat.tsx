@@ -167,13 +167,20 @@ export default function Chat({
           )}
           <div ref={bottomRef} />
         </div>
-        <div className="flex gap-2 border-t border-[color:var(--border)] p-3">
-          <input
+        <div className="flex items-end gap-2 border-t border-[color:var(--border)] p-3">
+          <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
+            onKeyDown={(e) => {
+              // Enter sends; Shift+Enter makes a new line.
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            rows={Math.min(5, Math.max(1, draft.split("\n").length))}
             placeholder={`הודעה ${active?.id === "group" ? "לקבוצה" : `ל${active?.name ?? ""}`}...`}
-            className="flex-1 rounded-full border border-[color:var(--border)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[color:var(--accent)]"
+            className="flex-1 resize-none rounded-2xl border border-[color:var(--border)] bg-white px-4 py-2.5 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
           />
           <button
             onClick={send}
