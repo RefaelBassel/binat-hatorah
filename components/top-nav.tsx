@@ -139,7 +139,7 @@ export default async function TopNav() {
             <form action={enterStudentMode} className="hidden xl:block">
               <button
                 type="submit"
-                title="חוויית האתר בדיוק כפי שתלמידה רואה אותו — כולל ביצוע משימות"
+                title="חוויית האתר בדיוק כפי שתלמידים רואים אותו — כולל ביצוע משימות"
                 className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-xs text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
               >
                 👩‍🎓 מצב תלמיד

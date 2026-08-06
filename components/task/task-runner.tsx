@@ -83,6 +83,8 @@ export default function TaskRunner({
   const [markings, setMarkings] = useState<Marking[]>(initialMarkings);
   // Stages 1-7 = Part A (pshat decoding); stage 8 = Part B (העמקה ודיון).
   const [stage, setStage] = useState(Math.min(Math.max(initialStage, 1), 8));
+  // Highest stage ever reached — navigating back never re-locks later stages.
+  const [maxStage, setMaxStage] = useState(Math.min(Math.max(initialStage, 1), 8));
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [workSeconds, setWorkSeconds] = useState(initialWorkSeconds);
   const [clock, setClock] = useState("");
@@ -498,6 +500,7 @@ export default function TaskRunner({
   const advanceStage = () => {
     const next = Math.min(stage + 1, 8);
     setStage(next);
+    setMaxStage((m) => Math.max(m, next));
     saveState(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -572,12 +575,9 @@ export default function TaskRunner({
         </div>
       )}
 
-      {/* ===== stage rail: Part A (stages 1-7) + Part B chip ===== */}
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold tracking-[0.25em] text-[color:var(--accent)]">
-          חלק א — קריאת פשט ושאלת שאלות
-        </p>
-        {canReset && (
+      {/* ===== two-part progress rail: each part is its own visual block ===== */}
+      {canReset && (
+        <div className="mb-2 flex justify-end">
           <button
             onClick={resetTask}
             disabled={resetBusy}
@@ -586,39 +586,104 @@ export default function TaskRunner({
           >
             {resetBusy ? "מאפס..." : "🔄 איפוס המשימה (כלי מורה)"}
           </button>
-        )}
-      </div>
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        {DECODE_STAGES.map((s) => (
-          <button
-            key={s.n}
-            onClick={() => s.n <= stage && setStage(s.n)}
-            disabled={s.n > stage}
-            className={[
-              "rounded-full px-3 py-1 text-xs font-semibold transition",
-              s.n === stage
-                ? "bg-[color:var(--primary)] text-white shadow"
-                : s.n < stage
-                  ? "bg-[color:var(--success)]/15 text-[color:var(--success)] hover:bg-[color:var(--success)]/25"
-                  : "border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)]/40",
-            ].join(" ")}
-          >
-            {s.n < stage ? "✓ " : ""}
-            {s.n} · {s.title}
-          </button>
-        ))}
-        <button
-          onClick={() => stage >= 8 && setStage(8)}
-          disabled={stage < 8}
+        </div>
+      )}
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        {/* Part A block */}
+        <div
           className={[
-            "rounded-full px-3 py-1 text-xs font-bold transition",
-            stage === 8
-              ? "bg-[color:var(--accent)] text-white shadow"
-              : "border border-dashed border-[color:var(--accent)]/50 bg-[color:var(--card)] text-[color:var(--accent)]/60",
+            "flex-1 rounded-2xl border-2 p-3.5 transition",
+            stage <= 7
+              ? "border-[color:var(--primary)]/40 bg-[color:var(--primary)]/[0.045] shadow-sm"
+              : "border-[color:var(--border)] bg-[color:var(--card)] opacity-75",
           ].join(" ")}
         >
-          חלק ב · העמקה ודיון
-        </button>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-[color:var(--primary)] px-2.5 py-0.5 text-[11px] font-bold text-white">
+              חלק א
+            </span>
+            <span className="font-display text-sm font-bold text-[color:var(--primary)]">
+              קריאת פשט ושאלת שאלות
+            </span>
+            {stage <= 7 && (
+              <span className="rounded-full bg-[color:var(--success)]/15 px-2 py-0.5 text-[10px] font-bold text-[color:var(--success)]">
+                אתם כאן · שלב {stage} מתוך 7
+              </span>
+            )}
+          </div>
+          <p className="mb-2.5 text-[11px] text-[color:var(--primary)]/60">
+            💪 המיומנות: פענוח הטקסט על דרך הפשט + ניסוח שאלות
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {DECODE_STAGES.map((s) => (
+              <button
+                key={s.n}
+                onClick={() => s.n <= maxStage && setStage(s.n)}
+                disabled={s.n > maxStage}
+                className={[
+                  "rounded-full px-3 py-1 text-xs font-semibold transition",
+                  s.n === stage
+                    ? "bg-[color:var(--primary)] text-white shadow"
+                    : s.n < Math.max(stage, maxStage) || maxStage === 8
+                      ? "bg-[color:var(--success)]/15 text-[color:var(--success)] hover:bg-[color:var(--success)]/25"
+                      : "border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)]/40",
+                ].join(" ")}
+              >
+                {s.n < maxStage ? "✓ " : ""}
+                {s.n} · {s.title}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* connector: forward is left in RTL */}
+        <div
+          className="hidden items-center text-xl font-bold text-[color:var(--accent)]/60 sm:flex"
+          aria-hidden
+        >
+          ←
+        </div>
+        {/* Part B block */}
+        <div
+          className={[
+            "rounded-2xl border-2 p-3.5 transition sm:w-64",
+            stage === 8
+              ? "border-[color:var(--accent)] bg-[color:var(--accent)]/[0.06] shadow-sm"
+              : maxStage >= 8
+                ? "border-[color:var(--border)] bg-[color:var(--card)]"
+                : "border-dashed border-[color:var(--border)] bg-[color:var(--card)]/60",
+          ].join(" ")}
+        >
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-[color:var(--accent)] px-2.5 py-0.5 text-[11px] font-bold text-white">
+              חלק ב
+            </span>
+            <span className="font-display text-sm font-bold text-[color:var(--primary)]">
+              העמקה ודיון
+            </span>
+            {stage === 8 && (
+              <span className="rounded-full bg-[color:var(--success)]/15 px-2 py-0.5 text-[10px] font-bold text-[color:var(--success)]">
+                אתם כאן
+              </span>
+            )}
+          </div>
+          <p className="mb-2.5 text-[11px] text-[color:var(--primary)]/60">
+            💪 המיומנות: כתיבה טיעונית — טענה, נימוק וביסוס
+          </p>
+          <button
+            onClick={() => maxStage >= 8 && setStage(8)}
+            disabled={maxStage < 8}
+            className={[
+              "rounded-full px-4 py-1 text-xs font-bold transition",
+              stage === 8
+                ? "bg-[color:var(--accent)] text-white shadow"
+                : maxStage >= 8
+                  ? "border border-[color:var(--accent)]/60 text-[color:var(--accent)] hover:bg-[color:var(--accent)]/10"
+                  : "border border-[color:var(--border)] text-[color:var(--primary)]/35",
+            ].join(" ")}
+          >
+            {maxStage >= 8 ? "כניסה לחלק ב" : "🔒 נפתח בסיום חלק א"}
+          </button>
+        </div>
       </div>
       {stage <= 7 && (
         <p className="mb-6 text-xs text-[color:var(--accent)]">
@@ -1648,12 +1713,12 @@ function BlockView({
           onClick={() =>
             askClaude(
               `שאלה במשימה [${q.label}]: ${q.prompt}. מה שנכתב עד כה: ${answers[q.key] ?? "(כלום)"}`,
-              "אני לא בטוחה איך לגשת לשאלה"
+              "לא ברור לי איך לגשת לשאלה"
             )
           }
           className="mt-2 text-[11px] text-[color:var(--accent)] underline-offset-2 hover:underline"
         >
-          ✨ תקועה? עזרה קטנה מקלוד
+          ✨ נתקעתם? עזרה קטנה מקלוד
         </button>
       )}
     </div>

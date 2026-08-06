@@ -32,7 +32,7 @@ export default async function WritingPage() {
   return (
     <PageShell
       title="תרגול כתיבה טיעונית"
-      subtitle="לומדות לבנות, לפרק ולהעריך טיעונים — המיומנות שמלווה אותנו בתנ״ך, בדיבייט ובחיים"
+      subtitle="לומדים לבנות, לפרק ולהעריך טיעונים — המיומנות שמלווה אותנו בתנ״ך, בדיבייט ובחיים"
     >
       <div className="mx-auto max-w-4xl">
         {/* the skill explainer */}
