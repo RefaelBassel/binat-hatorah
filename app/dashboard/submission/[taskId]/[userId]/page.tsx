@@ -115,10 +115,10 @@ export default async function SubmissionPage({
           <div className="space-y-3">
             {[
               ["decode:leitwort-why", `${DECODE_STAGES[1].title} — למה היא חוזרת?`],
-              ["decode:parallelism", DECODE_STAGES[3].title],
-              ["decode:genre", DECODE_STAGES[4].title],
-              ["decode:genre-help", "איך הסוגה עוזרת?"],
-              ["decode:retell", DECODE_STAGES[6].title],
+              ["decode:genre", DECODE_STAGES[3].title],
+              ["decode:genre-help", "לפי מה זוהתה הסוגה?"],
+              ["decode:parallelism", "תקבולת (אם נפתחה)"],
+              ["decode:retell", DECODE_STAGES[5].title],
             ].map(([key, label]) => (
               <AnswerRow key={key} label={label} value={answers[key]} />
             ))}

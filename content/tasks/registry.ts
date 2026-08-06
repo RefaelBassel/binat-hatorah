@@ -27,18 +27,20 @@ export function countTaskUnits(reg: RegisteredTask): number {
       }
     }
   }
-  return 7 + questions;
+  return 6 + questions;
 }
 
-// The fixed 8 pshat-decode stages — the iron rule of every task.
+// The fixed 7 pshat-decode stages — the iron rule of every task.
+// Parallelism is not a stage of its own: it is a genre-specific tool that
+// opens inside the genre stage only when שירה/נאום is chosen (or the task
+// declares hasParallelism) — most genres simply don't have it.
 // (why: one-or-two-word rationale shown to the student.)
 export const DECODE_STAGES = [
   { n: 1, title: "מפגש ראשון", why: "קודם פוגשים, אחר־כך מנתחים" },
   { n: 2, title: "מילה מנחה", why: "המפתח שהתורה מניחה לנו" },
   { n: 3, title: "מילים קשות", why: "לדעת מה אני לא יודעת" },
-  { n: 4, title: "תקבולת", why: "המקרא מסביר את עצמו" },
-  { n: 5, title: "סוגה", why: "לכל סוגה חוקי קריאה משלה" },
-  { n: 6, title: "שאלת שאלות", why: "שאלה טובה = חצי הבנה" },
-  { n: 7, title: "מבינים בכל זאת", why: "לא נתקעים על מה שחסר" },
-  { n: 8, title: "בדיקת הבנה", why: "לוודא שבאמת הבנתי" },
+  { n: 4, title: "סוגה", why: "לכל סוגה חוקי קריאה משלה" },
+  { n: 5, title: "שאלת שאלות", why: "שאלה טובה = חצי הבנה" },
+  { n: 6, title: "מבינים בכל זאת", why: "לא נתקעים על מה שחסר" },
+  { n: 7, title: "בדיקת הבנה", why: "לוודא שבאמת הבנתי" },
 ] as const;

@@ -47,6 +47,16 @@ export default async function TaskPage({
   const progress = guest ? null : await getProgress(taskId, userId);
   const answers = guest ? {} : await getAnswers(taskId, userId);
   const markings = guest ? [] : await getMarkings(taskId, userId);
+  // Questions already banked for this task — the question stage acknowledges
+  // them ("you already asked X on the way") instead of pretending it's empty.
+  const { db } = await import("@/lib/db");
+  const bankRows = guest
+    ? { rows: [] as { question: unknown }[] }
+    : await db().execute({
+        sql: `SELECT question FROM question_bank WHERE user_id = ? AND task_id = ? ORDER BY created_at`,
+        args: [userId, taskId],
+      });
+  const initialQuestions = bankRows.rows.map((r) => String(r.question));
 
   return (
     <>
@@ -80,6 +90,7 @@ export default async function TaskPage({
           mainPassage={reg.mainPassage}
           initialAnswers={answers}
           initialMarkings={markings}
+          initialQuestions={initialQuestions}
           initialStage={progress?.stage ?? 1}
           initialWorkSeconds={progress?.work_seconds ?? 0}
           submitted={Boolean(progress?.submitted_at)}

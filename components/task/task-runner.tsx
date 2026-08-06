@@ -47,6 +47,7 @@ interface Props {
   mainPassage: PassageBlock;
   initialAnswers: Record<string, string>;
   initialMarkings: Marking[];
+  initialQuestions?: string[];
   initialStage: number;
   initialWorkSeconds: number;
   submitted: boolean;
@@ -69,6 +70,7 @@ export default function TaskRunner({
   mainPassage,
   initialAnswers,
   initialMarkings,
+  initialQuestions,
   initialStage,
   initialWorkSeconds,
   submitted: initialSubmitted,
@@ -77,7 +79,7 @@ export default function TaskRunner({
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
   const [markings, setMarkings] = useState<Marking[]>(initialMarkings);
-  const [stage, setStage] = useState(Math.min(Math.max(initialStage, 1), 8));
+  const [stage, setStage] = useState(Math.min(Math.max(initialStage, 1), 7));
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [workSeconds, setWorkSeconds] = useState(initialWorkSeconds);
   const [clock, setClock] = useState("");
@@ -138,7 +140,7 @@ export default function TaskRunner({
     assistDrag.current = null;
   };
   const [questionDraft, setQuestionDraft] = useState("");
-  const [banked, setBanked] = useState<string[]>([]);
+  const [banked, setBanked] = useState<string[]>(initialQuestions ?? []);
   const readOnly = submitted;
   // How to label the student's own messages in the assist chat — first name
   // when we have it, otherwise the dual form (never a gendered guess).
@@ -198,8 +200,8 @@ export default function TaskRunner({
   // ---------- progress ----------
   const answeredCount = useMemo(() => {
     let n = 0;
-    // decode stages 1-7 completed
-    n += Math.min(stage - 1, 7);
+    // decode stages 1-6 completed
+    n += Math.min(stage - 1, 6);
     for (const section of content.sections) {
       for (const block of section.blocks) {
         if (block.type !== "question") continue;
@@ -467,7 +469,7 @@ export default function TaskRunner({
   };
 
   const advanceStage = () => {
-    const next = Math.min(stage + 1, 8);
+    const next = Math.min(stage + 1, 7);
     setStage(next);
     saveState(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -569,7 +571,7 @@ export default function TaskRunner({
       </p>
 
       {/* ===== Part A: decode stages 1-7 ===== */}
-      {stage <= 7 && (
+      {stage <= 6 && (
         <DecodeStage
           stage={stage}
           content={content}
@@ -591,7 +593,7 @@ export default function TaskRunner({
       )}
 
       {/* ===== Part B (stage 8): the worksheet ===== */}
-      {stage === 8 && (
+      {stage === 7 && (
         <div className="space-y-10">
           {content.sections.map((section, si) => (
             <section key={section.key}>
@@ -951,6 +953,12 @@ function DecodeStage(props: {
   const leitwortInsight = (answers["decode:leitwort-why"] ?? "").trim();
   const stage2Blocked = stage === 2 && leitwortInsight.length < 10;
 
+  // Stage 4 (genre): parallelism is a genre tool, not a stage — it opens only
+  // for poetry/speech (or when the task declares the passage has one).
+  const chosenGenre = (answers["decode:genre"] ?? "").trim();
+  const parallelismOpen =
+    chosenGenre === "שירה" || chosenGenre === "נאום" || decodeCfg.hasParallelism;
+
   const finishStage = () => {
     if (stage2Blocked) return;
     if (stage === 2) {
@@ -961,6 +969,19 @@ function DecodeStage(props: {
         "",
         { kind: "leitwort-insight" }
       );
+    }
+    if (stage === 4) {
+      const genreWhy = (answers["decode:genre-help"] ?? "").trim();
+      const parallelism = (answers["decode:parallelism"] ?? "").trim();
+      if (chosenGenre || genreWhy) {
+        askClaude(
+          `משוב על שלב הסוגה בקטע ${passage.ref}. הסוגה שנבחרה: ${chosenGenre || "(לא נבחרה)"}. מה שנכתב על הזיהוי: ${genreWhy || "(לא נכתב)"}${
+            parallelism ? `. מה שנכתב על תקבולת: ${parallelism}` : ""
+          }`,
+          "",
+          { kind: "genre-insight" }
+        );
+      }
     }
     advanceStage();
   };
@@ -1016,21 +1037,6 @@ function DecodeStage(props: {
       </StageCard>
     ),
     4: (
-      <StageCard emoji="🪞" title="תקבולת — המקרא מסביר את עצמו">
-        <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
-          {decodeCfg.hasParallelism
-            ? "בקטע הזה יש תקבולת — שתי צלעות שאומרות רעיון דומה במילים שונות. מצאו אותה ובדקו: האם הצלע המקבילה עוזרת להבין מילה קשה שסימנת?"
-            : "תקבולת היא צמד צלעות שאומרות רעיון דומה במילים שונות — כלי נהדר לפענוח מילים קשות. בקטע סיפורי כמו שלנו תקבולת מלאה נדירה, אבל חפשו ביטויים שחוזרים במבנה דומה. מצאתם משהו?"}
-        </p>
-        <FieldArea
-          label="מה מצאתם? האם זה עזר להבין מילה קשה?"
-          value={answers["decode:parallelism"] ?? ""}
-          onChange={(v) => setAnswer("decode:parallelism", v)}
-          readOnly={readOnly}
-        />
-      </StageCard>
-    ),
-    5: (
       <StageCard emoji="🎭" title="סוגה — איזה מין טקסט זה?">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
           חוק קוראים אחרת מסיפור, ושירה אחרת משניהם. איזו סוגה הקטע הזה?
@@ -1053,20 +1059,60 @@ function DecodeStage(props: {
           ))}
         </div>
         <FieldArea
-          label="איך הסוגה עוזרת לך להבין את הקטע?"
+          label="לפי מה זיהיתם? כתבו מה בקטע הסגיר לכם את הסוגה — קלוד ייתן משוב גם על זה"
           value={answers["decode:genre-help"] ?? ""}
           onChange={(v) => setAnswer("decode:genre-help", v)}
           readOnly={readOnly}
         />
+        {parallelismOpen ? (
+          <div className="mt-4 rounded-xl border border-[color:var(--accent)]/30 bg-[color:var(--accent)]/[0.04] p-4">
+            <p className="mb-2 font-display text-sm font-bold text-[color:var(--primary)]">
+              🪞 נפתח כלי חדש: תקבולת — המקרא מסביר את עצמו
+            </p>
+            <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
+              {decodeCfg.hasParallelism || chosenGenre === "שירה"
+                ? "בסוגה הזאת פסוקים רבים בנויים משתי צלעות שאומרות רעיון דומה במילים שונות — זו ״תקבולת״. מצאו תקבולת אחת, ובדקו: האם הצלע המקבילה עוזרת להבין מילה קשה שסימנתם?"
+                : "גם בנאום מופיעות לפעמים תקבולות — שתי צלעות שאומרות רעיון דומה במילים שונות. חפשו ביטויים שחוזרים במבנה דומה, ובדקו: האם הצלע המקבילה עוזרת להבין מילה קשה שסימנתם?"}
+            </p>
+            <FieldArea
+              label="מה מצאתם? האם זה עזר להבין מילה קשה?"
+              value={answers["decode:parallelism"] ?? ""}
+              onChange={(v) => setAnswer("decode:parallelism", v)}
+              readOnly={readOnly}
+            />
+          </div>
+        ) : chosenGenre ? (
+          <p className="mt-3 text-xs leading-5 text-[color:var(--primary)]/55">
+            🪞 להכיר לדרך: יש כלי פענוח בשם ״תקבולת״ — שתי צלעות שאומרות רעיון
+            דומה במילים שונות. הוא שייך בעיקר לשירה (ולפעמים לנאום), ולכן בסוגה
+            שבחרתם אין שלב תקבולת. ניפגש איתו כשנגיע לקטעי שירה!
+          </p>
+        ) : null}
       </StageCard>
     ),
-    6: (
+    5: (
       <StageCard emoji="❓" title="שאלת שאלות — כמה שיותר!">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
-          השאלה היא לב הלימוד! אחרי שהכלים עבדו — אילו שאלות נשארו? מה מפתיע?
-          מה לא מסתדר? כל שאלה נכנסת למאגר השאלות האישי שלך, ובסוף השנה תבחרו
-          מתוכו שאלה אחת לעבודה שלך. נסו לנסח לפחות {decodeCfg.minQuestions}{" "}
-          שאלות.
+          {banked.length > 0 ? (
+            <>
+              יפה — בדרך לכאן כבר נכנסו למאגר שלכם {banked.length === 1
+                ? "שאלה אחת (למטה)"
+                : `${banked.length} שאלות (למטה)`}. עכשיו, אחרי שכל הכלים עבדו,
+              זה הרגע לעצור ולחפש שאלות <b>נוספות</b>: מה עדיין מפתיע? מה לא
+              מסתדר? איזו שאלה חדשה נולדה דווקא בזכות מה שהבנתם בשלבים
+              הקודמים? בסוף השנה תבחרו מהמאגר שאלה אחת לעבודה שלכם
+              {banked.length < decodeCfg.minQuestions
+                ? ` — נסו להגיע לפחות ל־${decodeCfg.minQuestions} שאלות בסך הכול.`
+                : "."}
+            </>
+          ) : (
+            <>
+              השאלה היא לב הלימוד! אחרי שהכלים עבדו — אילו שאלות נשארו? מה
+              מפתיע? מה לא מסתדר? כל שאלה נכנסת למאגר השאלות האישי שלכם, ובסוף
+              השנה תבחרו מתוכו שאלה אחת לעבודה שלכם. נסו לנסח לפחות{" "}
+              {decodeCfg.minQuestions} שאלות.
+            </>
+          )}
         </p>
         <div className="mb-2 flex items-end gap-2">
           <textarea
@@ -1080,7 +1126,11 @@ function DecodeStage(props: {
             }}
             rows={Math.min(4, Math.max(1, questionDraft.split("\n").length))}
             disabled={readOnly}
-            placeholder="כתבו שאלה... (למשל: למה דווקא הם פנו למשה?)"
+            placeholder={
+              banked.length > 0
+                ? "כתבו שאלה נוספת... (אפשר להתחיל ב״למה דווקא...״)"
+                : "כתבו שאלה... (אפשר להתחיל ב״למה דווקא...״)"
+            }
             className="flex-1 resize-none rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
           />
           <button
@@ -1092,13 +1142,18 @@ function DecodeStage(props: {
           </button>
         </div>
         {banked.length > 0 && (
-          <ul className="space-y-1">
-            {banked.map((q, i) => (
-              <li key={i} className="rounded-lg bg-[color:var(--primary)]/5 px-3 py-1.5 text-xs text-[color:var(--primary)]">
-                ❓ {q}
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="mb-1 mt-3 text-[11px] font-semibold text-[color:var(--primary)]/60">
+              השאלות שכבר במאגר שלכם:
+            </p>
+            <ul className="space-y-1">
+              {banked.map((q, i) => (
+                <li key={i} className="rounded-lg bg-[color:var(--primary)]/5 px-3 py-1.5 text-xs text-[color:var(--primary)]">
+                  ❓ {q}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
         <button
           onClick={() =>
@@ -1113,11 +1168,11 @@ function DecodeStage(props: {
         </button>
       </StageCard>
     ),
-    7: (
+    6: (
       <StageCard emoji="💪" title="מבינים בכל זאת — גם בלי כל המילים">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
           גם אם נשארו מילים לא פתורות — אפשר להבין את התמונה הגדולה. ספרו במילים
-          שלך: מה קורה בקטע? מי? מה? למה?
+          שלכם: מה קורה בקטע? מי? מה? למה?
         </p>
         <FieldArea
           label="הקטע במילים שלי"
@@ -1160,7 +1215,7 @@ function DecodeStage(props: {
             disabled={stage2Blocked}
             className="rounded-full bg-[color:var(--accent)] px-8 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            {stage === 7 ? "לשאלות ההבנה ←" : "סיימתי את השלב ←"}
+            {stage === 6 ? "לשאלות ההבנה ←" : "סיימתי את השלב ←"}
           </button>
           {stage2Blocked && (
             <p className="text-[11px] text-[color:var(--primary)]/55">

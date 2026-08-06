@@ -104,6 +104,17 @@ ${context}
 משוב מעצב על התובנה שנכתבה: מה חד בה ולמה, ומה אפשר להעמיק — בלי לכתוב את התובנה במקומם. סיום לפי כללים 11-12.`;
       }
     }
+  } else if (kind === "genre-insight" && taskId) {
+    const task = await getTask(taskId);
+    const reg = task ? getTaskContent(task.content_ref) : null;
+    if (reg) {
+      const passageText = reg.mainPassage.verses.map((v) => v.text).join(" ");
+      enriched = `משוב על שלב הסוגה בקטע ${reg.mainPassage.ref}.
+הקטע המלא: ${passageText}
+הסוגה המסתברת (לעזרתך בלבד — לא לחשוף כתשובה): ${reg.content.decode.expectedGenre}
+${context}
+משוב מעצב: אם הזיהוי מתאים — מה בסימנים שצוינו באמת מסגיר את הסוגה; אם לא — להוביל בשאלות לסימנים בקטע עצמו, בלי לומר את התשובה. סיום לפי כללים 11-12.`;
+    }
   }
 
   // Personalization: the student's recent help exchanges.
