@@ -711,6 +711,7 @@ export default function TaskRunner({
           askClaude={askClaude}
           advanceStage={advanceStage}
           onAskQuestion={openPassageQuestion}
+          gatesOff={Boolean(canReset)}
         />
       )}
 
@@ -1058,6 +1059,8 @@ function DecodeStage(props: {
   askClaude: (context: string, input: string, opts?: { kind?: string }) => void;
   advanceStage: () => void;
   onAskQuestion: (ref: string) => void;
+  // Teachers reviewing the task are never blocked by the stage gates.
+  gatesOff?: boolean;
 }) {
   const {
     stage,
@@ -1076,6 +1079,7 @@ function DecodeStage(props: {
     askClaude,
     advanceStage,
     onAskQuestion,
+    gatesOff,
   } = props;
 
   const leitworts = markings.filter((m) => m.passageKey === passage.key && m.kind === "leitwort");
@@ -1118,8 +1122,9 @@ function DecodeStage(props: {
       (c) => (answers[`comp:${c.key}`] ?? "").trim().length < 2
     );
 
-  const blocked =
+  const wouldBlock =
     stage2Blocked || stage4Blocked || stage5Blocked || stage6Blocked || stage7Blocked;
+  const blocked = !gatesOff && wouldBlock;
   const blockedHint =
     stage2Blocked
       ? leitworts.length === 0 && !noLeitwortClaim
@@ -1144,7 +1149,7 @@ function DecodeStage(props: {
           "",
           { kind: "leitwort-insight" }
         );
-      } else {
+      } else if (leitwortInsight) {
         askClaude(
           `משוב על תובנת המילה המנחה שנכתבה בשלב 2 בקטע ${passage.ref}. המילים שסומנו כמילה מנחה: ${
             leitworts.map((m) => `״${m.wordText}״`).join(", ") || "(לא סומנו מילים)"
@@ -1154,17 +1159,17 @@ function DecodeStage(props: {
         );
       }
     }
-    if (stage === 4) {
+    if (stage === 4 && (chosenGenre || genreWhy)) {
       const parallelism = (answers["decode:parallelism"] ?? "").trim();
       askClaude(
-        `משוב על שלב הסוגה בקטע ${passage.ref}. הסוגה שנבחרה: ${chosenGenre}. מה שנכתב על הזיהוי: ${genreWhy}${
+        `משוב על שלב הסוגה בקטע ${passage.ref}. הסוגה שנבחרה: ${chosenGenre || "(לא נבחרה)"}. מה שנכתב על הזיהוי: ${genreWhy || "(לא נכתב)"}${
           parallelism ? `. מה שנכתב על תקבולת: ${parallelism}` : ""
         }`,
         "",
         { kind: "genre-insight" }
       );
     }
-    if (stage === 6) {
+    if (stage === 6 && retell) {
       askClaude(
         `משוב על "הקטע במילים שלי" (שלב מבינים בכל זאת) בקטע ${passage.ref}. מה שנכתב: ${retell}`,
         "",
@@ -1462,6 +1467,11 @@ function DecodeStage(props: {
           {blocked && (
             <p className="max-w-xs text-end text-[11px] text-[color:var(--primary)]/55">
               {blockedHint}
+            </p>
+          )}
+          {gatesOff && wouldBlock && (
+            <p className="max-w-xs text-end text-[11px] text-[color:var(--primary)]/45">
+              🔓 חסימת החובה כבויה עבורך (מורה). לתלמידים יופיע כאן: ״{blockedHint}״
             </p>
           )}
         </div>
