@@ -619,8 +619,8 @@ export default function TaskRunner({
             {DECODE_STAGES.map((s) => (
               <button
                 key={s.n}
-                onClick={() => s.n <= maxStage && setStage(s.n)}
-                disabled={s.n > maxStage}
+                onClick={() => (canReset || s.n <= maxStage) && setStage(s.n)}
+                disabled={!canReset && s.n > maxStage}
                 className={[
                   "rounded-full px-3 py-1 text-xs font-semibold transition",
                   s.n === stage
@@ -671,18 +671,18 @@ export default function TaskRunner({
             💪 המיומנות: כתיבה טיעונית — טענה, נימוק וביסוס
           </p>
           <button
-            onClick={() => maxStage >= 8 && setStage(8)}
-            disabled={maxStage < 8}
+            onClick={() => (canReset || maxStage >= 8) && setStage(8)}
+            disabled={!canReset && maxStage < 8}
             className={[
               "rounded-full px-4 py-1 text-xs font-bold transition",
               stage === 8
                 ? "bg-[color:var(--accent)] text-white shadow"
-                : maxStage >= 8
+                : canReset || maxStage >= 8
                   ? "border border-[color:var(--accent)]/60 text-[color:var(--accent)] hover:bg-[color:var(--accent)]/10"
                   : "border border-[color:var(--border)] text-[color:var(--primary)]/35",
             ].join(" ")}
           >
-            {maxStage >= 8 ? "כניסה לחלק ב" : "🔒 נפתח בסיום חלק א"}
+            {canReset || maxStage >= 8 ? "כניסה לחלק ב" : "🔒 נפתח בסיום חלק א"}
           </button>
         </div>
       </div>
