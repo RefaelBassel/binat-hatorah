@@ -122,6 +122,15 @@ export default async function SubmissionPage({
             ].map(([key, label]) => (
               <AnswerRow key={key} label={label} value={answers[key]} />
             ))}
+            {Object.keys(answers)
+              .filter((k) => k.startsWith("comp:"))
+              .map((k) => (
+                <AnswerRow
+                  key={k}
+                  label={`${DECODE_STAGES[6].title} (פשט)`}
+                  value={answers[k]}
+                />
+              ))}
           </div>
         </section>
 

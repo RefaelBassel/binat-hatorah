@@ -80,18 +80,19 @@ export interface TaskSection {
   blocks: TaskBlock[];
 }
 
-// Config for the 8 fixed pshat-decoding stages on the main passage.
+// Config for the 7 fixed pshat-decoding stages on the main passage (Part A).
 export interface DecodeConfig {
   passageKey: string; // which passage block is the main decode text
-  // Genre options offered in stage 5 (אפיון סוגה)
+  // Genre options offered in the genre stage
   genreOptions: string[];
   expectedGenre?: string;
-  // Words (by exact text match) the teacher considers the leitwort family.
-  // Alternative student choices with good reasoning are legitimate.
+  // Leitwort candidate families prepared as a thinking aid for Claude only —
+  // NOT teacher-defined and never a closed list; any well-reasoned candidate
+  // meeting the literary criteria is legitimate.
   expectedLeitwort?: string[];
-  // Whether a תקבולת is present in this passage (stage 4 adapts).
+  // Whether the passage has a תקבולת (opens the tool regardless of genre).
   hasParallelism: boolean;
-  minQuestions: number; // stage 6: minimum questions to formulate
+  minQuestions: number; // question stage: minimum questions to formulate
 }
 
 export interface TaskContent {
@@ -101,5 +102,9 @@ export interface TaskContent {
   bookRef: string; // e.g. 'חומש במדבר, פרק ט׳ (פסוקים א׳–י״ד)'
   skill: string; // e.g. 'זיהוי ובניית טיעון (טענה, נימוק וביסוס)'
   decode: DecodeConfig;
+  // Part A stage 7 (בדיקת הבנה): VERY simple pshat comprehension questions —
+  // answered from the passage alone, no commentators.
+  comprehension: { key: string; prompt: string }[];
+  // Part B (העמקה ודיון): the argumentative-writing + deepening worksheet.
   sections: TaskSection[];
 }

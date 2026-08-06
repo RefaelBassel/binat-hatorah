@@ -79,7 +79,8 @@ export default function TaskRunner({
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
   const [markings, setMarkings] = useState<Marking[]>(initialMarkings);
-  const [stage, setStage] = useState(Math.min(Math.max(initialStage, 1), 7));
+  // Stages 1-7 = Part A (pshat decoding); stage 8 = Part B (העמקה ודיון).
+  const [stage, setStage] = useState(Math.min(Math.max(initialStage, 1), 8));
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [workSeconds, setWorkSeconds] = useState(initialWorkSeconds);
   const [clock, setClock] = useState("");
@@ -200,8 +201,11 @@ export default function TaskRunner({
   // ---------- progress ----------
   const answeredCount = useMemo(() => {
     let n = 0;
-    // decode stages 1-6 completed
-    n += Math.min(stage - 1, 6);
+    // decode stages 1-7 completed
+    n += Math.min(stage - 1, 7);
+    for (const c of content.comprehension) {
+      if ((answers[`comp:${c.key}`] ?? "").trim().length >= 2) n += 1;
+    }
     for (const section of content.sections) {
       for (const block of section.blocks) {
         if (block.type !== "question") continue;
@@ -375,6 +379,8 @@ export default function TaskRunner({
     if (!q) return;
     setBanked((b) => [...b, q]);
     setQuestionDraft("");
+    // The question stage requires at least one question formulated IN it.
+    if (stage === 5) setAnswer("decode:q5-added", "yes");
     fetch(`/api/questions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -469,7 +475,7 @@ export default function TaskRunner({
   };
 
   const advanceStage = () => {
-    const next = Math.min(stage + 1, 7);
+    const next = Math.min(stage + 1, 8);
     setStage(next);
     saveState(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -545,7 +551,10 @@ export default function TaskRunner({
         </div>
       )}
 
-      {/* ===== stage rail ===== */}
+      {/* ===== stage rail: Part A (stages 1-7) + Part B chip ===== */}
+      <p className="mb-2 text-[10px] font-semibold tracking-[0.25em] text-[color:var(--accent)]">
+        חלק א — קריאת פשט ושאלת שאלות
+      </p>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         {DECODE_STAGES.map((s) => (
           <button
@@ -565,13 +574,27 @@ export default function TaskRunner({
             {s.n} · {s.title}
           </button>
         ))}
+        <button
+          onClick={() => stage >= 8 && setStage(8)}
+          disabled={stage < 8}
+          className={[
+            "rounded-full px-3 py-1 text-xs font-bold transition",
+            stage === 8
+              ? "bg-[color:var(--accent)] text-white shadow"
+              : "border border-dashed border-[color:var(--accent)]/50 bg-[color:var(--card)] text-[color:var(--accent)]/60",
+          ].join(" ")}
+        >
+          חלק ב · העמקה ודיון
+        </button>
       </div>
-      <p className="mb-6 text-xs text-[color:var(--accent)]">
-        🎯 למה השלב הזה? <b>{DECODE_STAGES[stage - 1].why}</b>
-      </p>
+      {stage <= 7 && (
+        <p className="mb-6 text-xs text-[color:var(--accent)]">
+          🎯 למה השלב הזה? <b>{DECODE_STAGES[stage - 1].why}</b>
+        </p>
+      )}
 
       {/* ===== Part A: decode stages 1-7 ===== */}
-      {stage <= 6 && (
+      {stage <= 7 && (
         <DecodeStage
           stage={stage}
           content={content}
@@ -593,8 +616,20 @@ export default function TaskRunner({
       )}
 
       {/* ===== Part B (stage 8): the worksheet ===== */}
-      {stage === 7 && (
+      {stage === 8 && (
         <div className="space-y-10">
+          <div className="rounded-2xl border-2 border-[color:var(--primary)]/25 bg-[color:var(--card)] p-6 text-center">
+            <p className="mb-1 text-[11px] font-semibold tracking-[0.3em] text-[color:var(--accent)]">
+              חלק ב
+            </p>
+            <h2 className="font-display text-2xl font-extrabold text-[color:var(--primary)]">
+              העמקה ודיון — כתיבה טיעונית
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[color:var(--foreground)]/70">
+              סיימתם את קריאת הפשט 👏 עכשיו מעמיקים בטקסט ובמקורות, ומתרגלים את
+              המיומנות השנייה: טענה, נימוק וביסוס מן הכתובים.
+            </p>
+          </div>
           {content.sections.map((section, si) => (
             <section key={section.key}>
               <div className="mb-4 flex items-center gap-3">
@@ -948,40 +983,94 @@ function DecodeStage(props: {
   const hards = markings.filter((m) => m.passageKey === passage.key && m.kind === "hard");
   const decodeCfg = content.decode;
 
-  // Stage 2 gate: the leitwort insight is the deliverable of the stage —
-  // no advancing without it, and it always gets formative feedback.
+  // ---- per-stage gates: what MUST be filled before advancing ----
+  // Stage 2: at least one leitwort marked + a written insight, OR an explicit
+  // (Claude-checked) "no leitwort in this passage" claim.
   const leitwortInsight = (answers["decode:leitwort-why"] ?? "").trim();
-  const stage2Blocked = stage === 2 && leitwortInsight.length < 10;
+  const noLeitwortClaim = answers["decode:no-leitwort"] === "yes";
+  const stage2Blocked =
+    stage === 2 &&
+    !noLeitwortClaim &&
+    (leitworts.length === 0 || leitwortInsight.length < 10);
 
-  // Stage 4 (genre): parallelism is a genre tool, not a stage — it opens only
-  // for poetry/speech (or when the task declares the passage has one).
+  // Stage 4 (genre): must pick a genre AND explain what gave it away.
+  // Parallelism is a genre tool — opens only for poetry/speech (or when the
+  // task declares the passage has one).
   const chosenGenre = (answers["decode:genre"] ?? "").trim();
+  const genreWhy = (answers["decode:genre-help"] ?? "").trim();
   const parallelismOpen =
     chosenGenre === "שירה" || chosenGenre === "נאום" || decodeCfg.hasParallelism;
+  const stage4Blocked = stage === 4 && (!chosenGenre || genreWhy.length < 5);
+
+  // Stage 5: at least one ADDITIONAL question formulated here — unless the
+  // student already has 3+ banked and ticks "no further question right now".
+  const q5Added = answers["decode:q5-added"] === "yes";
+  const q5Enough = answers["decode:q5-enough"] === "yes" && banked.length >= 3;
+  const stage5Blocked = stage === 5 && !q5Added && !q5Enough;
+
+  // Stage 6: the retelling is mandatory and gets feedback.
+  const retell = (answers["decode:retell"] ?? "").trim();
+  const stage6Blocked = stage === 6 && retell.length < 10;
+
+  // Stage 7: both simple comprehension answers required to enter Part B.
+  const stage7Blocked =
+    stage === 7 &&
+    content.comprehension.some(
+      (c) => (answers[`comp:${c.key}`] ?? "").trim().length < 2
+    );
+
+  const blocked =
+    stage2Blocked || stage4Blocked || stage5Blocked || stage6Blocked || stage7Blocked;
+  const blockedHint =
+    stage2Blocked
+      ? leitworts.length === 0 && !noLeitwortClaim
+        ? "כדי להמשיך: סמנו 📌 מילה מנחה בקטע וכתבו עליה תובנה — או סמנו למטה שלדעתכם אין מילה מנחה"
+        : "כדי להמשיך: כתבו למעלה את התובנה שלכם מהמילה המנחה — קלוד ייתן עליה משוב 🌱"
+      : stage4Blocked
+        ? "כדי להמשיך: בחרו סוגה וכתבו לפי מה זיהיתם אותה"
+        : stage5Blocked
+          ? "כדי להמשיך: נסחו לפחות שאלה אחת נוספת ושמרו אותה למאגר"
+          : stage6Blocked
+            ? "כדי להמשיך: ספרו את הקטע במילים שלכם — קלוד ייתן משוב 🌱"
+            : stage7Blocked
+              ? "כדי לעבור לחלק ב: ענו על שתי שאלות ההבנה"
+              : "";
 
   const finishStage = () => {
-    if (stage2Blocked) return;
+    if (blocked) return;
     if (stage === 2) {
-      askClaude(
-        `משוב על תובנת המילה המנחה שנכתבה בשלב 2 בקטע ${passage.ref}. המילים שסומנו כמילה מנחה: ${
-          leitworts.map((m) => `״${m.wordText}״`).join(", ") || "(לא סומנו מילים)"
-        }. התובנה שנכתבה: ${leitwortInsight}`,
-        "",
-        { kind: "leitwort-insight" }
-      );
-    }
-    if (stage === 4) {
-      const genreWhy = (answers["decode:genre-help"] ?? "").trim();
-      const parallelism = (answers["decode:parallelism"] ?? "").trim();
-      if (chosenGenre || genreWhy) {
+      if (noLeitwortClaim) {
         askClaude(
-          `משוב על שלב הסוגה בקטע ${passage.ref}. הסוגה שנבחרה: ${chosenGenre || "(לא נבחרה)"}. מה שנכתב על הזיהוי: ${genreWhy || "(לא נכתב)"}${
-            parallelism ? `. מה שנכתב על תקבולת: ${parallelism}` : ""
-          }`,
+          `בשלב המילה המנחה בקטע ${passage.ref} סומן: "לדעתי אין מילה מנחה בקטע". יש לבדוק את הטענה ברצינות מול הקטע המלא: אם היא נכונה — לאשר ולהסביר; אם יש בקטע חזרה משמעותית — להוביל בשאלות לגילוי עצמי (למשל: אילו מילים חוזרות? כמה פעמים?) בלי לחשוף את המילה.`,
           "",
-          { kind: "genre-insight" }
+          { kind: "leitwort-insight" }
+        );
+      } else {
+        askClaude(
+          `משוב על תובנת המילה המנחה שנכתבה בשלב 2 בקטע ${passage.ref}. המילים שסומנו כמילה מנחה: ${
+            leitworts.map((m) => `״${m.wordText}״`).join(", ") || "(לא סומנו מילים)"
+          }. התובנה שנכתבה: ${leitwortInsight}`,
+          "",
+          { kind: "leitwort-insight" }
         );
       }
+    }
+    if (stage === 4) {
+      const parallelism = (answers["decode:parallelism"] ?? "").trim();
+      askClaude(
+        `משוב על שלב הסוגה בקטע ${passage.ref}. הסוגה שנבחרה: ${chosenGenre}. מה שנכתב על הזיהוי: ${genreWhy}${
+          parallelism ? `. מה שנכתב על תקבולת: ${parallelism}` : ""
+        }`,
+        "",
+        { kind: "genre-insight" }
+      );
+    }
+    if (stage === 6) {
+      askClaude(
+        `משוב על "הקטע במילים שלי" (שלב מבינים בכל זאת) בקטע ${passage.ref}. מה שנכתב: ${retell}`,
+        "",
+        { kind: "retell" }
+      );
     }
     advanceStage();
   };
@@ -1015,6 +1104,18 @@ function DecodeStage(props: {
           onChange={(v) => setAnswer("decode:leitwort-why", v)}
           readOnly={readOnly}
         />
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-[color:var(--primary)]/70">
+          <input
+            type="checkbox"
+            checked={noLeitwortClaim}
+            disabled={readOnly}
+            onChange={(e) =>
+              setAnswer("decode:no-leitwort", e.target.checked ? "yes" : "")
+            }
+            className="h-4 w-4 accent-[color:var(--primary)]"
+          />
+          חיפשתי ולדעתי אין מילה מנחה בקטע הזה (קלוד יבדוק את זה איתכם)
+        </label>
       </StageCard>
     ),
     3: (
@@ -1166,6 +1267,20 @@ function DecodeStage(props: {
         >
           ✨ קשה לי לנסח שאלה — קלוד, עזור לי בקטנה
         </button>
+        {banked.length >= 3 && !q5Added && (
+          <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-[color:var(--primary)]/70">
+            <input
+              type="checkbox"
+              checked={answers["decode:q5-enough"] === "yes"}
+              disabled={readOnly}
+              onChange={(e) =>
+                setAnswer("decode:q5-enough", e.target.checked ? "yes" : "")
+              }
+              className="h-4 w-4 accent-[color:var(--primary)]"
+            />
+            כבר ניסחתי {banked.length} שאלות — אין לי שאלה נוספת כרגע
+          </label>
+        )}
       </StageCard>
     ),
     6: (
@@ -1175,12 +1290,31 @@ function DecodeStage(props: {
           שלכם: מה קורה בקטע? מי? מה? למה?
         </p>
         <FieldArea
-          label="הקטע במילים שלי"
+          label="הקטע במילים שלי — קלוד ייתן משוב"
           value={answers["decode:retell"] ?? ""}
           onChange={(v) => setAnswer("decode:retell", v)}
           readOnly={readOnly}
           rows={5}
         />
+      </StageCard>
+    ),
+    7: (
+      <StageCard emoji="✅" title="בדיקת הבנה — שאלות פשוטות על הפשט">
+        <p className="mb-4 text-sm leading-7 text-[color:var(--foreground)]/75">
+          שתי שאלות קצרות, רק כדי לוודא שהסיפור עצמו ברור. עונים מתוך הקטע
+          בלבד — בלי פרשנים ובלי העמקה. את ההעמקה שומרים לחלק ב!
+        </p>
+        <div className="space-y-4">
+          {content.comprehension.map((c) => (
+            <FieldArea
+              key={c.key}
+              label={c.prompt}
+              value={answers[`comp:${c.key}`] ?? ""}
+              onChange={(v) => setAnswer(`comp:${c.key}`, v)}
+              readOnly={readOnly}
+            />
+          ))}
+        </div>
       </StageCard>
     ),
   };
@@ -1212,15 +1346,18 @@ function DecodeStage(props: {
         <div className="flex flex-col items-end gap-1.5">
           <button
             onClick={finishStage}
-            disabled={stage2Blocked}
+            disabled={blocked}
             className="rounded-full bg-[color:var(--accent)] px-8 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
-            {stage === 6 ? "לשאלות ההבנה ←" : "סיימתי את השלב ←"}
+            {stage === 7
+              ? "סיימתי — לחלק ב ←"
+              : stage === 6
+                ? "לבדיקת ההבנה ←"
+                : "סיימתי את השלב ←"}
           </button>
-          {stage2Blocked && (
-            <p className="text-[11px] text-[color:var(--primary)]/55">
-              כדי להמשיך, כתבו למעלה את התובנה שלכם מהמילה המנחה — קלוד ייתן
-              עליה משוב 🌱
+          {blocked && (
+            <p className="max-w-xs text-end text-[11px] text-[color:var(--primary)]/55">
+              {blockedHint}
             </p>
           )}
         </div>

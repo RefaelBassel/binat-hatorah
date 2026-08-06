@@ -31,6 +31,20 @@ export const lesson01: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — two very simple pshat comprehension questions,
+  // answerable straight from the verses (no commentators).
+  comprehension: [
+    {
+      key: "who-and-why",
+      prompt:
+        "מי האנשים שלא יכלו לעשות את הפסח, ומה הסיבה שלא יכלו? (פסוק ו)",
+    },
+    {
+      key: "moshe-response",
+      prompt: "מה עושה משה כששומע את הבקשה שלהם? (פסוק ח)",
+    },
+  ],
+
   sections: [
     {
       key: "chrono",

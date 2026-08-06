@@ -115,6 +115,16 @@ ${context}
 ${context}
 משוב מעצב: אם הזיהוי מתאים — מה בסימנים שצוינו באמת מסגיר את הסוגה; אם לא — להוביל בשאלות לסימנים בקטע עצמו, בלי לומר את התשובה. סיום לפי כללים 11-12.`;
     }
+  } else if (kind === "retell" && taskId) {
+    const task = await getTask(taskId);
+    const reg = task ? getTaskContent(task.content_ref) : null;
+    if (reg) {
+      const passageText = reg.mainPassage.verses.map((v) => v.text).join(" ");
+      enriched = `משוב על שלב "מבינים בכל זאת" בקטע ${reg.mainPassage.ref} — התלמיד/ה סיפר/ה את הקטע במילים שלו/ה.
+הקטע המלא: ${passageText}
+${context}
+משוב מעצב: האם הסיפור-מחדש נאמן לפשט? מה נתפס בו יפה ולמה, ואם חסר או התערבב משהו מרכזי — לכוון בעדינות לפסוק המתאים (לצטט את מילותיו) בלי לספר את הקטע במקומם. סיום לפי כללים 11-12.`;
+    }
   }
 
   // Personalization: the student's recent help exchanges.
