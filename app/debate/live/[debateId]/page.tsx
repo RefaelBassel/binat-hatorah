@@ -11,6 +11,7 @@ export default async function DebateLivePage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  if (!session.user.guest && !session.user.onboarded) redirect("/onboarding");
   const { debateId } = await params;
   return <LiveBoard debateId={Number(debateId)} />;
 }

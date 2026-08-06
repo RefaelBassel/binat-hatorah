@@ -22,6 +22,7 @@ export default async function TaskPage({
   const session = await auth();
   const user = session?.user;
   if (!user) redirect("/login");
+  if (!user.guest && !user.onboarded) redirect("/onboarding");
 
   const { taskId: raw } = await params;
   const taskId = Number(raw);

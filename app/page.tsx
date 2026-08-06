@@ -9,6 +9,10 @@ import { continueTask } from "@/lib/tasks";
 export default async function HomePage() {
   const session = await auth();
   const isAuthed = Boolean(session?.user);
+  if (session?.user && !session.user.guest && !session.user.onboarded) {
+    const { redirect } = await import("next/navigation");
+    redirect("/onboarding");
+  }
 
   // "המשך משימות" — resume exactly where the student stopped.
   let continueHref = "/tasks";

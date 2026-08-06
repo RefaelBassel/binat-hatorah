@@ -17,6 +17,7 @@ export default async function MePage() {
   const session = await auth();
   const user = session?.user;
   if (!user) redirect("/login");
+  if (!user.guest && !user.onboarded) redirect("/onboarding");
   const userId = Number(user.id);
   const name = user.fullName ?? user.name ?? "";
   const { isStudentMode } = await import("@/lib/student-mode");

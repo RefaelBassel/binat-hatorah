@@ -1,6 +1,7 @@
 import TopNav from "./top-nav";
 import ReflectionDrawer from "./reflection-drawer";
 import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 // Shared wrapper for inner pages: top nav + centered content column with a
 // consistent page header + the reflection side drawer (available everywhere —
@@ -16,6 +17,11 @@ export default async function PageShell({
   children?: React.ReactNode;
 }) {
   const session = await auth();
+  // Onboarding enforcement lives here (middleware is auth-library-free):
+  // an authed-but-not-onboarded user is sent to enter her Hebrew name first.
+  if (session?.user && !session.user.guest && !session.user.onboarded) {
+    redirect("/onboarding");
+  }
   const showDrawer = Boolean(session?.user) && !session?.user?.guest;
   return (
     <>
