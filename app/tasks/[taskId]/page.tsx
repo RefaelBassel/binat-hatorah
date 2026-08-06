@@ -91,6 +91,7 @@ export default async function TaskPage({
           initialAnswers={answers}
           initialMarkings={markings}
           initialQuestions={initialQuestions}
+          canReset={isTeacher}
           initialStage={progress?.stage ?? 1}
           initialWorkSeconds={progress?.work_seconds ?? 0}
           submitted={Boolean(progress?.submitted_at)}

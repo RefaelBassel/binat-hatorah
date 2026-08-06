@@ -48,6 +48,7 @@ interface Props {
   initialAnswers: Record<string, string>;
   initialMarkings: Marking[];
   initialQuestions?: string[];
+  canReset?: boolean;
   initialStage: number;
   initialWorkSeconds: number;
   submitted: boolean;
@@ -71,6 +72,7 @@ export default function TaskRunner({
   initialAnswers,
   initialMarkings,
   initialQuestions,
+  canReset,
   initialStage,
   initialWorkSeconds,
   submitted: initialSubmitted,
@@ -474,6 +476,25 @@ export default function TaskRunner({
     }
   };
 
+  // Teacher tool: wipe own progress on this task to re-experience it from
+  // scratch in student mode (server enforces teacher-only).
+  const [resetBusy, setResetBusy] = useState(false);
+  const resetTask = async () => {
+    if (
+      !window.confirm(
+        "לאפס את המשימה? כל התשובות, הסימונים והשאלות שלך במשימה הזו יימחקו ותתחילו מהשלב הראשון."
+      )
+    )
+      return;
+    setResetBusy(true);
+    try {
+      await fetch(`/api/tasks/${taskId}/reset`, { method: "POST" });
+      window.location.reload();
+    } catch {
+      setResetBusy(false);
+    }
+  };
+
   const advanceStage = () => {
     const next = Math.min(stage + 1, 8);
     setStage(next);
@@ -552,9 +573,21 @@ export default function TaskRunner({
       )}
 
       {/* ===== stage rail: Part A (stages 1-7) + Part B chip ===== */}
-      <p className="mb-2 text-[10px] font-semibold tracking-[0.25em] text-[color:var(--accent)]">
-        חלק א — קריאת פשט ושאלת שאלות
-      </p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold tracking-[0.25em] text-[color:var(--accent)]">
+          חלק א — קריאת פשט ושאלת שאלות
+        </p>
+        {canReset && (
+          <button
+            onClick={resetTask}
+            disabled={resetBusy}
+            className="rounded-full border border-dashed border-[color:var(--danger)]/40 px-3 py-1 text-[11px] font-semibold text-[color:var(--danger)]/80 transition hover:bg-[color:var(--danger)]/5 disabled:opacity-40"
+            title="מוחק את ההתקדמות שלך בלבד — כלי מורה"
+          >
+            {resetBusy ? "מאפס..." : "🔄 איפוס המשימה (כלי מורה)"}
+          </button>
+        )}
+      </div>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         {DECODE_STAGES.map((s) => (
           <button
