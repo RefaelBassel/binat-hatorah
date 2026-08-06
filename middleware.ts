@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 // here we handle the onboarding redirect for authed-but-not-onboarded users.
 const { auth } = NextAuth(authConfig);
 
-export default auth((req) => {
+const handler = auth((req) => {
   const { nextUrl } = req;
   const path = nextUrl.pathname;
 
@@ -58,6 +58,30 @@ export default auth((req) => {
 
   return NextResponse.next();
 });
+
+// TEMPORARY DIAGNOSTICS for the production 500 (MIDDLEWARE_INVOCATION_FAILED):
+// /__mw-health reports whether env vars are visible to the proxy runtime,
+// and any handler exception is surfaced with its stack instead of a blank 500.
+// Remove once the deployment is stable.
+export default async function middleware(
+  req: Parameters<typeof handler>[0],
+  ctx: Parameters<typeof handler>[1]
+) {
+  if (req.nextUrl.pathname === "/__mw-health") {
+    return NextResponse.json({
+      hasAuthSecret: Boolean(process.env.AUTH_SECRET),
+      hasGoogleId: Boolean(process.env.AUTH_GOOGLE_ID),
+      hasGoogleSecret: Boolean(process.env.AUTH_GOOGLE_SECRET),
+      hasTursoUrl: Boolean(process.env.TURSO_DATABASE_URL),
+    });
+  }
+  try {
+    return await handler(req, ctx);
+  } catch (err) {
+    const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
+    return new NextResponse(`MW ERROR: ${detail}`, { status: 500 });
+  }
+}
 
 export const config = {
   // Exclude Next.js internals and static assets so they're never redirected.
