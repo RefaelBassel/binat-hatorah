@@ -88,7 +88,9 @@ export default function TaskRunner({
   } | null>(null);
   const [qComposerDraft, setQComposerDraft] = useState("");
   // Claude assist — a real conversation: the student can reply and be guided
-  // step by step ("אני עשיתי לבד אבל לא פגשתי קיר").
+  // step by step ("אני עשיתי לבד אבל לא פגשתי קיר"). The panel opens next to
+  // the word that triggered it (that's where the eye is) and can be dragged
+  // anywhere afterwards.
   const [assist, setAssist] = useState<{
     context: string;
     kind?: string;
@@ -97,6 +99,37 @@ export default function TaskRunner({
     loading: boolean;
   } | null>(null);
   const [assistDraft, setAssistDraft] = useState("");
+  const [assistPos, setAssistPos] = useState<{ x: number; y: number } | null>(null);
+  const assistDrag = useRef<{ dx: number; dy: number } | null>(null);
+
+  const clampAssistPos = (x: number, y: number) => {
+    const w = typeof window !== "undefined" ? window.innerWidth : 1000;
+    const h = typeof window !== "undefined" ? window.innerHeight : 800;
+    const panelW = Math.min(430, w - 16);
+    return {
+      x: Math.max(8, Math.min(x, w - panelW - 8)),
+      y: Math.max(8, Math.min(y, h - 220)),
+    };
+  };
+
+  const onAssistDragStart = (e: React.PointerEvent) => {
+    if (!assistPos) return;
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // fine without capture
+    }
+    assistDrag.current = { dx: e.clientX - assistPos.x, dy: e.clientY - assistPos.y };
+  };
+  const onAssistDragMove = (e: React.PointerEvent) => {
+    if (!assistDrag.current) return;
+    setAssistPos(
+      clampAssistPos(e.clientX - assistDrag.current.dx, e.clientY - assistDrag.current.dy)
+    );
+  };
+  const onAssistDragEnd = () => {
+    assistDrag.current = null;
+  };
   const [questionDraft, setQuestionDraft] = useState("");
   const [banked, setBanked] = useState<string[]>([]);
   const readOnly = submitted;
@@ -256,11 +289,27 @@ export default function TaskRunner({
     // immediate formative feedback: affirming why a right choice works and
     // inviting deeper looking, or guiding self-discovery when it doesn't.
     if (kind === "leitwort" && !remove) {
-      askClaude(
-        `בדיקת סימון מילה מנחה — המילה ״${wordText}״`,
-        "",
-        { kind: "leitwort", word: wordText }
-      );
+      askClaude(`בדיקת סימון מילה מנחה — המילה ״${wordText}״`, "", {
+        kind: "leitwort",
+        word: wordText,
+        anchor: { x: menu.x, y: menu.y },
+      });
+    }
+    setMenu(null);
+  };
+
+  // Remove every marking from a word — one tap, no hunting.
+  const clearWordMarks = () => {
+    if (!menu || readOnly) return;
+    const { passageKey, wordIndex, wordText } = menu;
+    const existing = markings.filter(
+      (m) => m.passageKey === passageKey && m.wordIndex === wordIndex
+    );
+    setMarkings((ms) =>
+      ms.filter((m) => !(m.passageKey === passageKey && m.wordIndex === wordIndex))
+    );
+    for (const m of existing) {
+      postMarking(passageKey, wordIndex, wordText, m.kind, true);
     }
     setMenu(null);
   };
@@ -325,8 +374,13 @@ export default function TaskRunner({
   const askClaude = async (
     context: string,
     input: string,
-    opts?: { kind?: string; word?: string }
+    opts?: { kind?: string; word?: string; anchor?: { x: number; y: number } }
   ) => {
+    if (opts?.anchor) {
+      setAssistPos(clampAssistPos(opts.anchor.x - 120, opts.anchor.y + 14));
+    } else if (!assist) {
+      setAssistPos(null); // default bottom sheet
+    }
     const prior =
       assist && assist.context === context ? assist.messages : [];
     const nextMessages = input
@@ -593,10 +647,19 @@ export default function TaskRunner({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="mb-1.5 px-1 text-[11px] text-[color:var(--primary)]/60">
-            המילה: <b className="text-[color:var(--primary)]">{menu.wordText}</b>
-          </p>
-          <div className="flex gap-1.5">
+          <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+            <p className="text-[11px] text-[color:var(--primary)]/60">
+              המילה: <b className="text-[color:var(--primary)]">{menu.wordText}</b>
+            </p>
+            <button
+              onClick={() => setMenu(null)}
+              aria-label="סגירה"
+              className="rounded-md px-1 text-sm leading-none text-[color:var(--primary)]/45 hover:bg-[color:var(--primary)]/5"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
             {(["leitwort", "hard"] as MarkKind[]).map((kind) => {
               const st = MARK_STYLE[kind];
               const active = markings.some(
@@ -609,7 +672,7 @@ export default function TaskRunner({
                 <button
                   key={kind}
                   onClick={() => toggleMark(kind)}
-                  className="rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
+                  className="whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition"
                   style={{
                     borderColor: st.border,
                     color: st.border,
@@ -621,28 +684,37 @@ export default function TaskRunner({
                 </button>
               );
             })}
-          </div>
-          <div className="mt-1.5 flex gap-1.5">
             <button
               onClick={() => openQuestion("word")}
-              className="flex-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+              className="whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[11px] font-semibold"
               style={{ borderColor: "#2f5d8a", color: "#2f5d8a" }}
             >
               ❓ שאלה על המילה
             </button>
             <button
               onClick={() => openQuestion("verse")}
-              className="flex-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+              className="whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[11px] font-semibold"
               style={{ borderColor: "#2f5d8a", color: "#2f5d8a" }}
             >
               ❓ שאלה על הפסוק
             </button>
           </div>
+          {markings.some(
+            (m) => m.passageKey === menu.passageKey && m.wordIndex === menu.wordIndex
+          ) && (
+            <button
+              onClick={clearWordMarks}
+              className="mt-1.5 w-full whitespace-nowrap rounded-lg px-2 py-1 text-[11px] font-semibold text-[color:var(--danger)] hover:bg-[color:var(--danger)]/5"
+            >
+              🧽 הסרת כל הסימונים מהמילה
+            </button>
+          )}
           <button
             onClick={() => {
               askClaude(
                 `בקשת עזרה על המילה ״${menu.wordText}״ בקטע ${content.bookRef}, פסוק ${menu.verseNum}. שלב נוכחי: ${DECODE_STAGES[stage - 1].title}. זכרו: רמז מדורג, לא פירוש מלא מיד.`,
-                `לא ברורה לי המילה ״${menu.wordText}״`
+                `לא ברורה לי המילה ״${menu.wordText}״`,
+                { anchor: { x: menu.x, y: menu.y } }
               );
               setMenu(null);
             }}
@@ -651,6 +723,23 @@ export default function TaskRunner({
             ✨ עזרה מקלוד על המילה הזו
           </button>
         </div>
+      )}
+
+      {/* ===== floating "יש לי שאלה" — during decode stages 1-7 ===== */}
+      {stage <= 7 && !readOnly && !qComposer && (
+        <button
+          onClick={() => {
+            setQComposer({
+              sourceRef: mainPassage.ref,
+              contextLabel: `שאלה על ${mainPassage.ref} (מילה, חלק מפסוק או פסוק שלם)`,
+            });
+            setQComposerDraft("");
+          }}
+          className="fixed bottom-5 z-40 flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:scale-[1.03]"
+          style={{ insetInlineStart: "1rem", background: "var(--primary)" }}
+        >
+          ❓ יש לי שאלה
+        </button>
       )}
 
       {/* ===== question composer — word / verse, any stage ===== */}
@@ -698,16 +787,43 @@ export default function TaskRunner({
         </div>
       )}
 
-      {/* ===== Claude assist panel — a guided conversation ===== */}
+      {/* ===== Claude assist panel — opens NEXT TO the word, draggable ===== */}
       {assist && (
-        <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-lg rounded-2xl border border-[color:var(--primary)]/20 bg-[color:var(--card)] p-4 shadow-2xl">
-          <div className="mb-2 flex items-center justify-between">
+        <div
+          className="fixed z-40 rounded-2xl border border-[color:var(--primary)]/20 p-4 shadow-2xl"
+          style={
+            assistPos
+              ? {
+                  left: assistPos.x,
+                  top: assistPos.y,
+                  width: "min(430px, calc(100vw - 16px))",
+                  backgroundColor: "var(--card)",
+                }
+              : {
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  marginInline: "auto",
+                  maxWidth: "32rem",
+                  backgroundColor: "var(--card)",
+                }
+          }
+        >
+          <div
+            className="mb-2 flex items-center justify-between"
+            onPointerDown={onAssistDragStart}
+            onPointerMove={onAssistDragMove}
+            onPointerUp={onAssistDragEnd}
+            style={{ cursor: assistPos ? "grab" : "default", touchAction: "none" }}
+            title={assistPos ? "אפשר לגרור אותי לכל מקום" : undefined}
+          >
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary)]">
                 <span className="text-sm">✨</span>
               </div>
               <p className="text-[10px] text-[color:var(--primary)]/45">
-                קלוד רומז ומכוון — לא פותר במקומך 💪 אפשר לענות לו!
+                קלוד רומז ומכוון — לא פותר במקומך 💪 אפשר לענות לו
+                {assistPos ? " ולגרור אותי" : ""}!
               </p>
             </div>
             <button

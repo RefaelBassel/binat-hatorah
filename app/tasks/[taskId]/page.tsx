@@ -66,7 +66,7 @@ export default async function TaskPage({
             {reg.content.title}
           </h1>
           <p className="mt-2 text-sm text-[color:var(--foreground)]/65">
-            🎯 מיומנות מרכזית: {reg.content.skill}
+            🎯 מיומנויות מרכזיות: {reg.content.skill}
           </p>
           <p className="mt-1 text-xs text-[color:var(--primary)]/55">
             📅 להגשה עד: {formatFullDate(task.due_at)}

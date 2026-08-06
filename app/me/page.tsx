@@ -3,7 +3,9 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import TopNav from "@/components/top-nav";
 import ReflectionDrawer from "@/components/reflection-drawer";
+import ContinueFab from "@/components/continue-fab";
 import QuestionBank from "@/components/question-bank";
+import AddressFormPicker from "@/components/address-form-picker";
 import ReflectionGraph, { type ReflectionPoint } from "@/components/reflection-graph";
 import { db } from "@/lib/db";
 import { tasksForStudent, STATUS_META } from "@/lib/tasks";
@@ -90,6 +92,7 @@ export default async function MePage() {
     <>
       <TopNav />
       {!user.guest && <ReflectionDrawer contextRef="העמוד האישי" />}
+      <ContinueFab />
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-6">
         {/* hero */}
         <div className="mb-8 text-center">
@@ -105,6 +108,12 @@ export default async function MePage() {
             תורה ונביאים לבגרות · כיתה י · תיכון שחרית
           </p>
         </div>
+
+        {!user.guest && (
+          <div className="mb-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+            <AddressFormPicker initial={user.addressForm ?? null} />
+          </div>
+        )}
 
         {/* overdue alert */}
         {overdue.length > 0 && (

@@ -100,7 +100,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
       if (user?.email) {
         try {
           const row = await db().execute({
-            sql: "SELECT id, role, full_name, onboarded_at FROM users WHERE email = ?",
+            sql: "SELECT id, role, full_name, address_form, onboarded_at FROM users WHERE email = ?",
             args: [user.email.toLowerCase()],
           });
           const r = row.rows[0];
@@ -108,6 +108,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
             token.userId = r.id as number;
             token.role = r.role as string;
             token.fullName = (r.full_name as string | null) ?? null;
+            token.addressForm = (r.address_form as string | null) ?? null;
             token.onboarded = r.onboarded_at != null;
           }
         } catch (err) {
@@ -121,12 +122,14 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
           user?: {
             onboarded?: boolean;
             fullName?: string | null;
+            addressForm?: string | null;
             role?: string;
           };
         };
         if (s.user) {
           if (typeof s.user.onboarded === "boolean") token.onboarded = s.user.onboarded;
           if (s.user.fullName !== undefined) token.fullName = s.user.fullName;
+          if (s.user.addressForm !== undefined) token.addressForm = s.user.addressForm;
           if (s.user.role !== undefined) token.role = s.user.role;
         }
       }
@@ -137,6 +140,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         session.user.id = String(token.userId ?? "");
         session.user.role = token.role ?? "student";
         session.user.fullName = token.fullName ?? null;
+        session.user.addressForm = token.addressForm ?? null;
         session.user.onboarded = Boolean(token.onboarded);
         session.user.guest = Boolean(token.guest);
         session.user.guestMode = token.guestMode ?? undefined;

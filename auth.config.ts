@@ -55,6 +55,8 @@ export const authConfig = {
         session.user.role = (token.role as string | undefined) ?? "student";
         session.user.fullName =
           (token.fullName as string | null | undefined) ?? null;
+        session.user.addressForm =
+          (token.addressForm as string | null | undefined) ?? null;
         session.user.onboarded = Boolean(token.onboarded);
         session.user.guest = Boolean(token.guest);
         session.user.guestMode = (token.guestMode as string | undefined) ?? undefined;

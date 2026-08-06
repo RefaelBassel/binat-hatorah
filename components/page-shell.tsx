@@ -1,5 +1,6 @@
 import TopNav from "./top-nav";
 import ReflectionDrawer from "./reflection-drawer";
+import ContinueFab from "./continue-fab";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
@@ -27,6 +28,7 @@ export default async function PageShell({
     <>
       <TopNav />
       {showDrawer && <ReflectionDrawer contextRef={title} />}
+      {showDrawer && <ContinueFab />}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-5 flex items-center gap-3" aria-hidden>

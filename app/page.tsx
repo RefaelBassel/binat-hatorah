@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, signIn } from "@/auth";
 import TopNav from "@/components/top-nav";
+import ContinueFab from "@/components/continue-fab";
 import { continueTask } from "@/lib/tasks";
 
 // Landing page (/) — open to everyone. Signed-out visitors see the hero with
@@ -38,6 +39,7 @@ export default async function HomePage() {
   return (
     <>
       {isAuthed && <TopNav />}
+      {isAuthed && <ContinueFab />}
       <main className="relative flex flex-1 flex-col">
         <Backdrop />
 

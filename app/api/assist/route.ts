@@ -7,6 +7,7 @@ import { CLAUDE_MODEL } from "@/lib/claude";
 import { getTask } from "@/lib/tasks";
 import { getTaskContent } from "@/content/tasks/registry";
 import { stripNikud } from "@/lib/hebrew";
+import { addressInstruction } from "@/lib/address-form";
 
 function now(): number {
   return Math.floor(Date.now() / 1000);
@@ -27,7 +28,7 @@ const SYSTEM_PROMPT = `את/ה עוזר/ת לימוד באתר "בינת התו�
 4. משוב מעצב תמיד: לא "יפה" או "לא נכון" סתמיים — הסבר/י למה משהו טוב, או כוון/י בעדינות לאן להסתכל, מתוך עידוד.
 5. התאמה אישית לפי היסטוריית העזרה: מי שנעזר/ת הרבה → העלאת מדרגה הדרגתית ועידוד עצמאות; מי שכמעט לא — רמז נדיב יותר.
 6. טון: חם, מעודד, קצר מאוד — עד 3 משפטים קצרים! עדיף רמז אחד מדויק מהסבר ארוך. עברית בלבד. סיים/י תמיד משפט — בלי להיקטע באמצע.
-7. שפה רב-מגדרית: פנייה בגוף שני רבים ("נסו", "קראו", "שימו לב") או בניסוח ניטרלי ("אפשר לבדוק...", "שווה לספור..."). לעולם לא לשון נקבה או זכר בלעדית.
+7. {ADDRESS_RULE}
 8. מדי פעם (לא בכל הודעה!) פתח/י בפנייה בשם הפרטי של התלמיד/ה — זה מחמם. אל תנחש/י מגדר מהשם; השם משמש לפנייה בלבד.
 9. בשלב "שאלת שאלות" — עזרה בהפיכת אי-הבנה לשאלה מנוסחת (סולם: שאלת מילה ← שאלת סתירה ← שאלת "למה בכלל"), בלי לנסח במקומם.
 10. זו שיחה — אפשר לענות לך. הגב/י למה שנכתב והמשך/י להוביל בצעדים קטנים, וסיים/י בהזמנה קטנה לפעולה או בשאלה מכוונת אחת.
@@ -108,7 +109,7 @@ ${context}`;
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 650,
-    system: SYSTEM_PROMPT,
+    system: SYSTEM_PROMPT.replace("{ADDRESS_RULE}", addressInstruction(user.addressForm)),
     messages: [
       {
         role: "user" as const,

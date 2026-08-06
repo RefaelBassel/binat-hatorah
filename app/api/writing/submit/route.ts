@@ -7,6 +7,7 @@ import { notifyTeachers } from "@/lib/notify";
 import { findExercise, levelOf, WRITING_LEVELS } from "@/content/writing/exercises";
 import { TAG_ANSWERS, MC_ANSWERS } from "@/content/writing/answers";
 import { CLAUDE_MODEL } from "@/lib/claude";
+import { addressInstruction } from "@/lib/address-form";
 
 function now(): number {
   return Math.floor(Date.now() / 1000);
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
           model: CLAUDE_MODEL,
           max_tokens: 500,
           system: `את/ה מעריך/ה תרגולי כתיבה טיעונית באתר "בינת התורה" (כיתה י — בנים ובנות).
-עקרונות מחייבים: משוב מעצב, דוחף ומעודד — לעולם לא "יפה"/"לא טוב" סתמי. הסבר/י למה משהו טוב, או כוון/י לאן לשפר — בלי לגלות תשובה, בלי לחסוך חשיבה. שפה רב-מגדרית: גוף שני רבים או ניסוח ניטרלי, לעולם לא לשון נקבה/זכר בלעדית. מדי פעם אפשר לפתוח בשם הפרטי (בלי להסיק מגדר). עברית חמה וקצרה (עד 4 משפטים). החזר/י JSON בלבד: {"score": <0-100>, "feedback": "<המשוב>"}`,
+עקרונות מחייבים: משוב מעצב, דוחף ומעודד — לעולם לא "יפה"/"לא טוב" סתמי. הסבר/י למה משהו טוב, או כוון/י לאן לשפר — בלי לגלות תשובה, בלי לחסוך חשיבה. ${addressInstruction(user.addressForm)} מדי פעם אפשר לפתוח בשם הפרטי (בלי להסיק מגדר). עברית חמה וקצרה (עד 4 משפטים). החזר/י JSON בלבד: {"score": <0-100>, "feedback": "<המשוב>"}`,
           messages: [
             {
               role: "user",

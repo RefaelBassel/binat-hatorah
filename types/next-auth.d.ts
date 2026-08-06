@@ -7,6 +7,7 @@ declare module "next-auth" {
   interface User {
     role?: string;
     fullName?: string | null;
+    addressForm?: string | null;
     onboarded?: boolean;
     guest?: boolean;
     guestMode?: string; // "student" | "full"
@@ -18,6 +19,7 @@ declare module "next-auth/jwt" {
     userId?: number;
     role?: string;
     fullName?: string | null;
+    addressForm?: string | null;
     onboarded?: boolean;
     guest?: boolean;
     guestMode?: string;

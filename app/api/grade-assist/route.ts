@@ -6,6 +6,7 @@ import { getAnthropicApiKey } from "@/lib/env";
 import { getTask, getAnswers, getMarkings, now } from "@/lib/tasks";
 import { getTaskContent } from "@/content/tasks/registry";
 import { CLAUDE_MODEL } from "@/lib/claude";
+import { addressInstruction } from "@/lib/address-form";
 
 // Claude proposes a score + feedback for a submission. The teacher edits and
 // approves — nothing reaches the student without teacher approval.
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   const answers = await getAnswers(taskId, studentId);
   const markings = await getMarkings(taskId, studentId);
   const studentRow = await db().execute({
-    sql: "SELECT full_name, email FROM users WHERE id = ?",
+    sql: "SELECT full_name, email, address_form FROM users WHERE id = ?",
     args: [studentId],
   });
   const studentName =
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
     system: `את/ה עוזר/ת הערכה למורה באתר "בינת התורה" (תנ"ך, כיתה י — בנים ובנות, תיכון שחרית).
 הערך/כי את ההגשה בעברית: ציון 0-100 והערכה מילולית חמה, מפורטת ובונה (מה חוזק, מה לשפר, דוגמה אחת קונקרטית).
 שים/י לב במיוחד ל: הבנת הפשט, איכות פירוק הטיעון (טענה/נימוק/ביסוס), עומק השאלות שנשאלו, ואיכות הסימונים (מילה מנחה, מילים קשות).
-שפה: רב-מגדרית או ניטרלית; מותר לפנות בשם הפרטי (בלי להסיק מגדר מהשם).
+שפה: ${addressInstruction(studentRow.rows[0]?.address_form as string | null)} מותר לפנות בשם הפרטי.
 זו הצעה בלבד — המורה עורך/ת ומאשר/ת. החזר/י JSON בלבד במבנה: {"score": <מספר>, "feedback": "<טקסט>"}`,
     messages: [
       {
