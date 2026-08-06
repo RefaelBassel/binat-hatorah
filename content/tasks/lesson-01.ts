@@ -15,9 +15,18 @@ export const lesson01: TaskContent = {
     passageKey: "main",
     genreOptions: ["סיפור", "חוק", "שירה", "נאום", "רשימה"],
     expectedGenre: "סיפור",
-    // Word families the teacher considers leitwort candidates (nikud-stripped
-    // substring match). A different choice with good reasoning is legitimate.
-    expectedLeitwort: ["פסח", "מועד", "טמא"],
+    // Strong leitwort candidates in this passage, prepared as a thinking aid
+    // for Claude only. The teacher did NOT define a leitwort in this task —
+    // this is NOT a closed list and never an answer key; any candidate that
+    // meets the literary criteria (meaningful repetition of a word or root,
+    // Buber) is valid.
+    expectedLeitwort: [
+      "שורש עש״ה — וְיַעֲשׂוּ, יַעֲשׂוּ, תַּעֲשׂוּ, לַעֲשֹׂת, עָשׂוּ (מופעים רבים: כל ישראל עושים את הפסח, והטמאים אינם יכולים לעשות — החזרה מקצינה את הניגוד)",
+      "שורש קר״ב — לְהַקְרִיב, קָרְבַּן, וַיִּקְרְבוּ (שלושה מופעים: פעמיים במשמעות של קורבן ופעם במשמעות של התקרבות — משחק מילים שרומז לרצון האנשים להתקרב)",
+      "פסח — הַפֶּסַח חוזר שוב ושוב, נושא הפרשיה ותוחם אותה",
+      "מועד — בְּמוֹעֲדוֹ חוזר ומדגיש את הזמן הקבוע, לב הבעיה של מי שהחמיץ",
+      "טמא — טְמֵאִים, הַטֻּמְאָה: המצב שמעורר את השאלה",
+    ],
     hasParallelism: false,
     minQuestions: 2,
   },

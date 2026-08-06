@@ -319,43 +319,6 @@ export default function TaskRunner({
     setMenu(null);
   };
 
-  // Ask a question on a word or on a whole verse — from any stage.
-  const openQuestion = (scope: "word" | "verse") => {
-    if (!menu || readOnly) return;
-    if (scope === "word") {
-      // anchor the question visually on the word
-      const already = markings.some(
-        (m) =>
-          m.passageKey === menu.passageKey &&
-          m.wordIndex === menu.wordIndex &&
-          m.kind === "question"
-      );
-      if (!already) {
-        setMarkings((ms) => [
-          ...ms,
-          {
-            passageKey: menu.passageKey,
-            wordIndex: menu.wordIndex,
-            wordText: menu.wordText,
-            kind: "question",
-          },
-        ]);
-        postMarking(menu.passageKey, menu.wordIndex, menu.wordText, "question", false);
-      }
-      setQComposer({
-        sourceRef: `${menu.passageRef} · המילה ״${menu.wordText}״`,
-        contextLabel: `שאלה על המילה ״${menu.wordText}״`,
-      });
-    } else {
-      setQComposer({
-        sourceRef: `${menu.passageRef} · פסוק ${menu.verseNum}`,
-        contextLabel: `שאלה על פסוק ${menu.verseNum} (או חלק ממנו)`,
-      });
-    }
-    setQComposerDraft("");
-    setMenu(null);
-  };
-
   const saveComposerQuestion = () => {
     if (!qComposer || !qComposerDraft.trim()) return;
     bankQuestion(qComposerDraft, qComposer.sourceRef);
@@ -701,20 +664,6 @@ export default function TaskRunner({
                 </button>
               );
             })}
-            <button
-              onClick={() => openQuestion("word")}
-              className="whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[11px] font-semibold"
-              style={{ borderColor: "#2f5d8a", color: "#2f5d8a" }}
-            >
-              ❓ שאלה על המילה
-            </button>
-            <button
-              onClick={() => openQuestion("verse")}
-              className="whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[11px] font-semibold"
-              style={{ borderColor: "#2f5d8a", color: "#2f5d8a" }}
-            >
-              ❓ שאלה על הפסוק
-            </button>
           </div>
           {markings.some(
             (m) => m.passageKey === menu.passageKey && m.wordIndex === menu.wordIndex
@@ -929,8 +878,7 @@ function DecodeStage(props: {
     1: (
       <StageCard emoji="👋" title="קוראים פעם ראשונה — בלי לחץ">
         <p className="text-sm leading-7 text-[color:var(--foreground)]/75">
-          קראו את הקטע בנחת. תוך כדי קריאה, לחצו על מילים שקשות לך (סמנו 🤔) ועל
-          מקומות שמעוררים לך שאלה (סמנו ❓). עוד לא מנתחים — רק פוגשים.
+          קראו את הקטע בנחת. תוך כדי קריאה, לחצו על מילים שקשות לכם (סמנו 🤔), ואם משהו מעורר שאלה — לחצו על הבועית 💭 שמתחת לקטע. עוד לא מנתחים — רק פוגשים.
         </p>
       </StageCard>
     ),
@@ -1212,7 +1160,7 @@ function InteractivePassage({
       </div>
       {!readOnly && (
         <p className="mt-3 pb-2 text-[11px] text-[color:var(--primary)]/45">
-          💡 לחצו על כל מילה כדי לסמן: 📌 מילה מנחה · 🤔 מילה קשה · ❓ שאלה — או לבקש עזרה מקלוד
+          💡 לחצו על מילה לסימון 📌 מילה מנחה או 🤔 מילה קשה · יש שאלה? לחצו על הבועית 💭 שמתחת לקטע
         </p>
       )}
       {/* the question bubble — grows out of the passage box itself */}
