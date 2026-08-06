@@ -8,6 +8,7 @@ import type {
   QuestionBlock,
 } from "@/content/tasks/types";
 import { DECODE_STAGES } from "@/content/tasks/registry";
+import TaskArt from "./task-art";
 
 // =============================================================================
 // TaskRunner — the interactive task page body.
@@ -1176,6 +1177,11 @@ function DecodeStage(props: {
   const stageBody: Record<number, React.ReactNode> = {
     1: (
       <StageCard emoji="👋" title="קוראים פעם ראשונה — בלי לחץ">
+        {content.heroArt && (
+          <div className="mb-4">
+            <TaskArt art={content.heroArt.art} caption={content.heroArt.caption} />
+          </div>
+        )}
         <p className="text-sm leading-7 text-[color:var(--foreground)]/75">
           קראו את הקטע בנחת. תוך כדי קריאה, לחצו על מילים שקשות לכם (סמנו 🤔), ואם משהו מעורר שאלה — לחצו על הבועית 💭 שמתחת לקטע. עוד לא מנתחים — רק פוגשים.
         </p>
@@ -1614,6 +1620,9 @@ function BlockView({
   askClaude: (context: string, input: string) => void;
   onAskQuestion?: (ref: string) => void;
 }) {
+  if (block.type === "art") {
+    return <TaskArt art={block.art} caption={block.caption} />;
+  }
   if (block.type === "intro") {
     return (
       <p className="text-sm leading-7 text-[color:var(--foreground)]/80">{block.body}</p>

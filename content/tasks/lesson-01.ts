@@ -45,12 +45,26 @@ export const lesson01: TaskContent = {
     },
   ],
 
+  // Opening scene for stage 1 — night of the 14th of Nisan in the Sinai desert.
+  heroArt: {
+    art: "desert-night",
+    caption:
+      "ליל י״ד בניסן במדבר סיני, שנה אחרי יציאת מצרים — הירח מלא, המחנה עושה את הפסח הראשון במדבר... כמעט כולו.",
+  },
+
   sections: [
     {
       key: "chrono",
       title: "חידה כרונולוגית ופתיחת הספר",
       minutes: 15,
       blocks: [
+        {
+          type: "art",
+          key: "art-moons",
+          art: "moon-phases",
+          caption:
+            "הירח מתמלא ומתרוקן, חודש רודף חודש — אבל בספר במדבר התאריכים לא מסתדרים לפי הסדר. למה?",
+        },
         {
           type: "passage",
           key: "dates",
@@ -144,6 +158,13 @@ export const lesson01: TaskContent = {
       minutes: 25,
       blocks: [
         {
+          type: "art",
+          key: "art-approach",
+          art: "approach",
+          caption:
+            "וַיִּקְרְבוּ לִפְנֵי מֹשֶׁה — יש רגעים שבהם לגשת ולשאול דורש אומץ לא פחות מהשאלה עצמה.",
+        },
+        {
           type: "question",
           key: "q-pshat-reason",
           icon: "reading",
@@ -184,6 +205,13 @@ export const lesson01: TaskContent = {
             "🔍 הטמאים לא אמרו הכול בקול. נסו לשחזר את הנחת היסוד הסמויה שמתחת לזעקתם ״לָמָּה נִגָּרַע?״ — מה הם מניחים על מי שנטמא באונס ועל הזכות לקיים מצווה?",
           helper:
             "למה זה חשוב? מי שחושפים הנחות יסוד — מבינים טיעונים לעומק, בתנ״ך ובחיים.",
+        },
+        {
+          type: "art",
+          key: "art-one-many",
+          art: "one-and-many",
+          caption:
+            "קול אחד מחוץ למעגל — והחוט שעדיין מחבר. זו בדיוק השאלה: מה מקומו של הפרט בתוך הקהילה?",
         },
         {
           type: "question",
@@ -232,6 +260,13 @@ export const lesson01: TaskContent = {
       title: "המענה האלוהי והשלכותיו",
       minutes: 25,
       blocks: [
+        {
+          type: "art",
+          key: "art-gate",
+          art: "open-gate",
+          caption:
+            "חודש אחרי, בי״ד באייר, נפתח שער שלא היה קיים קודם — פסח שני. הזדמנות שנייה שנולדה משאלה.",
+        },
         {
           type: "passage",
           key: "divine-answer",

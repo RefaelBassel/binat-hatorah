@@ -13,7 +13,8 @@ export type BlockType =
   | "passage"
   | "source"
   | "question"
-  | "case"; // דילמה/מקרה — styled callout
+  | "case" // דילמה/מקרה — styled callout
+  | "art"; // illustrated scene between texts/questions (standing rule: every task)
 
 export interface IntroBlock {
   type: "intro";
@@ -66,12 +67,22 @@ export interface CaseBlock {
   body: string;
 }
 
+// An illustrated SVG scene from components/task/task-art.tsx — the visual
+// breathers teenagers need, always relevant to the chapter's content.
+export interface ArtBlock {
+  type: "art";
+  key: string;
+  art: string; // scene name in the TaskArt library
+  caption?: string;
+}
+
 export type TaskBlock =
   | IntroBlock
   | PassageBlock
   | SourceBlock
   | QuestionBlock
-  | CaseBlock;
+  | CaseBlock
+  | ArtBlock;
 
 export interface TaskSection {
   key: string;
@@ -102,6 +113,8 @@ export interface TaskContent {
   bookRef: string; // e.g. 'חומש במדבר, פרק ט׳ (פסוקים א׳–י״ד)'
   skill: string; // e.g. 'זיהוי ובניית טיעון (טענה, נימוק וביסוס)'
   decode: DecodeConfig;
+  // Opening illustration shown in stage 1 (מפגש ראשון) — sets the scene.
+  heroArt?: { art: string; caption?: string };
   // Part A stage 7 (בדיקת הבנה): VERY simple pshat comprehension questions —
   // answered from the passage alone, no commentators.
   comprehension: { key: string; prompt: string }[];
