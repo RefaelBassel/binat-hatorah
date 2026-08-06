@@ -196,6 +196,10 @@ export default function ProgramPage() {
         {/* ===== products ===== */}
         <section>
           <SectionTitle emoji="🎨" title="שלושת התוצרים" />
+          <p className="mb-5 -mt-2 text-sm leading-6 text-[color:var(--foreground)]/65">
+            שלושה כיווני תוצר מוצגים כאן — בהמשך השנה ייבחרו <b>שניים</b> מבין
+            השלושה (כפי שמשתקף גם בהתפלגות הציון).
+          </p>
           <div className="grid gap-5 sm:grid-cols-3">
             {[
               {
