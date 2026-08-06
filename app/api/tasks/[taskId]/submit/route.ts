@@ -45,7 +45,7 @@ export async function POST(
   const name = session?.user?.fullName ?? session?.user?.email ?? "תלמידה";
   await notifyTeachers({
     kind: `submitted:${guard.task.id}:${guard.userId}:${t}`,
-    title: `הגשה חדשה: ${name} הגישה את ״${guard.task.title}״`,
+    title: `הגשה חדשה: ${name} הגיש/ה את ״${guard.task.title}״`,
     body: "אפשר לבדוק את ההגשה בדשבורד המורה.",
     link: `/dashboard/task/${guard.task.id}`,
   });

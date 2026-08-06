@@ -66,7 +66,7 @@ export default async function TopNav() {
     >
       {studentMode && (
         <div className="flex items-center justify-center gap-3 bg-[color:var(--warning)] px-4 py-1.5 text-center text-xs font-bold text-white">
-          <span>👩‍🎓 מצב תלמיד פעיל — את/ה חווה את האתר בדיוק כמו תלמידה</span>
+          <span>👩‍🎓 מצב תלמיד פעיל — את/ה חווה את האתר בדיוק כמו תלמיד/ה</span>
           <form action={exitStudentMode}>
             <button
               type="submit"

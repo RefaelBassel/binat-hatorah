@@ -92,7 +92,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         token.guestMode = user.guestMode ?? "student";
         token.role = user.role ?? "student";
         token.userId = 0;
-        token.fullName = user.name ?? "אורחת";
+        token.fullName = user.name ?? "אורח/ת";
         token.onboarded = true;
         return token;
       }

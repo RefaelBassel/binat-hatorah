@@ -48,10 +48,10 @@ export async function POST(req: Request) {
     score = Math.round((correct / Math.max(1, ids.length)) * 100);
     feedback =
       score === 100
-        ? "מושלם! זיהית כל מרכיב במקומו — סימן שאת רואה את השלד של הטיעון, לא רק את המילים. 🎯"
+        ? "מושלם! זיהית כל מרכיב במקומו — סימן שרואים את השלד של הטיעון, לא רק את המילים. 🎯"
         : score >= 60
-          ? "יפה! רוב המרכיבים במקום. שימי לב למשפטים המסומנים באדום — נסי לשאול על כל אחד: האם הוא קובע (טענה)? מוכיח (נימוק)? מסתתר (הנחה)? או חותם (מסקנה)?"
-          : "התחלה אמיצה! טיפ: חפשי קודם את המסקנה (בדרך כלל עם ״לכן״), אחר כך את הטענה המרכזית — והשאר יסתדר. נסי שוב!";
+          ? "יפה! רוב המרכיבים במקום. שימו לב למשפטים המסומנים באדום — נסו לשאול על כל אחד: האם הוא קובע (טענה)? מוכיח (נימוק)? מסתתר (הנחה)? או חותם (מסקנה)?"
+          : "התחלה אמיצה! טיפ: חפשו קודם את המסקנה (בדרך כלל עם ״לכן״), אחר כך את הטענה המרכזית — והשאר יסתדר. נסו שוב!";
   } else if (exercise.kind === "mc") {
     const correctIdx = MC_ANSWERS[exerciseKey];
     const chosen = Number(answers.choice);
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     feedback =
       score === 100
         ? "בדיוק! שמת את האצבע על הנקודה המדויקת — זו בדיוק המיומנות. 💪"
-        : "לא הפעם — אבל הכיוון חשוב יותר מהתוצאה. קראי שוב את הטיעון ושאלי: איזה מרכיב הכי רעוע — ההנחה, הראיה או הקפיצה למסקנה? נסי שוב!";
+        : "לא הפעם — אבל הכיוון חשוב יותר מהתוצאה. קראו שוב את הטיעון ושאלו: איזה מרכיב הכי רעוע — ההנחה, הראיה או הקפיצה למסקנה? נסו שוב!";
   } else {
     // free text → Claude formative evaluation (or defer to teacher)
     const apiKey = getAnthropicApiKey();
@@ -72,12 +72,12 @@ export async function POST(req: Request) {
         const msg = await client.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 500,
-          system: `את/ה מעריך/ה תרגולי כתיבה טיעונית באתר "בינת התורה" (תלמידות כיתה י).
-עקרונות מחייבים: משוב מעצב, דוחף ומעודד — לעולם לא "יפה"/"לא טוב" סתמי. הסבירי למה משהו טוב, או כווני לאן לשפר — בלי לגלות תשובה, בלי לחסוך חשיבה. פנייה בלשון נקבה, עברית חמה וקצרה (עד 4 משפטים). החזירי JSON בלבד: {"score": <0-100>, "feedback": "<המשוב>"}`,
+          system: `את/ה מעריך/ה תרגולי כתיבה טיעונית באתר "בינת התורה" (כיתה י — בנים ובנות).
+עקרונות מחייבים: משוב מעצב, דוחף ומעודד — לעולם לא "יפה"/"לא טוב" סתמי. הסבר/י למה משהו טוב, או כוון/י לאן לשפר — בלי לגלות תשובה, בלי לחסוך חשיבה. שפה רב-מגדרית: גוף שני רבים או ניסוח ניטרלי, לעולם לא לשון נקבה/זכר בלעדית. מדי פעם אפשר לפתוח בשם הפרטי (בלי להסיק מגדר). עברית חמה וקצרה (עד 4 משפטים). החזר/י JSON בלבד: {"score": <0-100>, "feedback": "<המשוב>"}`,
           messages: [
             {
               role: "user",
-              content: `התרגול: ${exercise.title} — ${exercise.prompt}\n\nהתשובה של התלמידה:\n${answerText}`,
+              content: `שם התלמיד/ה: ${user.fullName ?? "(לא ידוע)"}\n\nהתרגול: ${exercise.title} — ${exercise.prompt}\n\nהתשובה:\n${answerText}`,
             },
           ],
         });
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         feedback = String(parsed.feedback ?? "");
       } catch {
         feedback =
-          "התשובה נשמרה! ההערכה החכמה לא הצליחה הפעם — המורה תראה את התשובה שלך בדשבורד.";
+          "התשובה נשמרה! ההערכה החכמה לא הצליחה הפעם — התשובה תגיע למורה בדשבורד.";
       }
     } else {
       feedback =
@@ -118,10 +118,10 @@ export async function POST(req: Request) {
       args: [userId, ...level.exercises.map((e) => e.key)],
     });
     if (Number(done.rows[0]?.c ?? 0) === level.exercises.length) {
-      const name = user.fullName ?? user.email ?? "תלמידה";
+      const name = user.fullName ?? user.email ?? "תלמיד/ה";
       await notifyTeachers({
         kind: `writing-level:${level.n}:${userId}`,
-        title: `${name} השלימה את רמה ${level.n} (${level.title}) בכתיבה טיעונית`,
+        title: `${name} השלים/ה את רמה ${level.n} (${level.title}) בכתיבה טיעונית`,
         body: "כל התוצאות בדשבורד המורה.",
         link: `/dashboard`,
       });

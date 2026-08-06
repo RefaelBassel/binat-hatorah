@@ -74,8 +74,8 @@ export default async function DebateResultsPage({
           );
         })}
         <div className="rounded-2xl border border-dashed border-[color:var(--accent)]/40 bg-[color:var(--card)]/70 p-5 text-center text-sm text-[color:var(--foreground)]/70">
-          💬 לעיבוד בכיתה: אילו טיעונים שכנעו אתכן — ולמה? אילו הנחות יסוד
-          נחשפו במהלך הדיבייט? מה הייתן מחזקות בטיעון של הקבוצה שלכן?
+          💬 לעיבוד בכיתה: אילו טיעונים שכנעו אתכם — ולמה? אילו הנחות יסוד
+          נחשפו במהלך הדיבייט? מה הייתם מחזקים בטיעון של הקבוצה שלכן?
         </div>
       </div>
     </PageShell>

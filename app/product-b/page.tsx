@@ -54,7 +54,7 @@ export default async function ProductBPage() {
               { emoji: "📜", title: "ניתוח מקור תנ״כי מקביל", body: "לימוד מעמיק של מקרה מקביל מתוך התוכנית (במדבר / מלכים) — בכלי פענוח הפשט שלנו." },
               { emoji: "⚖️", title: "מיפוי וניסוח טיעון", body: "הצגת הטענות השונות סביב הבעיה וגיבוש טענה מורכבת ומנומקת שלך." },
               { emoji: "💡", title: "הצעה מעשית", body: "פתרון קהילתי ישים — לא רק ניתוח, גם מעשה." },
-              { emoji: "🎪", title: "תערוכת התוצרים (Exhibition)", body: "מציגות את העבודה מול קהל — ההצגה עצמה מוערכת בשפת מיומנות הטיעון." },
+              { emoji: "🎪", title: "תערוכת התוצרים (Exhibition)", body: "מציגים את העבודה מול קהל — ההצגה עצמה מוערכת בשפת מיומנות הטיעון." },
             ].map((s, i) => (
               <li key={s.title} className="flex gap-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--primary)]/8 text-lg">
@@ -96,8 +96,8 @@ export default async function ProductBPage() {
             🌟 והתוצר השלישי: המיני-סמינריון שלך
           </h2>
           <p className="text-sm leading-7 text-[color:var(--foreground)]/80">
-            כל שאלה שאת שואלת במהלך השנה נאספת ל<b>מאגר השאלות האישי</b> שלך.
-            לקראת סוף השנה תבחרי ממנו <b>שאלה אחת</b> שמסקרנת אותך באמת — והיא
+            כל שאלה ששואלים במהלך השנה נאספת ל<b>מאגר השאלות האישי</b> שלך.
+            לקראת סוף השנה בוחרים ממנו <b>שאלה אחת</b> שמסקרנת אותך באמת — והיא
             תהפוך לעבודת חקר אישית קטנה.
           </p>
           {chosenQuestion ? (

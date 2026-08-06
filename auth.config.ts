@@ -22,7 +22,7 @@ export const authConfig = {
         return {
           id: `guest-${mode}`,
           email: `guest-${mode}@guest.local`,
-          name: mode === "full" ? "אורחת (גישה מלאה)" : "אורחת (תלמידה)",
+          name: mode === "full" ? "אורח/ת (גישה מלאה)" : "אורח/ת (תלמיד/ה)",
           role: mode === "full" ? "teacher" : "student",
           guest: true,
           guestMode: mode,

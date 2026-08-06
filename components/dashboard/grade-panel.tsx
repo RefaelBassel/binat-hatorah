@@ -52,7 +52,7 @@ export default function GradePanel({
         if (!feedback) setFeedback(data.feedback ?? "");
       }
     } catch {
-      setNote("שגיאה בחיבור — נסי שוב.");
+      setNote("שגיאה בחיבור — נסו שוב.");
     } finally {
       setBusy(null);
     }
@@ -83,7 +83,7 @@ export default function GradePanel({
         }
       } else setNote(data.error ?? "שגיאה בשמירה.");
     } catch {
-      setNote("שגיאה בחיבור — נסי שוב.");
+      setNote("שגיאה בחיבור — נסו שוב.");
     } finally {
       setBusy(null);
     }
@@ -104,7 +104,7 @@ export default function GradePanel({
             disabled={busy !== null}
             className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
           >
-            {busy === "assist" ? "קלוד בודק..." : claudeScore != null ? "בדיקה מחדש" : "בקשי הצעת ציון והערכה"}
+            {busy === "assist" ? "קלוד בודק..." : claudeScore != null ? "בדיקה מחדש" : "בקשת הצעת ציון והערכה"}
           </button>
         </div>
         {claudeScore != null || claudeFeedback ? (
@@ -122,7 +122,7 @@ export default function GradePanel({
           </>
         ) : (
           <p className="text-xs text-[color:var(--primary)]/50">
-            קלוד יציע ציון והערכה — את עורכת ומאשרת סופית.
+            קלוד יציע ציון והערכה — המורה עורך/ת ומאשר/ת סופית.
           </p>
         )}
       </div>
@@ -144,7 +144,7 @@ export default function GradePanel({
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
-            הערכה מילולית (נשלחת לתלמידה)
+            הערכה מילולית (נשלחת לתלמיד/ה)
           </span>
           <textarea
             value={feedback}
@@ -168,7 +168,7 @@ export default function GradePanel({
           disabled={busy !== null || !score}
           className="rounded-full bg-[color:var(--success)] px-6 py-2 text-sm font-bold text-white shadow disabled:opacity-40"
         >
-          {busy === "approve" ? "שולחת..." : "אישור סופי ושליחה לתלמידה 📨"}
+          {busy === "approve" ? "שולחים..." : "אישור סופי ושליחה לתלמיד/ה 📨"}
         </button>
         {note && <p className="text-xs text-[color:var(--primary)]/70">{note}</p>}
       </div>

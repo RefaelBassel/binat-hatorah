@@ -2,9 +2,11 @@
 
 const DAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
+// Hebrew dates use the Hebrew NUMBERING system too (כ"ד באב תשפ"ו),
+// never digit years like "5786" (Rafael, 2026-08-06).
 export function formatHebDate(unixSeconds: number): string {
   const d = new Date(unixSeconds * 1000);
-  const heb = new Intl.DateTimeFormat("he-u-ca-hebrew", {
+  const heb = new Intl.DateTimeFormat("he-u-ca-hebrew-nu-hebr", {
     day: "numeric",
     month: "long",
   }).format(d);
@@ -18,7 +20,7 @@ export function formatHebDate(unixSeconds: number): string {
 export function formatFullDate(unixSeconds: number): string {
   const d = new Date(unixSeconds * 1000);
   const day = DAY_NAMES[d.getDay()];
-  const heb = new Intl.DateTimeFormat("he-u-ca-hebrew", {
+  const heb = new Intl.DateTimeFormat("he-u-ca-hebrew-nu-hebr", {
     day: "numeric",
     month: "long",
     year: "numeric",

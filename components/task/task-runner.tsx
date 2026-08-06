@@ -29,6 +29,17 @@ interface Marking {
   note?: string | null;
 }
 
+interface WordMenuState {
+  passageKey: string;
+  wordIndex: number;
+  wordText: string;
+  verseNum: string;
+  verseText: string;
+  passageRef: string;
+  x: number;
+  y: number;
+}
+
 interface Props {
   taskId: number;
   content: TaskContent;
@@ -68,13 +79,14 @@ export default function TaskRunner({
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [workSeconds, setWorkSeconds] = useState(initialWorkSeconds);
   const [clock, setClock] = useState("");
-  const [menu, setMenu] = useState<{
-    passageKey: string;
-    wordIndex: number;
-    wordText: string;
-    x: number;
-    y: number;
+  const [menu, setMenu] = useState<WordMenuState | null>(null);
+  // Question composer — ask about a word, part of a verse, or a whole verse,
+  // from ANY stage. Saved straight into the personal question bank.
+  const [qComposer, setQComposer] = useState<{
+    sourceRef: string;
+    contextLabel: string;
   } | null>(null);
+  const [qComposerDraft, setQComposerDraft] = useState("");
   // Claude assist — a real conversation: the student can reply and be guided
   // step by step ("אני עשיתי לבד אבל לא פגשתי קיר").
   const [assist, setAssist] = useState<{
@@ -196,45 +208,104 @@ export default function TaskRunner({
   const markOf = (passageKey: string, wordIndex: number) =>
     markings.filter((m) => m.passageKey === passageKey && m.wordIndex === wordIndex);
 
-  const toggleMark = (kind: MarkKind) => {
-    if (!menu || readOnly) return;
-    const existing = markings.find(
-      (m) =>
-        m.passageKey === menu.passageKey &&
-        m.wordIndex === menu.wordIndex &&
-        m.kind === kind
-    );
-    const remove = Boolean(existing);
-    setMarkings((ms) =>
-      remove
-        ? ms.filter((m) => m !== existing)
-        : [...ms, { passageKey: menu.passageKey, wordIndex: menu.wordIndex, wordText: menu.wordText, kind }]
-    );
+  const postMarking = (
+    passageKey: string,
+    wordIndex: number,
+    wordText: string,
+    kind: string,
+    remove: boolean
+  ) => {
     fetch(`/api/tasks/${taskId}/markings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        passageKey: menu.passageKey,
-        wordIndex: menu.wordIndex,
-        wordText: menu.wordText,
-        kind,
-        remove,
-      }),
+      body: JSON.stringify({ passageKey, wordIndex, wordText, kind, remove }),
     }).catch(() => {});
-    if (kind === "question") {
-      setQuestionDraft(`על המילה ״${menu.wordText}״: `);
+  };
+
+  const toggleMark = (kind: MarkKind) => {
+    if (!menu || readOnly) return;
+    const { passageKey, wordIndex, wordText } = menu;
+    const existing = markings.find(
+      (m) => m.passageKey === passageKey && m.wordIndex === wordIndex && m.kind === kind
+    );
+    const remove = Boolean(existing);
+
+    // מילה מנחה and מילה קשה are mutually exclusive — picking one replaces
+    // the other (so re-marking actually CHANGES the word's marking).
+    const opposite = kind === "leitwort" ? "hard" : kind === "hard" ? "leitwort" : null;
+    const oppositeExisting = opposite
+      ? markings.find(
+          (m) =>
+            m.passageKey === passageKey && m.wordIndex === wordIndex && m.kind === opposite
+        )
+      : null;
+
+    setMarkings((ms) => {
+      let next = ms;
+      if (oppositeExisting && !remove) next = next.filter((m) => m !== oppositeExisting);
+      return remove
+        ? next.filter((m) => m !== existing)
+        : [...next, { passageKey, wordIndex, wordText, kind }];
+    });
+    if (oppositeExisting && !remove) {
+      postMarking(passageKey, wordIndex, wordText, opposite!, true);
     }
-    // Iron rule in action: marking a leitwort in stage 2 triggers immediate
-    // formative feedback from Claude — affirming why a right choice works and
-    // inviting deeper questions, or guiding a self-discovery when it doesn't.
-    if (kind === "leitwort" && !remove && stage === 2) {
+    postMarking(passageKey, wordIndex, wordText, kind, remove);
+
+    // Iron rule in action: marking a leitwort — at ANY stage — triggers
+    // immediate formative feedback: affirming why a right choice works and
+    // inviting deeper looking, or guiding self-discovery when it doesn't.
+    if (kind === "leitwort" && !remove) {
       askClaude(
-        `שלב מילה מנחה — בדיקת הסימון של המילה ״${menu.wordText}״`,
+        `בדיקת סימון מילה מנחה — המילה ״${wordText}״`,
         "",
-        { kind: "leitwort", word: menu.wordText }
+        { kind: "leitwort", word: wordText }
       );
     }
     setMenu(null);
+  };
+
+  // Ask a question on a word or on a whole verse — from any stage.
+  const openQuestion = (scope: "word" | "verse") => {
+    if (!menu || readOnly) return;
+    if (scope === "word") {
+      // anchor the question visually on the word
+      const already = markings.some(
+        (m) =>
+          m.passageKey === menu.passageKey &&
+          m.wordIndex === menu.wordIndex &&
+          m.kind === "question"
+      );
+      if (!already) {
+        setMarkings((ms) => [
+          ...ms,
+          {
+            passageKey: menu.passageKey,
+            wordIndex: menu.wordIndex,
+            wordText: menu.wordText,
+            kind: "question",
+          },
+        ]);
+        postMarking(menu.passageKey, menu.wordIndex, menu.wordText, "question", false);
+      }
+      setQComposer({
+        sourceRef: `${menu.passageRef} · המילה ״${menu.wordText}״`,
+        contextLabel: `שאלה על המילה ״${menu.wordText}״`,
+      });
+    } else {
+      setQComposer({
+        sourceRef: `${menu.passageRef} · פסוק ${menu.verseNum}`,
+        contextLabel: `שאלה על פסוק ${menu.verseNum} (או חלק ממנו)`,
+      });
+    }
+    setQComposerDraft("");
+    setMenu(null);
+  };
+
+  const saveComposerQuestion = () => {
+    if (!qComposer || !qComposerDraft.trim()) return;
+    bankQuestion(qComposerDraft, qComposer.sourceRef);
+    setQComposer(null);
   };
 
   // ---------- question bank ----------
@@ -299,7 +370,7 @@ export default function TaskRunner({
         word: opts?.word,
         messages: [
           ...nextMessages,
-          { role: "assistant", content: "משהו השתבש בחיבור — נסי שוב עוד רגע." },
+          { role: "assistant", content: "משהו השתבש בחיבור — נסו שוב עוד רגע." },
         ],
         loading: false,
       });
@@ -342,38 +413,55 @@ export default function TaskRunner({
 
   return (
     <div className="mx-auto w-full max-w-3xl" onClick={() => setMenu(null)}>
-      {/* ===== sticky status bar: clock, stopwatch, progress ===== */}
-      <div className="sticky top-[57px] z-20 -mx-2 mb-6 rounded-b-xl border-b border-x border-[color:var(--border)] bg-[color:var(--card)]/95 px-4 py-2 backdrop-blur">
-        <div className="flex items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3">
-            <span title="שעון ישראל" className="tabular-nums text-[color:var(--primary)]/60">
-              🕐 {clock}
-            </span>
-            <span
-              title="זמן עבודה בפועל (נעצר כשעוזבים את החלון)"
-              className="tabular-nums font-semibold text-[color:var(--accent)]"
-            >
-              ⏱ {formatTimer(workSeconds)}
-            </span>
-          </div>
-          <div className="flex flex-1 items-center gap-2 max-w-[50%]">
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]/50">
-              <div
-                className="h-full rounded-full bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--primary)] transition-all"
-                style={{ width: `${progressPct}%` }}
-              />
+      {/* ===== sticky status bar: labeled clock, work stopwatch, progress ===== */}
+      <div
+        className="sticky top-[57px] z-20 -mx-2 mb-6 rounded-b-xl border-b border-x border-[color:var(--border)] px-4 py-2"
+        style={{ backgroundColor: "var(--card)" }}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="text-center" title="השעה עכשיו בישראל">
+              <p className="tabular-nums text-base font-bold leading-5 text-[color:var(--primary)]/70">
+                🕐 {clock.slice(0, 5)}
+              </p>
+              <p className="text-[10px] leading-3 text-[color:var(--primary)]/50">
+                השעה עכשיו
+              </p>
             </div>
-            <span className="whitespace-nowrap font-semibold text-[color:var(--primary)]">
-              {progressPct}%
-            </span>
+            <div
+              className="text-center"
+              title="רץ רק כשאתם באמת כאן — נעצר כשעוזבים את החלון"
+            >
+              <p className="tabular-nums text-base font-bold leading-5 text-[color:var(--accent)]">
+                ⏱ {formatTimer(workSeconds)}
+              </p>
+              <p className="text-[10px] leading-3 text-[color:var(--primary)]/50">
+                זמן העבודה שלי
+              </p>
+            </div>
+          </div>
+          <div className="max-w-[45%] flex-1" title="כמה מהמשימה כבר עשיתי">
+            <div className="flex items-center gap-2">
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]/50">
+                <div
+                  className="h-full rounded-full bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--primary)] transition-all"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <span className="whitespace-nowrap text-base font-bold text-[color:var(--primary)]">
+                {progressPct}%
+              </span>
+            </div>
+            <p className="text-center text-[10px] leading-3 text-[color:var(--primary)]/50">
+              ההתקדמות שלי במשימה
+            </p>
           </div>
         </div>
       </div>
 
       {submitted && (
         <div className="mb-6 rounded-xl border border-[color:var(--success)]/40 bg-[color:var(--success)]/10 px-4 py-3 text-sm text-[color:var(--success)]">
-          ✅ המשימה הוגשה! עכשיו רגע קטן לעצמך — פתחי את לשונית 🪞 הרפלקציה שבצד
-          וספרי איך היה. {Date.now() / 1000 <= dueAt && "אפשר לבטל את ההגשה ולתקן עד המועד האחרון."}
+          ✅ המשימה הוגשה! עכשיו רגע קטן לעצמך — פתחו את לשונית 🪞 הרפלקציה שבצד וספרו איך היה. {Date.now() / 1000 <= dueAt && "אפשר לבטל את ההגשה ולתקן עד המועד האחרון."}
           {Date.now() / 1000 <= dueAt && (
             <button
               onClick={() => doSubmit("unsubmit")}
@@ -476,7 +564,7 @@ export default function TaskRunner({
           {!submitted && (
             <div className="rounded-2xl border-2 border-[color:var(--accent)]/40 bg-[color:var(--card)] p-6 text-center">
               <p className="mb-1 font-display text-lg font-bold text-[color:var(--primary)]">
-                סיימת? הגישי את המשימה 🎉
+                מסיימים? זמן להגיש 🎉
               </p>
               <p className="mb-4 text-xs text-[color:var(--primary)]/60">
                 ענית על {answeredCount} מתוך {totalUnits} חלקים ({progressPct}%).
@@ -487,7 +575,7 @@ export default function TaskRunner({
                 disabled={submitBusy}
                 className="rounded-full bg-[color:var(--primary)] px-10 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] disabled:opacity-50"
               >
-                {submitBusy ? "מגישה..." : "הגשת המשימה ✨"}
+                {submitBusy ? "שולחים..." : "הגשת המשימה ✨"}
               </button>
             </div>
           )}
@@ -497,9 +585,10 @@ export default function TaskRunner({
       {/* ===== word marking menu ===== */}
       {menu && !readOnly && (
         <div
-          className="fixed z-50 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-xl"
+          className="fixed z-50 rounded-xl border border-[color:var(--border)] p-2 shadow-xl"
           style={{
-            left: Math.min(menu.x, typeof window !== "undefined" ? window.innerWidth - 230 : menu.x),
+            backgroundColor: "var(--card)",
+            left: Math.min(menu.x, typeof window !== "undefined" ? window.innerWidth - 250 : menu.x),
             top: menu.y + 8,
           }}
           onClick={(e) => e.stopPropagation()}
@@ -508,7 +597,7 @@ export default function TaskRunner({
             המילה: <b className="text-[color:var(--primary)]">{menu.wordText}</b>
           </p>
           <div className="flex gap-1.5">
-            {(Object.keys(MARK_STYLE) as MarkKind[]).map((kind) => {
+            {(["leitwort", "hard"] as MarkKind[]).map((kind) => {
               const st = MARK_STYLE[kind];
               const active = markings.some(
                 (m) =>
@@ -533,11 +622,27 @@ export default function TaskRunner({
               );
             })}
           </div>
+          <div className="mt-1.5 flex gap-1.5">
+            <button
+              onClick={() => openQuestion("word")}
+              className="flex-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+              style={{ borderColor: "#2f5d8a", color: "#2f5d8a" }}
+            >
+              ❓ שאלה על המילה
+            </button>
+            <button
+              onClick={() => openQuestion("verse")}
+              className="flex-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+              style={{ borderColor: "#2f5d8a", color: "#2f5d8a" }}
+            >
+              ❓ שאלה על הפסוק
+            </button>
+          </div>
           <button
             onClick={() => {
               askClaude(
-                `התלמידה מבקשת עזרה על המילה ״${menu.wordText}״ בקטע ${content.bookRef}. שלב נוכחי: ${DECODE_STAGES[stage - 1].title}.`,
-                `מה זאת המילה ״${menu.wordText}״?`
+                `בקשת עזרה על המילה ״${menu.wordText}״ בקטע ${content.bookRef}, פסוק ${menu.verseNum}. שלב נוכחי: ${DECODE_STAGES[stage - 1].title}. זכרו: רמז מדורג, לא פירוש מלא מיד.`,
+                `לא ברורה לי המילה ״${menu.wordText}״`
               );
               setMenu(null);
             }}
@@ -545,6 +650,51 @@ export default function TaskRunner({
           >
             ✨ עזרה מקלוד על המילה הזו
           </button>
+        </div>
+      )}
+
+      {/* ===== question composer — word / verse, any stage ===== */}
+      {qComposer && !readOnly && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={() => setQComposer(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-2xl p-5 shadow-2xl sm:rounded-2xl"
+            style={{ backgroundColor: "var(--card)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-1 font-display text-base font-bold text-[color:var(--primary)]">
+              ❓ {qComposer.contextLabel}
+            </p>
+            <p className="mb-3 text-[11px] text-[color:var(--primary)]/55">
+              השאלה נכנסת למאגר השאלות האישי — ובסוף השנה בוחרים ממנו שאלה אחת
+              לעבודה אישית 🌟
+            </p>
+            <textarea
+              value={qComposerDraft}
+              onChange={(e) => setQComposerDraft(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="מה השאלה? (למשל: למה הפסוק חוזר על... / מה מוזר כאן...)"
+              className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={() => setQComposer(null)}
+                className="rounded-full px-4 py-1.5 text-xs text-[color:var(--primary)]/60"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={saveComposerQuestion}
+                disabled={!qComposerDraft.trim()}
+                className="rounded-full bg-[color:var(--primary)] px-5 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+              >
+                שמירה למאגר 💾
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -595,7 +745,7 @@ export default function TaskRunner({
                 value={assistDraft}
                 onChange={(e) => setAssistDraft(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && replyToClaude()}
-                placeholder="עני לקלוד..."
+                placeholder="תשובה לקלוד..."
                 className="flex-1 rounded-full border border-[color:var(--border)] bg-white px-3.5 py-1.5 text-xs outline-none focus:border-[color:var(--accent)]"
               />
               <button
@@ -625,7 +775,7 @@ function DecodeStage(props: {
   setAnswer: (k: string, v: string) => void;
   markings: Marking[];
   markOf: (p: string, i: number) => Marking[];
-  setMenu: (m: { passageKey: string; wordIndex: number; wordText: string; x: number; y: number } | null) => void;
+  setMenu: (m: WordMenuState | null) => void;
   readOnly: boolean;
   questionDraft: string;
   setQuestionDraft: (v: string) => void;
@@ -660,16 +810,16 @@ function DecodeStage(props: {
     1: (
       <StageCard emoji="👋" title="קוראים פעם ראשונה — בלי לחץ">
         <p className="text-sm leading-7 text-[color:var(--foreground)]/75">
-          קראי את הקטע בנחת. תוך כדי קריאה, לחצי על מילים שקשות לך (סמני 🤔) ועל
-          מקומות שמעוררים לך שאלה (סמני ❓). עוד לא מנתחים — רק פוגשים.
+          קראו את הקטע בנחת. תוך כדי קריאה, לחצו על מילים שקשות לך (סמנו 🤔) ועל
+          מקומות שמעוררים לך שאלה (סמנו ❓). עוד לא מנתחים — רק פוגשים.
         </p>
       </StageCard>
     ),
     2: (
       <StageCard emoji="📌" title="מילה מנחה — המילה שחוזרת שוב ושוב">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
-          מרטין בובר לימד: כשמילה (או משפחת מילים) חוזרת שוב ושוב בקטע — היא
-          ״מילה מנחה״, מפתח לרעיון המרכזי. קראי שוב, וסמני 📌 את המילה שלדעתך
+          כשמילה (או משפחת מילים) חוזרת שוב ושוב בקטע — היא ״מילה מנחה״: מפתח
+          שהתורה מניחה לנו לרעיון המרכזי. קראו שוב, וסמנו 📌 את המילה שלדעתך
           מנחה את הקטע.
         </p>
         {leitworts.length > 0 && (
@@ -688,8 +838,8 @@ function DecodeStage(props: {
     3: (
       <StageCard emoji="🤔" title="מילים קשות — לדעת מה אני לא יודעת">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
-          עברי שוב על הקטע והשלימי את סימון כל המילים שאינך בטוחה בפירושן. זה לא
-          כישלון — זו התחלת ההבנה! חוקרת אמיתית קודם ממפה את מה שלא ידוע.
+          עברו שוב על הקטע והשלימו את סימון כל המילים שפירושן לא ברור לכם. זה לא
+          כישלון — זו התחלת ההבנה! חוקרים אמיתיים קודם ממפים את מה שלא ידוע.
         </p>
         {hards.length > 0 ? (
           <p className="text-xs text-[color:var(--primary)]/70">
@@ -706,8 +856,8 @@ function DecodeStage(props: {
       <StageCard emoji="🪞" title="תקבולת — המקרא מסביר את עצמו">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
           {decodeCfg.hasParallelism
-            ? "בקטע הזה יש תקבולת — שתי צלעות שאומרות רעיון דומה במילים שונות. מצאי אותה, ובדקי: האם הצלע המקבילה עוזרת להבין מילה קשה שסימנת?"
-            : "תקבולת היא צמד צלעות שאומרות רעיון דומה במילים שונות — כלי נהדר לפענוח מילים קשות. בקטע סיפורי כמו שלנו תקבולת מלאה נדירה, אבל חפשי ביטויים שחוזרים במבנה דומה. מצאת משהו?"}
+            ? "בקטע הזה יש תקבולת — שתי צלעות שאומרות רעיון דומה במילים שונות. מצאו אותה ובדקו: האם הצלע המקבילה עוזרת להבין מילה קשה שסימנת?"
+            : "תקבולת היא צמד צלעות שאומרות רעיון דומה במילים שונות — כלי נהדר לפענוח מילים קשות. בקטע סיפורי כמו שלנו תקבולת מלאה נדירה, אבל חפשו ביטויים שחוזרים במבנה דומה. מצאת משהו?"}
         </p>
         <FieldArea
           label="מה מצאת? האם זה עזר להבין מילה קשה?"
@@ -750,10 +900,10 @@ function DecodeStage(props: {
     6: (
       <StageCard emoji="❓" title="שאלת שאלות — כמה שיותר!">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
-          נחמה ליבוביץ לימדה: השאלה היא לב הלימוד. אחרי שהכלים עבדו — אילו
-          שאלות נשארו? מה מפתיע? מה לא מסתדר? כל שאלה נכנסת למאגר השאלות האישי
-          שלך, ובסוף השנה תבחרי מתוכו שאלה אחת לעבודה שלך. נסי לנסח לפחות{" "}
-          {decodeCfg.minQuestions} שאלות.
+          השאלה היא לב הלימוד! אחרי שהכלים עבדו — אילו שאלות נשארו? מה מפתיע?
+          מה לא מסתדר? כל שאלה נכנסת למאגר השאלות האישי שלך, ובסוף השנה תבחרו
+          מתוכו שאלה אחת לעבודה שלך. נסו לנסח לפחות {decodeCfg.minQuestions}{" "}
+          שאלות.
         </p>
         <div className="mb-2 flex gap-2">
           <input
@@ -761,7 +911,7 @@ function DecodeStage(props: {
             onChange={(e) => setQuestionDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && bankQuestion(questionDraft, passage.ref)}
             disabled={readOnly}
-            placeholder="כתבי שאלה... (למשל: למה דווקא הם פנו למשה?)"
+            placeholder="כתבו שאלה... (למשל: למה דווקא הם פנו למשה?)"
             className="flex-1 rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]"
           />
           <button
@@ -784,7 +934,7 @@ function DecodeStage(props: {
         <button
           onClick={() =>
             askClaude(
-              `שלב שאלת שאלות על ${passage.ref}. התלמידה מתקשה לנסח שאלות. שאלות שכבר שאלה: ${banked.join(" | ") || "(אין)"}`,
+              `שלב שאלת שאלות על ${passage.ref}. קושי בניסוח שאלות. שאלות שכבר נשאלו: ${banked.join(" | ") || "(אין)"}`,
               "קשה לי לחשוב על שאלה"
             )
           }
@@ -797,7 +947,7 @@ function DecodeStage(props: {
     7: (
       <StageCard emoji="💪" title="מבינים בכל זאת — גם בלי כל המילים">
         <p className="mb-3 text-sm leading-7 text-[color:var(--foreground)]/75">
-          גם אם נשארו מילים לא פתורות — אפשר להבין את התמונה הגדולה. ספרי במילים
+          גם אם נשארו מילים לא פתורות — אפשר להבין את התמונה הגדולה. ספרו במילים
           שלך: מה קורה בקטע? מי? מה? למה?
         </p>
         <FieldArea
@@ -813,6 +963,8 @@ function DecodeStage(props: {
 
   return (
     <div>
+      {/* instructions FIRST — so it's clear what to do before reading */}
+      <div className="mb-5">{stageBody[stage]}</div>
       {/* the interactive passage — always visible during decoding */}
       <InteractivePassage
         passage={passage}
@@ -820,18 +972,17 @@ function DecodeStage(props: {
         setMenu={setMenu}
         readOnly={readOnly}
       />
-      <div className="mt-6">{stageBody[stage]}</div>
       <div className="mt-6 flex items-center justify-between">
         <button
           onClick={() =>
             askClaude(
               `שלב ${stage} (${DECODE_STAGES[stage - 1].title}) בפענוח ${passage.ref}.`,
-              "אני צריכה עזרה בשלב הזה"
+              "נתקעתי בשלב הזה — צריך עזרה קטנה"
             )
           }
           className="rounded-full border border-[color:var(--border)] px-4 py-2 text-xs font-semibold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
         >
-          ✨ אני תקועה — עזרה קטנה
+          ✨ נתקעתי — עזרה קטנה
         </button>
         <button
           onClick={advanceStage}
@@ -857,7 +1008,7 @@ function InteractivePassage({
 }: {
   passage: PassageBlock;
   markOf: (p: string, i: number) => Marking[];
-  setMenu: (m: { passageKey: string; wordIndex: number; wordText: string; x: number; y: number } | null) => void;
+  setMenu: (m: WordMenuState | null) => void;
   readOnly: boolean;
   compact?: boolean;
 }) {
@@ -908,6 +1059,9 @@ function InteractivePassage({
                         passageKey: passage.key,
                         wordIndex: idx,
                         wordText: word.replace(/[:،.]/g, ""),
+                        verseNum: verse.num,
+                        verseText: verse.text,
+                        passageRef: passage.ref,
                         x: rect.left,
                         y: rect.bottom,
                       });
@@ -936,7 +1090,7 @@ function InteractivePassage({
       </div>
       {!readOnly && (
         <p className="mt-3 text-[11px] text-[color:var(--primary)]/45">
-          💡 לחצי על כל מילה כדי לסמן: 📌 מילה מנחה · 🤔 מילה קשה · ❓ שאלה — או לבקש עזרה מקלוד
+          💡 לחצו על כל מילה כדי לסמן: 📌 מילה מנחה · 🤔 מילה קשה · ❓ שאלה — או לבקש עזרה מקלוד
         </p>
       )}
     </div>
@@ -967,7 +1121,7 @@ function BlockView({
   answers: Record<string, string>;
   setAnswer: (k: string, v: string) => void;
   markOf: (p: string, i: number) => Marking[];
-  setMenu: (m: { passageKey: string; wordIndex: number; wordText: string; x: number; y: number } | null) => void;
+  setMenu: (m: WordMenuState | null) => void;
   readOnly: boolean;
   askClaude: (context: string, input: string) => void;
 }) {
@@ -1009,7 +1163,7 @@ function BlockView({
         {!readOnly && (
           <button
             onClick={() =>
-              askClaude(`התלמידה קוראת את המקור: ${block.title} — ${block.text.slice(0, 200)}`, "לא הבנתי את המקור הזה")
+              askClaude(`קריאת המקור: ${block.title} — ${block.text.slice(0, 200)}`, "לא הבנתי את המקור הזה")
             }
             className="mt-2 text-[11px] text-[color:var(--accent)] underline-offset-2 hover:underline"
           >
@@ -1068,7 +1222,7 @@ function BlockView({
         <button
           onClick={() =>
             askClaude(
-              `שאלה במשימה [${q.label}]: ${q.prompt}. מה שהתלמידה כתבה עד כה: ${answers[q.key] ?? "(כלום)"}`,
+              `שאלה במשימה [${q.label}]: ${q.prompt}. מה שנכתב עד כה: ${answers[q.key] ?? "(כלום)"}`,
               "אני לא בטוחה איך לגשת לשאלה"
             )
           }
@@ -1125,7 +1279,7 @@ function FieldArea({
         onChange={(e) => onChange(e.target.value)}
         readOnly={readOnly}
         rows={rows}
-        placeholder="כתבי כאן..."
+        placeholder="כתבו כאן..."
         className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none transition focus:border-[color:var(--accent)] read-only:bg-[color:var(--background)] read-only:text-[color:var(--foreground)]/70"
       />
     </label>

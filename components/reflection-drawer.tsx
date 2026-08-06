@@ -246,7 +246,7 @@ export default function ReflectionDrawer({
                 disabled={state === "busy"}
                 className="w-full rounded-full bg-[color:var(--primary)] py-2.5 text-xs font-bold text-white shadow transition hover:scale-[1.01] disabled:opacity-50"
               >
-                {state === "busy" ? "שומרת..." : "שמירת הרפלקציה 🌱"}
+                {state === "busy" ? "שומרים..." : "שמירת הרפלקציה 🌱"}
               </button>
             </div>
           )}

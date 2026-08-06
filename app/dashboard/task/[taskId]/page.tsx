@@ -34,14 +34,14 @@ export default async function DashboardTaskPage({
   return (
     <PageShell
       title={task.title}
-      subtitle={`להגשה עד ${formatHebDate(task.due_at)} · ${roster.length} תלמידות`}
+      subtitle={`להגשה עד ${formatHebDate(task.due_at)} · ${roster.length} בכיתה`}
     >
       <p className="mb-6 text-center">
         <Link
           href={`/tasks/${taskId}`}
           className="text-sm font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline"
         >
-          👀 צפייה במשימה כפי שהתלמידות רואות אותה ←
+          👀 צפייה במשימה כפי שהכיתה רואה אותה ←
         </Link>
       </p>
 

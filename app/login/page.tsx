@@ -58,7 +58,7 @@ export default async function LoginPage() {
                 type="submit"
                 className="w-full rounded-xl border border-[color:var(--border)] px-4 py-2.5 text-xs font-semibold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
               >
-                אורחת — תצוגת תלמידה
+                אורח/ת — תצוגת תלמיד/ה
               </button>
             </form>
             <form action={enterAsFullGuest}>
@@ -66,7 +66,7 @@ export default async function LoginPage() {
                 type="submit"
                 className="w-full rounded-xl border border-[color:var(--border)] px-4 py-2.5 text-xs font-semibold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
               >
-                אורחת — גישה מלאה
+                אורח/ת — גישה מלאה
               </button>
             </form>
           </div>

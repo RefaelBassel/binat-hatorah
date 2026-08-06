@@ -189,7 +189,7 @@ export default function LiveBoard({ debateId }: { debateId: number }) {
                   🗳️ {stage.title}
                 </p>
                 <p className="mt-3 text-xl text-white/70">
-                  נכנסות לאתר ← הדיבייט ← ״להצבעה״ — ומדרגות בשפת הטיעון!
+                  נכנסים לאתר ← הדיבייט ← ״להצבעה״ — ומדרגים בשפת הטיעון!
                 </p>
                 {r && (
                   <p className="mt-4 text-3xl font-bold text-[#7ee8a2]">
@@ -344,7 +344,7 @@ function FinalBoard({
         })}
       </div>
       <p className="mt-8 text-center text-white/50">
-        💬 ועכשיו לעיבוד: אילו טיעונים שכנעו אתכן — ולמה? אילו הנחות יסוד נחשפו?
+        💬 ועכשיו לעיבוד: אילו טיעונים שכנעו אתכם — ולמה? אילו הנחות יסוד נחשפו?
       </p>
     </div>
   );

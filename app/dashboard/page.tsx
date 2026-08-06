@@ -110,11 +110,11 @@ export default async function DashboardPage() {
   return (
     <PageShell
       title="דשבורד מורה"
-      subtitle="כלל המשימות, ההגשות והתלמידות — במקום אחד"
+      subtitle="כלל המשימות, ההגשות והכיתה — במקום אחד"
     >
       {/* stats */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label="תלמידות רשומות" value={students.length} emoji="👩‍🎓" />
+        <Stat label="תלמידים ותלמידות" value={students.length} emoji="👩‍🎓" />
         <Stat label="משימות פורסמו" value={tasks.length} emoji="📚" />
         <Stat
           label="הגשות ממתינות לבדיקה"
@@ -174,7 +174,7 @@ export default async function DashboardPage() {
               type="submit"
               className="rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
             >
-              פרסום והקצאה לכל התלמידות
+              פרסום והקצאה לכל הכיתה
             </button>
           </form>
         )}
@@ -183,11 +183,11 @@ export default async function DashboardPage() {
       {/* recent reflections */}
       <div className="mb-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
         <h2 className="mb-3 font-display text-lg font-bold text-[color:var(--primary)]">
-          🪞 רפלקציות אחרונות של התלמידות
+          🪞 רפלקציות אחרונות מהכיתה
         </h2>
         {reflections.length === 0 ? (
           <p className="text-sm text-[color:var(--foreground)]/60">
-            עדיין אין רפלקציות. כל רפלקציה שתלמידה תמלא — תופיע כאן עם ההקשר המלא.
+            עדיין אין רפלקציות. כל רפלקציה שתמולא — תופיע כאן עם ההקשר המלא.
           </p>
         ) : (
           <ul className="max-h-72 space-y-2 overflow-y-auto">
@@ -226,7 +226,7 @@ export default async function DashboardPage() {
         </h2>
         {writingStats.length === 0 ? (
           <p className="text-sm text-[color:var(--foreground)]/60">
-            עדיין אין תרגולים. כשתלמידה תתרגל — הציונים יופיעו כאן.
+            עדיין אין תרגולים. כשמתרגלים — הציונים יופיעו כאן.
           </p>
         ) : (
           <div className="flex flex-wrap gap-2">

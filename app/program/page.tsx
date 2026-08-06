@@ -29,8 +29,8 @@ export default function ProgramPage() {
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {[
-                  "📌 מילה מנחה (מרטין בובר)",
-                  "❓ שאלת שאלות (נחמה ליבוביץ)",
+                  "📌 מילה מנחה",
+                  "❓ שאלת שאלות",
                   "🤔 מילים קשות",
                   "🪞 תקבולת",
                   "🎭 אפיון סוגה",
@@ -214,7 +214,7 @@ export default function ProgramPage() {
                 emoji: "🌟",
                 title: "מיני-סמינריון",
                 when: "מהמאגר האישי",
-                body: "לאורך השנה כל שאלה שאת שואלת נאספת למאגר האישי שלך. בסוף — את בוחרת שאלה אחת שמעניינת אותך באמת, וחוקרת אותה לעומק בעבודה אישית.",
+                body: "לאורך השנה כל שאלה ששואלים נאספת למאגר האישי. בסוף בוחרים שאלה אחת שמעניינת באמת, וחוקרים אותה לעומק בעבודה אישית.",
               },
             ].map((p) => (
               <div key={p.title} className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
@@ -229,7 +229,7 @@ export default function ProgramPage() {
 
         {/* ===== differentiation ===== */}
         <section>
-          <SectionTitle emoji="🌈" title="הוראה מותאמת לכל תלמידה" />
+          <SectionTitle emoji="🌈" title="הוראה מותאמת לכל תלמיד ותלמידה" />
           <div className="grid gap-4 sm:grid-cols-3">
             {[
               { emoji: "🪜", title: "פיגומים", body: "תבניות מובנות לניסוח טיעון, מילות קישור מנחות, והנחיה צמודה בשלבי החקר — ועזרת קלוד בכל שלב, לפי העיקרון: עושים לבד, אבל לא פוגשים קיר." },

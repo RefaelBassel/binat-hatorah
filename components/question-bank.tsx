@@ -32,7 +32,7 @@ export default function QuestionBank({
   if (questions.length === 0) {
     return (
       <p className="text-xs leading-6 text-[color:var(--foreground)]/55">
-        כל שאלה שתשאלי במשימות נאספת לכאן. בסוף השנה תבחרי מכאן שאלה אחת
+        כל שאלה ששואלים במשימות נאספת לכאן. בסוף השנה בוחרים מכאן שאלה אחת
         שמעניינת אותך במיוחד — והיא תהפוך לעבודה אישית שלך 🌟
       </p>
     );
@@ -67,7 +67,7 @@ export default function QuestionBank({
               onClick={() => choose(q.id)}
               className="shrink-0 rounded-full border border-[color:var(--border)] px-2 py-0.5 text-[10px] text-[color:var(--primary)]/60 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
             >
-              בחרי לעבודה
+              בחירה לעבודה
             </button>
           )}
         </li>

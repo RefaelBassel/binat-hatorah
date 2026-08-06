@@ -74,7 +74,7 @@ export default async function SubmissionPage({
         {/* decoding markings */}
         <section className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
           <h2 className="mb-3 font-display text-base font-bold text-[color:var(--primary)]">
-            🔍 איך היא פיענחה את הטקסט
+            🔍 פענוח הטקסט
           </h2>
           {markings.length === 0 ? (
             <p className="text-sm text-[color:var(--foreground)]/55">לא נשמרו סימונים.</p>
@@ -94,7 +94,7 @@ export default async function SubmissionPage({
           {questionsRes.rows.length > 0 && (
             <>
               <h3 className="mb-2 mt-4 text-xs font-bold text-[color:var(--primary)]/70">
-                ❓ השאלות שנכנסו למאגר שלה במשימה זו
+                ❓ השאלות שנכנסו למאגר האישי במשימה זו
               </h3>
               <ul className="space-y-1">
                 {questionsRes.rows.map((q, i) => (

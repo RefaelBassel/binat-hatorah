@@ -107,7 +107,7 @@ export default async function DebatePage() {
           </h2>
           {debates.length === 0 ? (
             <p className="text-sm text-[color:var(--foreground)]/60">
-              עדיין לא נוצרו דיבייטים. {isTeacher && "צרי את הראשון למטה!"}
+              עדיין לא נוצרו דיבייטים. {isTeacher && "אפשר ליצור את הראשון למטה!"}
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">

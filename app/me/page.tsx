@@ -110,7 +110,7 @@ export default async function MePage() {
         {overdue.length > 0 && (
           <div className="mb-6 rounded-2xl border-2 border-[color:var(--danger)]/50 bg-[color:var(--danger)]/10 p-4">
             <p className="font-bold text-[color:var(--danger)]">
-              ⏰ שימי לב! {overdue.length === 1 ? "משימה אחת עברה" : `${overdue.length} משימות עברו`} את מועד ההגשה:
+              ⏰ שימו לב! {overdue.length === 1 ? "משימה אחת עברה" : `${overdue.length} משימות עברו`} את מועד ההגשה:
             </p>
             <ul className="mt-2 space-y-1">
               {overdue.map((t) => (

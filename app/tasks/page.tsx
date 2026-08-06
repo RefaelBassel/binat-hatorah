@@ -61,10 +61,10 @@ async function StudentView({
       <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-[color:var(--accent)]/40 bg-[color:var(--card)]/70 px-8 py-12 text-center">
         <p className="text-3xl">🌱</p>
         <p className="mt-2 font-display text-lg font-bold text-[color:var(--primary)]">
-          עדיין לא הוקצו לך משימות
+          עדיין לא הוקצו לכם משימות
         </p>
         <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-          כשהמורה תפרסם משימה — היא תופיע כאן ותקבלי הודעה.
+          כשהמורה תפרסם משימה — היא תופיע כאן ותגיע הודעה.
         </p>
       </div>
     );

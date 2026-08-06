@@ -90,7 +90,7 @@ export default function VotePanel({ debateId }: { debateId: number }) {
           ההצבעה נקלטה!
         </p>
         <p className="mt-1 text-xs text-[color:var(--foreground)]/60">
-          אפשר לשנות את ההצבעה כל עוד היא פתוחה — פשוט רענני והצביעי שוב.
+          אפשר לשנות את ההצבעה כל עוד היא פתוחה — פשוט רעננו והצביעו שוב.
         </p>
       </div>
     );
@@ -104,7 +104,7 @@ export default function VotePanel({ debateId }: { debateId: number }) {
           {open.question}
         </p>
         <p className="mt-2 text-xs text-[color:var(--foreground)]/60">
-          בכל ציר — גררי את הנקודה לכיוון הקבוצה שהייתה חזקה יותר. באמצע = שקול.
+          בכל ציר — גררו את הנקודה לכיוון הקבוצה שהייתה חזקה יותר. באמצע = שקול.
         </p>
       </div>
 
@@ -138,7 +138,7 @@ export default function VotePanel({ debateId }: { debateId: number }) {
         disabled={busy}
         className="w-full rounded-full bg-[color:var(--primary)] py-3.5 text-sm font-bold text-white shadow-lg disabled:opacity-50"
       >
-        {busy ? "שולחת..." : "שליחת ההצבעה 🗳️"}
+        {busy ? "שולחים..." : "שליחת ההצבעה 🗳️"}
       </button>
     </div>
   );

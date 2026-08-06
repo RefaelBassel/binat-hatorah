@@ -130,7 +130,7 @@ export default function Chat({
             <p className="py-10 text-center text-xs text-[color:var(--primary)]/45">
               {active?.id === "group"
                 ? "עוד אין הודעות בקבוצה — פתחו את השיחה! 💬"
-                : "תחילת השיחה — כתבי הודעה ראשונה 💬"}
+                : "תחילת השיחה — כתבו הודעה ראשונה 💬"}
             </p>
           ) : (
             messages.map((m) => {

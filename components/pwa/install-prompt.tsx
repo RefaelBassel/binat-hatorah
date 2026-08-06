@@ -137,7 +137,7 @@ export default function InstallPrompt() {
                   disabled={installing}
                   className="rounded-lg bg-[color:var(--primary)] px-4 py-1.5 text-xs font-semibold text-white shadow transition hover:opacity-90 disabled:opacity-50"
                 >
-                  {installing ? "מתקינה…" : "התקנה"}
+                  {installing ? "מתקינים…" : "התקנה"}
                 </button>
               </div>
             </div>
@@ -183,18 +183,18 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
             <>
               <li className="flex gap-3">
                 <Step n={1} />
-                <span>לחצי על תפריט Chrome — שלוש הנקודות (⋮) למעלה.</span>
+                <span>לחצו על תפריט Chrome — שלוש הנקודות (⋮) למעלה.</span>
               </li>
               <li className="flex gap-3">
                 <Step n={2} />
                 <span>
-                  בחרי <strong>״התקנת אפליקציה״</strong> או{" "}
+                  בחרו <strong>״התקנת אפליקציה״</strong> או{" "}
                   <strong>"Add to Home screen"</strong>.
                 </span>
               </li>
               <li className="flex gap-3">
                 <Step n={3} />
-                <span>אשרי — והאייקון יופיע במסך הבית.</span>
+                <span>אשרו — והאייקון יופיע במסך הבית.</span>
               </li>
             </>
           )}
@@ -203,17 +203,17 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
               <li className="flex gap-3">
                 <Step n={1} />
                 <span>
-                  ודאי שאת ב-<strong>Safari</strong> (לא Chrome).
+                  ודאו שאתם ב-<strong>Safari</strong> (לא Chrome).
                 </span>
               </li>
               <li className="flex gap-3">
                 <Step n={2} />
-                <span>לחצי על אייקון השיתוף בתחתית — ריבוע עם חץ למעלה.</span>
+                <span>לחצו על אייקון השיתוף בתחתית — ריבוע עם חץ למעלה.</span>
               </li>
               <li className="flex gap-3">
                 <Step n={3} />
                 <span>
-                  גללי ובחרי <strong>"Add to Home Screen"</strong> /{" "}
+                  גללו ובחרו <strong>"Add to Home Screen"</strong> /{" "}
                   <strong>״הוספה למסך הבית״</strong>.
                 </span>
               </li>
@@ -224,7 +224,7 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
               <li className="flex gap-3">
                 <Step n={1} />
                 <span>
-                  בשורת הכתובת חפשי אייקון התקנה (מסך עם חץ למטה) ליד הכוכבית.
+                  בשורת הכתובת חפשו אייקון התקנה (מסך עם חץ למטה) ליד הכוכבית.
                 </span>
               </li>
               <li className="flex gap-3">

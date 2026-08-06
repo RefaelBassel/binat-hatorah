@@ -251,7 +251,7 @@ function ExerciseRunner({
                   }
                   disabled={Boolean(result)}
                   rows={2}
-                  placeholder={f.placeholder ?? "כתבי כאן..."}
+                  placeholder={f.placeholder ?? "כתבו כאן..."}
                   className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
                 />
               </label>
@@ -284,7 +284,7 @@ function ExerciseRunner({
             disabled={!canSubmit || busy}
             className="rounded-full bg-[color:var(--primary)] px-8 py-2.5 text-sm font-bold text-white shadow disabled:opacity-40"
           >
-            {busy ? "בודקת..." : "בדיקה ✨"}
+            {busy ? "בודקים..." : "בדיקה ✨"}
           </button>
         ) : (
           <button
