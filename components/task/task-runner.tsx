@@ -357,6 +357,16 @@ export default function TaskRunner({
     setQComposer(null);
   };
 
+  // "שאלה על הקטע" — the bubble that grows out of the passage box itself.
+  const openPassageQuestion = (ref: string) => {
+    if (readOnly) return;
+    setQComposer({
+      sourceRef: ref,
+      contextLabel: `שאלה על ${ref} — מילה, חלק מפסוק או פסוק שלם`,
+    });
+    setQComposerDraft("");
+  };
+
   // ---------- question bank ----------
   const bankQuestion = (question: string, sourceRef?: string) => {
     const q = question.trim();
@@ -576,6 +586,7 @@ export default function TaskRunner({
           banked={banked}
           askClaude={askClaude}
           advanceStage={advanceStage}
+          onAskQuestion={openPassageQuestion}
         />
       )}
 
@@ -608,6 +619,7 @@ export default function TaskRunner({
                     setMenu={setMenu}
                     readOnly={readOnly}
                     askClaude={askClaude}
+                    onAskQuestion={openPassageQuestion}
                   />
                 ))}
               </div>
@@ -725,22 +737,6 @@ export default function TaskRunner({
         </div>
       )}
 
-      {/* ===== floating "יש לי שאלה" — during decode stages 1-7 ===== */}
-      {stage <= 7 && !readOnly && !qComposer && (
-        <button
-          onClick={() => {
-            setQComposer({
-              sourceRef: mainPassage.ref,
-              contextLabel: `שאלה על ${mainPassage.ref} (מילה, חלק מפסוק או פסוק שלם)`,
-            });
-            setQComposerDraft("");
-          }}
-          className="fixed bottom-5 z-40 flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:scale-[1.03]"
-          style={{ insetInlineStart: "1rem", background: "var(--primary)" }}
-        >
-          ❓ יש לי שאלה
-        </button>
-      )}
 
       {/* ===== question composer — word / verse, any stage ===== */}
       {qComposer && !readOnly && (
@@ -899,6 +895,7 @@ function DecodeStage(props: {
   banked: string[];
   askClaude: (context: string, input: string) => void;
   advanceStage: () => void;
+  onAskQuestion: (ref: string) => void;
 }) {
   const {
     stage,
@@ -916,6 +913,7 @@ function DecodeStage(props: {
     banked,
     askClaude,
     advanceStage,
+    onAskQuestion,
   } = props;
 
   const leitworts = markings.filter((m) => m.passageKey === passage.key && m.kind === "leitwort");
@@ -1087,6 +1085,7 @@ function DecodeStage(props: {
         markOf={markOf}
         setMenu={setMenu}
         readOnly={readOnly}
+        onAskQuestion={onAskQuestion}
       />
       <div className="mt-6 flex items-center justify-between">
         <button
@@ -1121,16 +1120,18 @@ function InteractivePassage({
   setMenu,
   readOnly,
   compact,
+  onAskQuestion,
 }: {
   passage: PassageBlock;
   markOf: (p: string, i: number) => Marking[];
   setMenu: (m: WordMenuState | null) => void;
   readOnly: boolean;
   compact?: boolean;
+  onAskQuestion?: (ref: string) => void;
 }) {
   let wordIndex = -1;
   return (
-    <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] p-5 sm:p-7">
+    <div className="relative mb-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] p-5 sm:p-7">
       <p className="mb-3 flex items-center justify-between gap-2 text-xs font-bold tracking-wide text-[color:var(--accent)]">
         <span>📖 {passage.ref}</span>
         {passage.sefariaRef && (
@@ -1205,9 +1206,25 @@ function InteractivePassage({
         ))}
       </div>
       {!readOnly && (
-        <p className="mt-3 text-[11px] text-[color:var(--primary)]/45">
+        <p className="mt-3 pb-2 text-[11px] text-[color:var(--primary)]/45">
           💡 לחצו על כל מילה כדי לסמן: 📌 מילה מנחה · 🤔 מילה קשה · ❓ שאלה — או לבקש עזרה מקלוד
         </p>
+      )}
+      {/* the question bubble — grows out of the passage box itself */}
+      {!readOnly && onAskQuestion && (
+        <button
+          onClick={() => onAskQuestion(passage.ref)}
+          className="absolute -bottom-4 flex items-center gap-1.5 rounded-full border-2 px-4 py-1.5 text-xs font-bold shadow-md transition hover:scale-[1.04]"
+          style={{
+            insetInlineStart: "1.5rem",
+            background: "var(--card)",
+            borderColor: "#2f5d8a",
+            color: "#2f5d8a",
+          }}
+        >
+          <span aria-hidden>💭</span>
+          <span>יש לי שאלה על הקטע הזה</span>
+        </button>
       )}
     </div>
   );
@@ -1232,6 +1249,7 @@ function BlockView({
   setMenu,
   readOnly,
   askClaude,
+  onAskQuestion,
 }: {
   block: TaskBlock;
   answers: Record<string, string>;
@@ -1240,6 +1258,7 @@ function BlockView({
   setMenu: (m: WordMenuState | null) => void;
   readOnly: boolean;
   askClaude: (context: string, input: string) => void;
+  onAskQuestion?: (ref: string) => void;
 }) {
   if (block.type === "intro") {
     return (
@@ -1254,6 +1273,7 @@ function BlockView({
         setMenu={setMenu}
         readOnly={readOnly}
         compact
+        onAskQuestion={onAskQuestion}
       />
     );
   }
