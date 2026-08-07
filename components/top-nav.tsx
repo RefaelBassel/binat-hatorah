@@ -60,8 +60,11 @@ export default async function TopNav() {
     : "";
 
   return (
+    // NOTE: no backdrop-blur on the header — backdrop-filter turns it into
+    // the containing block for the fixed mobile drawer, trapping the drawer
+    // inside the header's box. The background is opaque anyway.
     <header
-      className="pwa-safe-top sticky top-0 z-30 border-b border-[color:var(--border)] backdrop-blur"
+      className="pwa-safe-top sticky top-0 z-30 border-b border-[color:var(--border)]"
       style={{ backgroundColor: "var(--card)" }}
     >
       {studentMode && (
