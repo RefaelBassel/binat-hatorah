@@ -44,8 +44,8 @@ Second subtitle: בדגש על מיומנויות לימוד עצמי של פש�
 הכנות למבחנים (/exams), תרגול כתיבה טיעונית (/writing), הדיבייט (/debate),
 תוצר א (/product-a), תוצר ב (/product-b), קשר (/messages), דשבורד מורה (/dashboard, teacher only)
 
-## Footer (exact text, every page)
-בית מדרש תורה שבכתב תיכון שחרית · פיתוח וכתיבה: ריעות רוקח · ייעוץ והדרכה: נעמה סינגל · פריסת אתר: ר. ב. · כל הזכויות שמורות
+## Footer (exact text, every page; parts spaced apart, gap-x between segments)
+בית מדרש תורה שבכתב תיכון שחרית · פיתוח וכתיבה: ריעות רוקח · ייעוץ והדרכה: נעמה סינגל · פריסת אתר: רפאל באסל · כל הזכויות שמורות
 
 ## Planned behaviors (later phases)
 - Tasks: teacher assigns per-student; statuses נלמדה/בלימוד/עבר זמנה (+טרם נלמדה for teacher), color-coded

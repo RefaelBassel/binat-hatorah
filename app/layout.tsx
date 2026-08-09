@@ -46,9 +46,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <RememberLastPath />
         {children}
-        <footer className="no-print mt-auto border-t border-[color:var(--border)]/60 px-4 py-4 text-center text-[11px] leading-5 text-[color:var(--primary)]/50">
-          בית מדרש תורה שבכתב תיכון שחרית · פיתוח וכתיבה: ריעות רוקח · ייעוץ
-          והדרכה: נעמה סינגל · פריסת אתר: ר. ב. · כל הזכויות שמורות
+        <footer className="no-print mt-auto flex flex-wrap items-center justify-center gap-x-7 gap-y-1.5 border-t border-[color:var(--border)]/60 px-4 py-5 text-center text-[11px] leading-5 text-[color:var(--primary)]/50">
+          <span>בית מדרש תורה שבכתב תיכון שחרית</span>
+          <span aria-hidden>·</span>
+          <span>פיתוח וכתיבה: ריעות רוקח</span>
+          <span aria-hidden>·</span>
+          <span>ייעוץ והדרכה: נעמה סינגל</span>
+          <span aria-hidden>·</span>
+          <span>פריסת אתר: רפאל באסל</span>
+          <span aria-hidden>·</span>
+          <span>כל הזכויות שמורות</span>
         </footer>
         <InstallPrompt />
       </body>
