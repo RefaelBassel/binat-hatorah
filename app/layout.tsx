@@ -46,16 +46,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <RememberLastPath />
         {children}
-        <footer className="no-print mt-auto flex flex-wrap items-center justify-center gap-x-7 gap-y-1.5 border-t border-[color:var(--border)]/60 px-4 py-5 text-center text-[11px] leading-5 text-[color:var(--primary)]/50">
-          <span>בית מדרש תורה שבכתב תיכון שחרית</span>
-          <span aria-hidden>·</span>
-          <span>פיתוח וכתיבה: ריעות רוקח</span>
-          <span aria-hidden>·</span>
-          <span>ייעוץ והדרכה: נעמה סינגל</span>
-          <span aria-hidden>·</span>
-          <span>פריסת אתר: רפאל באסל</span>
-          <span aria-hidden>·</span>
-          <span>כל הזכויות שמורות</span>
+        {/* Footer: school name and copyright pushed to the edges, the three
+            role credits grouped tightly in the middle. */}
+        <footer className="no-print mt-auto border-t border-[color:var(--border)]/60 px-6 py-5 text-[11px] leading-5 text-[color:var(--primary)]/50">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-y-2 text-center sm:flex-row sm:gap-x-10">
+            <span className="whitespace-nowrap font-semibold">
+              בית מדרש תורה שבכתב תיכון שחרית
+            </span>
+            <span className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
+              <span>פיתוח וכתיבה: ריעות רוקח</span>
+              <span aria-hidden>·</span>
+              <span>ייעוץ והדרכה: נעמה סינגל</span>
+              <span aria-hidden>·</span>
+              <span>פריסת אתר: רפאל באסל</span>
+            </span>
+            <span className="whitespace-nowrap">כל הזכויות שמורות</span>
+          </div>
         </footer>
         <InstallPrompt />
       </body>
