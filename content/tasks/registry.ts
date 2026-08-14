@@ -13,6 +13,7 @@ import { lesson11, lesson11MainPassage } from "./lesson-11";
 import { lesson12, lesson12MainPassage } from "./lesson-12";
 import { lesson13, lesson13MainPassage } from "./lesson-13";
 import { lesson14, lesson14MainPassage } from "./lesson-14";
+import { lesson15, lesson15MainPassage } from "./lesson-15";
 
 // Registry of task content, keyed by content_ref stored on the tasks table.
 // The teacher publishes a task by picking a ref from here.
@@ -36,6 +37,7 @@ export const TASK_REGISTRY: Record<string, RegisteredTask> = {
   "lesson-12": { content: lesson12, mainPassage: lesson12MainPassage },
   "lesson-13": { content: lesson13, mainPassage: lesson13MainPassage },
   "lesson-14": { content: lesson14, mainPassage: lesson14MainPassage },
+  "lesson-15": { content: lesson15, mainPassage: lesson15MainPassage },
 };
 
 export function getTaskContent(ref: string): RegisteredTask | null {

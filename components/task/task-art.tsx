@@ -1940,6 +1940,145 @@ const SCENES: Record<string, React.ReactNode> = {
       <path d="M258 116 L242 104 L260 96" fill="none" stroke={GLOW} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  // מקום מקנה — herds on the green hills of Gilead (lesson 15 hero).
+  "cattle-hills": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="chl-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#cfe0ea" />
+          <stop offset="1" stopColor="#e9d9c2" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#chl-sky)" />
+      <path d="M0 130 Q 160 70 340 118 Q 500 60 680 112 Q 740 96 800 108 V250 H0 Z" fill="#7d9468" />
+      <path d="M0 180 Q 240 140 480 172 T 800 160 V250 H0 Z" fill="#6f8560" />
+      <path d="M0 220 Q 300 196 800 210 V250 H0 Z" fill="#5a6b48" />
+      {/* herds — many rounded backs */}
+      {[
+        [120, 196, 1], [180, 206, 0.85], [250, 192, 1.1], [330, 204, 0.9], [420, 194, 1],
+        [500, 208, 0.85], [580, 196, 1.05], [660, 206, 0.9], [720, 194, 1],
+      ].map(([x, y, s], i) => (
+        <g key={i} transform={`translate(${x},${y}) scale(${s})`} fill={i % 3 ? "#8a6844" : "#5a4632"}>
+          <ellipse cx="0" cy="0" rx="17" ry="10" />
+          <circle cx="-19" cy="-5" r="6" />
+          <rect x="-13" y="7" width="4" height="9" rx="2" />
+          <rect x="7" y="7" width="4" height="9" rx="2" />
+        </g>
+      ))}
+      {/* the river far in the west, and the land beyond */}
+      <path d="M0 148 Q 60 142 110 150 L110 160 Q 55 154 0 160 Z" fill="#5d90b8" opacity="0.8" />
+    </svg>
+  ),
+
+  // סדר המילים מתהפך — the family-block moved to the front.
+  "word-order": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="wo-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#wo-bg)" />
+      {/* top row (their order): flock-block first (right, RTL), then family */}
+      <g>
+        <rect x="520" y="40" width="150" height="44" rx="10" fill={COPPER} opacity="0.75" />
+        <circle cx="595" cy="62" r="10" fill={CARD} />
+        <ellipse cx="595" cy="64" rx="15" ry="8" fill={CARD} opacity="0.8" />
+        <rect x="340" y="40" width="150" height="44" rx="10" fill={GRAPE} opacity="0.55" />
+        {[380, 405, 430].map((x, i) => (
+          <g key={i} fill={CARD}>
+            <circle cx={x} cy="56" r={5 - i} />
+            <path d={`M${x - 5} ${60} Q ${x} ${57} ${x + 5} ${60} L ${x + 4} ${74} L ${x - 4} ${74} Z`} />
+          </g>
+        ))}
+      </g>
+      {/* the swap arrows */}
+      <path d="M560 96 Q 470 130 420 100" fill="none" stroke={GRAPE} strokeWidth="3.5" strokeLinecap="round" strokeDasharray="2 8" />
+      <path d="M430 92 L416 98 L426 110" fill="none" stroke={GRAPE} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* bottom row (Moshe's order): family first */}
+      <g>
+        <rect x="520" y="130" width="150" height="44" rx="10" fill={GRAPE} opacity="0.85" />
+        {[560, 585, 610].map((x, i) => (
+          <g key={i} fill={CARD}>
+            <circle cx={x} cy="146" r={5 - i} />
+            <path d={`M${x - 5} ${150} Q ${x} ${147} ${x + 5} ${150} L ${x + 4} ${164} L ${x - 4} ${164} Z`} />
+          </g>
+        ))}
+        <rect x="340" y="130" width="150" height="44" rx="10" fill={COPPER} opacity="0.5" />
+        <circle cx="415" cy="152" r="10" fill={CARD} opacity="0.9" />
+        <ellipse cx="415" cy="154" rx="15" ry="8" fill={CARD} opacity="0.7" />
+      </g>
+    </svg>
+  ),
+
+  // תנאי כפול — two doors: if you do, and if you do not.
+  "double-condition": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="dc-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#dc-bg)" />
+      <rect x="0" y="182" width="800" height="28" fill={INK} />
+      {/* door one — open, lit */}
+      <g transform="translate(250,52)">
+        <rect x="-56" y="0" width="112" height="130" rx="10" fill="#3d2f50" stroke={GLOW} strokeWidth="3" />
+        <path d="M-40 130 L-40 14 Q 0 2 40 14 L40 130" fill={GLOW} opacity="0.35" />
+        <path d="M-40 14 Q 0 2 40 14 L 28 130 L -28 130 Z" fill={GLOW} opacity="0.5" />
+        <circle cx="20" cy="76" r="4" fill={CARD} />
+      </g>
+      {/* door two — closed, heavy */}
+      <g transform="translate(550,52)">
+        <rect x="-56" y="0" width="112" height="130" rx="10" fill="#3d2f50" stroke="#8d7ba0" strokeWidth="3" />
+        <rect x="-40" y="12" width="80" height="118" rx="6" fill="#241c30" />
+        <circle cx="24" cy="76" r="4" fill="#8d7ba0" />
+        {[34, 58].map((y, i) => (
+          <line key={i} x1="-30" y1={y} x2="30" y2={y} stroke="#54406b" strokeWidth="4" strokeLinecap="round" />
+        ))}
+      </g>
+      {/* the fork before the doors */}
+      <path d="M400 196 Q 330 160 268 150 M400 196 Q 470 160 532 150" fill="none" stroke="#caa27b" strokeWidth="6" strokeLinecap="round" opacity="0.5" />
+    </svg>
+  ),
+
+  // חלוצים לפני העם — the vanguard crossing first.
+  "vanguard-cross": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="vc-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e9d9c2" />
+          <stop offset="1" stopColor="#d3ba9a" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="220" fill="url(#vc-bg)" />
+      {/* the river running down the middle */}
+      <path d="M430 0 Q 400 60 424 110 Q 448 160 416 220 L 344 220 Q 376 160 352 110 Q 328 60 358 0 Z" fill="#5d90b8" />
+      <path d="M410 20 Q 390 70 408 120" fill="none" stroke="#8fb6d4" strokeWidth="4" opacity="0.7" />
+      {/* the vanguard, already across (left), arrows forward */}
+      <g fill={GRAPE}>
+        {[240, 190, 140].map((x, i) => (
+          <g key={i} transform={`translate(${x},${120 + i * 22}) scale(0.95)`}>
+            <circle cy="-28" r="8" />
+            <path d="M-9 -21 Q 0 -26 9 -21 L 7 12 Q 0 15 -7 12 Z" />
+          </g>
+        ))}
+      </g>
+      <path d="M120 96 L60 84" stroke={COPPER} strokeWidth="4" strokeLinecap="round" />
+      <path d="M74 76 L56 83 L70 94" fill="none" stroke={COPPER} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      {/* the families and herds, safe behind (right) */}
+      <g fill={GRAPE} opacity="0.6">
+        <path d="M600 150 L622 122 L644 150 Z" />
+        <path d="M660 154 L678 130 L696 154 Z" />
+      </g>
+      <g fill="#8a6844" opacity="0.8">
+        <ellipse cx="560" cy="176" rx="15" ry="9" />
+        <circle cx="543" cy="171" r="5" />
+      </g>
+    </svg>
+  ),
 };
 
 export default function TaskArt({
