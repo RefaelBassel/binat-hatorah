@@ -1433,6 +1433,147 @@ const SCENES: Record<string, React.ReactNode> = {
       </g>
     </svg>
   ),
+  // נחש הנחושת על הנס — the copper serpent raised high (lesson 11 hero).
+  "copper-snake": (
+    <svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="cs-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#39527a" />
+          <stop offset="0.7" stopColor="#7a6a8a" />
+          <stop offset="1" stopColor="#d3b68c" />
+        </linearGradient>
+        <linearGradient id="cs-metal" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#d08a52" />
+          <stop offset="0.5" stopColor="#f0b070" />
+          <stop offset="1" stopColor="#9a5f30" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="260" fill="url(#cs-sky)" />
+      <path d="M0 216 Q 240 200 480 212 T 800 206 V260 H0 Z" fill="#b3885e" />
+      <path d="M0 240 Q 300 228 800 236 V260 H0 Z" fill="#8a6844" />
+      {/* the pole */}
+      <rect x="394" y="60" width="12" height="170" rx="6" fill="#5a3a1c" />
+      <rect x="352" y="60" width="96" height="9" rx="4.5" fill="#5a3a1c" />
+      {/* the copper serpent coiled on it */}
+      <path
+        d="M400 200 Q 430 184 400 166 Q 368 148 400 130 Q 432 112 400 96 Q 376 84 392 70"
+        fill="none"
+        stroke="url(#cs-metal)"
+        strokeWidth="13"
+        strokeLinecap="round"
+      />
+      <circle cx="394" cy="66" r="8" fill="#f0b070" />
+      <circle cx="391" cy="63" r="2" fill={INK} />
+      {/* faces below, turned upward (abstract small figures looking up) */}
+      <g fill={INK} opacity="0.75">
+        {[240, 300, 500, 560].map((x, i) => (
+          <g key={i} transform={`translate(${x},${226 + (i % 2) * 4}) scale(0.9)`}>
+            <circle cy="-28" r="8" />
+            <path d="M-9 -21 Q 0 -26 9 -21 L 7 10 Q 0 13 -7 10 Z" />
+            <circle cy="-31" cx="3" r="1.6" fill={GLOW} />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // חרמה פעמיים — the same hill, one fall and one rise.
+  "harma-mirror": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="hm-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#hm-bg)" />
+      {/* the hill in the middle */}
+      <path d="M290 178 Q 400 62 510 178 Z" fill="#caa27b" />
+      <path d="M340 178 Q 400 106 460 178 Z" fill="#b3885e" />
+      {/* left arrow: falling (the Maapilim, without) */}
+      <path d="M212 84 Q 260 110 296 150" fill="none" stroke="#9d3438" strokeWidth="5" strokeLinecap="round" strokeDasharray="10 8" />
+      <path d="M300 140 L298 154 L285 148" fill="none" stroke="#9d3438" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* right arrow: rising (the vow, with) */}
+      <path d="M588 150 Q 540 96 504 76" fill="none" stroke="#3e6b4f" strokeWidth="5" strokeLinecap="round" />
+      <path d="M516 74 L502 74 L508 88" fill="none" stroke="#3e6b4f" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* a small flame marker at the summit — the shared name חרמה */}
+      <circle cx="400" cy="70" r="10" fill={COPPER} opacity="0.85" />
+      <circle cx="400" cy="70" r="18" fill="none" stroke={COPPER} strokeWidth="2" strokeDasharray="1 6" strokeLinecap="round" opacity="0.7" />
+    </svg>
+  ),
+
+  // מסתכלים כלפי מעלה — faces lifted from the ground toward the light.
+  "looking-up": (
+    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="lu-bg" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor={GRAPE} />
+          <stop offset="1" stopColor="#39527a" />
+        </linearGradient>
+        <radialGradient id="lu-light" cx="0.5" cy="0" r="0.8">
+          <stop offset="0" stopColor={GLOW} stopOpacity="0.55" />
+          <stop offset="1" stopColor={GLOW} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="800" height="200" fill="url(#lu-bg)" />
+      <rect width="800" height="200" fill="url(#lu-light)" />
+      {/* gaze lines from each figure up to the light */}
+      {[180, 300, 420, 540, 660].map((x, i) => (
+        <line key={i} x1={x} y1={132 - (i % 2) * 10} x2={400} y2={16} stroke={GLOW} strokeWidth="1.5" strokeDasharray="1 7" opacity="0.5" />
+      ))}
+      {/* the figures, heads tilted up */}
+      <g fill={INK}>
+        {[180, 300, 420, 540, 660].map((x, i) => (
+          <g key={i} transform={`translate(${x},${168 - (i % 2) * 8})`}>
+            <circle cy="-34" cx="3" r="9" />
+            <path d="M-10 -26 Q 0 -31 10 -26 L 8 14 Q 0 17 -8 14 Z" />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // עלי באר ענו לה — the singing well.
+  "song-well": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sgw-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efdcc4" />
+          <stop offset="1" stopColor="#ddc3a0" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#sgw-bg)" />
+      <rect x="0" y="178" width="800" height="32" fill="#b3885e" />
+      {/* the well, alive this time */}
+      <g transform="translate(400,120)">
+        <path d="M-64 52 Q -68 8 -48 -4 L 48 -4 Q 68 8 64 52 Z" fill="#8a6844" />
+        <ellipse cx="0" cy="-4" rx="48" ry="9" fill="#5d90b8" />
+        <ellipse cx="0" cy="-4" rx="30" ry="5.5" fill="#8fb6d4" opacity="0.8" />
+        {/* water rising in a little arc */}
+        <path d="M0 -8 Q -6 -34 0 -52 Q 6 -34 0 -8" fill="#8fb6d4" opacity="0.85" />
+        <circle cx="0" cy="-56" r="5" fill="#8fb6d4" />
+      </g>
+      {/* song marks rising around */}
+      {[
+        [300, 84, 1], [330, 56, 0.8], [488, 78, 1], [520, 50, 0.85], [402, 34, 1],
+      ].map(([x, y, s], i) => (
+        <g key={i} transform={`translate(${x},${y}) scale(${s})`} fill={GRAPE} opacity="0.8">
+          <ellipse cx="0" cy="8" rx="5" ry="3.6" transform="rotate(-20)" />
+          <rect x="3.5" y="-10" width="2.5" height="18" rx="1" />
+          <path d="M6 -10 q 8 2 8 8 q -4 -3 -8 -3 Z" />
+        </g>
+      ))}
+      {/* circle of singers */}
+      <g fill={GRAPE} opacity="0.6">
+        {[240, 560].map((x, i) => (
+          <g key={i} transform={`translate(${x},166) scale(0.85)`}>
+            <circle cy="-28" r="8" />
+            <path d="M-9 -21 Q 0 -26 9 -21 L 7 12 Q 0 15 -7 12 Z" />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
 };
 
 export default function TaskArt({
