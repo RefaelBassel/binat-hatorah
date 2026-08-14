@@ -1296,6 +1296,143 @@ const SCENES: Record<string, React.ReactNode> = {
       <path d="M399 104 Q 400 84 400 62" fill="none" stroke="#8d7ba0" strokeWidth="2" strokeDasharray="2 8" strokeLinecap="round" opacity="0.7" />
     </svg>
   ),
+  // הסלע והמטה — the moment before (lesson 10 hero).
+  "dry-rock": (
+    <svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="dr-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e7cfae" />
+          <stop offset="1" stopColor="#d3b68c" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="260" fill="url(#dr-sky)" />
+      <circle cx="120" cy="54" r="24" fill={GLOW} opacity="0.85" />
+      <path d="M0 206 Q 240 188 480 204 T 800 196 V260 H0 Z" fill="#caa27b" />
+      <path d="M0 234 Q 300 218 800 228 V260 H0 Z" fill="#a87e54" />
+      {/* the great rock */}
+      <path d="M330 206 Q 322 130 396 108 Q 470 92 512 140 Q 540 172 522 206 Z" fill="#8a6844" />
+      <path d="M360 200 Q 358 150 410 128" fill="none" stroke="#6f5236" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
+      <path d="M470 200 Q 480 160 500 148" fill="none" stroke="#6f5236" strokeWidth="3" strokeLinecap="round" opacity="0.5" />
+      {/* the staff, leaning against it, waiting */}
+      <line x1="300" y1="206" x2="352" y2="118" stroke="#5a3a1c" strokeWidth="8" strokeLinecap="round" />
+      {/* the thirsty crowd far behind */}
+      <g fill={GRAPE} opacity="0.55">
+        {[80, 120, 160, 640, 690, 740].map((x, i) => (
+          <g key={i} transform={`translate(${x},${216 + (i % 2) * 6}) scale(0.8)`}>
+            <circle cy="-26" r="8" />
+            <path d="M-9 -19 Q 0 -24 9 -19 L 7 12 Q 0 15 -7 12 Z" />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // בארה של מרים — the well gone quiet.
+  "silent-well": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sw-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#sw-bg)" />
+      {[
+        [120, 44, 1.2], [300, 30, 1], [620, 50, 1.3], [720, 90, 1],
+      ].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fdf6e3" opacity="0.7" />
+      ))}
+      <rect x="0" y="176" width="800" height="34" fill={INK} />
+      {/* the stone well */}
+      <g transform="translate(400,120)">
+        <path d="M-70 56 Q -74 10 -52 -2 L 52 -2 Q 74 10 70 56 Z" fill="#6f5a80" />
+        {[-52, -18, 16, 50].map((x, i) => (
+          <rect key={i} x={x} y={8 + (i % 2) * 22} width="30" height="18" rx="4" fill="none" stroke="#54406b" strokeWidth="2.5" opacity="0.8" />
+        ))}
+        <ellipse cx="0" cy="-2" rx="52" ry="10" fill="#241c30" />
+        {/* the last, fading ripple inside */}
+        <ellipse cx="0" cy="-2" rx="30" ry="5.5" fill="none" stroke="#5d90b8" strokeWidth="2" opacity="0.5" />
+        <ellipse cx="0" cy="-2" rx="16" ry="3" fill="none" stroke="#5d90b8" strokeWidth="2" opacity="0.25" />
+        {/* the empty bucket resting on the rim */}
+        <path d="M58 -14 L78 -14 L74 6 L62 6 Z" fill={COPPER} />
+        <path d="M60 -14 Q 68 -28 76 -14" fill="none" stroke={COPPER} strokeWidth="3" strokeLinecap="round" />
+      </g>
+    </svg>
+  ),
+
+  // ויך את הסלע פעמיים — water bursting, and the cost.
+  "twice-struck": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tsk-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#d3b68c" />
+          <stop offset="1" stopColor="#b3885e" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="220" fill="url(#tsk-bg)" />
+      {/* rock split */}
+      <path d="M300 190 Q 296 120 366 100 Q 440 84 486 128 Q 512 158 498 190 Z" fill="#8a6844" />
+      <path d="M398 100 L390 132 L404 150 L392 176 L400 190" fill="none" stroke="#4a3620" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      {/* gushing water */}
+      <path d="M398 148 Q 340 168 260 176 Q 180 184 90 178" fill="none" stroke="#5d90b8" strokeWidth="12" strokeLinecap="round" opacity="0.85" />
+      <path d="M400 160 Q 470 182 560 186 Q 650 190 720 182" fill="none" stroke="#5d90b8" strokeWidth="12" strokeLinecap="round" opacity="0.85" />
+      <path d="M398 148 Q 350 160 292 168" fill="none" stroke="#8fb6d4" strokeWidth="5" strokeLinecap="round" opacity="0.8" />
+      {/* droplets */}
+      {[
+        [340, 130], [452, 132], [386, 112],
+      ].map(([x, y], i) => (
+        <path key={i} d={`M${x} ${y} q 3 8 0 12 q -3 -4 0 -12`} fill="#8fb6d4" />
+      ))}
+      {/* the staff mid-air, and the two strike marks */}
+      <line x1="470" y1="40" x2="416" y2="106" stroke="#5a3a1c" strokeWidth="8" strokeLinecap="round" />
+      {[0, 1].map((i) => (
+        <path key={i} d={`M${420 + i * 16} ${88 - i * 10} l 10 -8`} fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+      ))}
+    </svg>
+  ),
+
+  // והפשט את אהרן את בגדיו — the garments passing on the mountaintop.
+  "passing-garments": (
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="pg-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#241c30" />
+          <stop offset="0.7" stopColor={GRAPE} />
+          <stop offset="1" stopColor="#8a5a68" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="240" fill="url(#pg-sky)" />
+      {[
+        [110, 40, 1.2], [240, 66, 1], [560, 44, 1.3], [700, 76, 1],
+      ].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fdf6e3" opacity="0.75" />
+      ))}
+      {/* the mountain */}
+      <path d="M0 240 L250 96 Q 400 40 550 96 L800 240 Z" fill="#3a2c40" />
+      <path d="M250 96 Q 400 40 550 96 L520 130 Q 400 84 280 130 Z" fill="#4a3660" />
+      {/* three figures on the summit: elder, the garments between, the son */}
+      <g transform="translate(400,86)">
+        {/* elder (right) */}
+        <g fill="#8d7ba0" transform="translate(56,0)">
+          <circle cy="-30" r="9" />
+          <path d="M-10 -22 Q 0 -28 10 -22 L 8 18 Q 0 22 -8 18 Z" />
+        </g>
+        {/* younger (left) */}
+        <g fill={INK} transform="translate(-56,4) scale(0.95)">
+          <circle cy="-30" r="9" />
+          <path d="M-10 -22 Q 0 -28 10 -22 L 8 18 Q 0 22 -8 18 Z" />
+        </g>
+        {/* the priestly garment floating between them */}
+        <g transform="translate(0,-16)">
+          <path d="M-18 -10 L18 -10 L24 26 L-24 26 Z" fill={GLOW} opacity="0.9" />
+          <rect x="-24" y="-14" width="48" height="7" rx="3.5" fill={COPPER} />
+          {[-8, 0, 8].map((x, i) => (
+            <circle key={i} cx={x} cy={12} r="2.5" fill={COPPER} />
+          ))}
+        </g>
+      </g>
+    </svg>
+  ),
 };
 
 export default function TaskArt({
