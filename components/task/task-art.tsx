@@ -2231,6 +2231,148 @@ const SCENES: Record<string, React.ReactNode> = {
       </g>
     </svg>
   ),
+
+  // שתי עצות — a young king between two circles of counselors:
+  // the bent, patient elders and the eager young men.
+  "two-counsels": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tc-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efe3d3" />
+          <stop offset="1" stopColor={SAND} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#tc-bg)" />
+      {/* the elders (right, honored side): stooped figures with staffs */}
+      <g fill={GRAPE} opacity="0.85">
+        {[640, 690, 738].map((x, i) => (
+          <g key={i} transform={`translate(${x},${150 + (i % 2) * 14})`}>
+            <circle cx="-4" cy="-34" r="10" />
+            <path d="M-16 -26 Q -4 -34 8 -24 L 12 30 L -14 30 Z" />
+            <path d="M16 -40 L16 30" stroke={COPPER} strokeWidth="4" strokeLinecap="round" fill="none" />
+          </g>
+        ))}
+      </g>
+      {/* the young men (left): upright, arms thrown up */}
+      <g fill={GRAPE}>
+        {[70, 118, 166].map((x, i) => (
+          <g key={i} transform={`translate(${x},${146 + (i % 2) * 10})`}>
+            <circle cy="-38" r="10" />
+            <path d="M-11 -30 Q 0 -36 11 -30 L 9 30 L -9 30 Z" />
+            <path d="M-11 -26 L-24 -46 M11 -26 L24 -46" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" fill="none" />
+          </g>
+        ))}
+      </g>
+      {/* the king in the middle, on a low platform, torn both ways */}
+      <rect x="352" y="188" width="96" height="14" rx="4" fill="#cbb391" />
+      <g transform="translate(400,150)">
+        <circle cy="-44" r="12" fill={GRAPE} />
+        <path d="M-13 -35 Q 0 -42 13 -35 L 11 38 L -11 38 Z" fill={GRAPE} />
+        <path d="M-11 -52 L11 -52 L8 -62 L4 -55 L0 -63 L-4 -55 L-8 -62 Z" fill={GLOW} stroke={COPPER} strokeWidth="1.5" />
+      </g>
+      {/* two whispers pulling opposite ways */}
+      <path d="M226 120 Q 310 96 372 116" fill="none" stroke={COPPER} strokeWidth="3.5" strokeLinecap="round" strokeDasharray="2 10" />
+      <path d="M584 122 Q 494 98 428 116" fill="none" stroke={GRAPE} strokeWidth="3.5" strokeLinecap="round" strokeDasharray="2 10" opacity="0.7" />
+    </svg>
+  ),
+
+  // עול כבד — the yoke on the people's shoulders, and the two answers:
+  // lighten it, or add to it.
+  "heavy-yoke": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="220" fill={CARD} />
+      <rect x="0" y="188" width="800" height="32" fill={SAND} />
+      {/* a line of bearers under one long beam */}
+      <path d="M180 96 L620 96" stroke="#8a6844" strokeWidth="10" strokeLinecap="round" />
+      {[240, 400, 560].map((x, i) => (
+        <g key={i}>
+          <g transform={`translate(${x},150)`} fill={GRAPE}>
+            <circle cy="-34" r="10" />
+            <path d="M-11 -26 Q 0 -32 11 -26 L 9 38 L -9 38 Z" />
+          </g>
+          {/* the load hanging from the beam */}
+          <path d={`M${x - 60} 96 L${x - 60} 118`} stroke="#8a6844" strokeWidth="4" />
+          <rect x={x - 76} y="118" width="32" height="26" rx="4" fill={COPPER} opacity="0.85" />
+        </g>
+      ))}
+      {/* the two possible tomorrows: a feather and an added stone */}
+      <g transform="translate(120,60)">
+        <path d="M0 24 Q -4 4 12 -12 Q 14 8 2 22 Z" fill={GLOW} stroke={COPPER} strokeWidth="2" />
+        <path d="M2 22 L14 -10" stroke={COPPER} strokeWidth="1.5" />
+      </g>
+      <g transform="translate(676,52)">
+        <path d="M-18 26 Q -22 2 0 -6 Q 22 2 18 26 Z" fill={INK} opacity="0.75" />
+        <path d="M0 -6 L0 -22 M-7 -14 L7 -14" stroke={INK} strokeWidth="4" strokeLinecap="round" />
+      </g>
+    </svg>
+  ),
+
+  // סיבתיות כפולה — one knot, two threads: a golden thread descending
+  // from above and an earthly thread rising from a human hand.
+  "double-thread": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="dt-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efe6f2" />
+          <stop offset="1" stopColor={SAND} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#dt-sky)" />
+      {/* the golden thread from above */}
+      <path d="M400 0 Q 340 50 396 92 Q 430 118 400 115" fill="none" stroke={GLOW} strokeWidth="5" strokeLinecap="round" />
+      <circle cx="400" cy="0" r="26" fill={GLOW} opacity="0.25" />
+      {/* the earthly thread from a hand below */}
+      <g stroke={GRAPE} strokeWidth="5" strokeLinecap="round" fill="none">
+        <path d="M400 230 Q 460 180 404 138 Q 372 112 400 115" />
+      </g>
+      <g transform="translate(400,214)" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" fill="none">
+        <path d="M-16 16 Q 0 4 16 16" />
+        <path d="M-10 10 L-12 -2 M0 8 L0 -6 M10 10 L12 -2" />
+      </g>
+      {/* the single knot where they meet — one event */}
+      <circle cx="400" cy="115" r="17" fill="none" stroke={COPPER} strokeWidth="5" />
+      <circle cx="400" cy="115" r="6" fill={COPPER} />
+      {/* faint side histories flowing through the knot */}
+      <path d="M120 115 L372 115 M428 115 L680 115" stroke={COPPER} strokeWidth="2.5" strokeDasharray="3 12" strokeLinecap="round" opacity="0.6" />
+    </svg>
+  ),
+
+  // הממלכה נקרעת — one royal garment torn in two: ten pieces drift
+  // north, two stay by the small lit temple in the south.
+  "torn-kingdom": (
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="240" fill={SAND} />
+      {/* the tear line down the middle */}
+      <path d="M400 18 L384 52 L410 84 L388 120 L412 156 L392 192 L404 226" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      {/* north: ten drifting pieces of the cloak */}
+      <g fill={GRAPE}>
+        {[
+          [90, 60], [150, 110], [110, 170], [200, 60], [250, 140],
+          [300, 80], [210, 200], [320, 180], [280, 30], [350, 120],
+        ].map(([x, y], i) => (
+          <path
+            key={i}
+            d="M0 0 L26 6 L20 26 L-4 20 Z"
+            transform={`translate(${x},${y}) rotate(${(i * 37) % 360})`}
+            opacity={0.55 + (i % 3) * 0.15}
+          />
+        ))}
+      </g>
+      {/* south: two pieces still whole, beside the small temple */}
+      <g fill={GRAPE}>
+        <path d="M0 0 L34 8 L26 34 L-6 26 Z" transform="translate(520,150)" />
+        <path d="M0 0 L34 8 L26 34 L-6 26 Z" transform="translate(575,110) rotate(14)" />
+      </g>
+      <g transform="translate(672,128)">
+        <rect x="-34" y="18" width="68" height="10" fill={COPPER} />
+        <rect x="-28" y="-18" width="10" height="36" fill={CARD} stroke={COPPER} strokeWidth="2" />
+        <rect x="-5" y="-18" width="10" height="36" fill={CARD} stroke={COPPER} strokeWidth="2" />
+        <rect x="18" y="-18" width="10" height="36" fill={CARD} stroke={COPPER} strokeWidth="2" />
+        <path d="M-34 -18 L0 -40 L34 -18 Z" fill={COPPER} />
+        <circle cy="-52" r="7" fill={GLOW} />
+      </g>
+    </svg>
+  ),
 };
 
 export default function TaskArt({
