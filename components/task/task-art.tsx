@@ -1166,6 +1166,136 @@ const SCENES: Record<string, React.ReactNode> = {
       <ellipse cx="404" cy="92" rx="6" ry="9" fill="#a8c08a" transform="rotate(16 404 92)" />
     </svg>
   ),
+  // פרה אדומה תמימה — outside the camp, dawn (lesson 9 hero).
+  "red-heifer": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="rh-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efdcc4" />
+          <stop offset="1" stopColor="#e0bf96" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#rh-sky)" />
+      <circle cx="140" cy="60" r="26" fill={GLOW} opacity="0.8" />
+      <path d="M0 190 Q 240 168 480 188 T 800 180 V250 H0 Z" fill="#caa27b" />
+      <path d="M0 220 Q 300 202 800 214 V250 H0 Z" fill="#a87e54" />
+      {/* the camp far away */}
+      <g fill={GRAPE} opacity="0.5">
+        <path d="M640 182 L658 158 L676 182 Z" />
+        <path d="M690 186 L706 164 L722 186 Z" />
+        <path d="M736 182 L752 160 L768 182 Z" />
+      </g>
+      {/* the red heifer, stylized, alone on the near hill */}
+      <g transform="translate(280,150)">
+        <ellipse cx="0" cy="0" rx="62" ry="34" fill="#9d4a34" />
+        <rect x="-58" y="20" width="12" height="34" rx="5" fill="#8a3f2c" />
+        <rect x="-24" y="24" width="12" height="32" rx="5" fill="#8a3f2c" />
+        <rect x="16" y="24" width="12" height="32" rx="5" fill="#8a3f2c" />
+        <rect x="46" y="20" width="12" height="34" rx="5" fill="#8a3f2c" />
+        <ellipse cx="74" cy="-22" rx="20" ry="16" fill="#9d4a34" />
+        <path d="M84 -36 q 8 -12 2 -20 q -8 8 -8 18 Z" fill="#7a3624" />
+        <path d="M64 -36 q -8 -12 -2 -20 q 8 8 8 18 Z" fill="#7a3624" />
+        <circle cx="80" cy="-24" r="2.5" fill="#2e1a14" />
+        <path d="M-62 -6 q -14 4 -10 18 q 8 2 12 -6" fill="#8a3f2c" />
+      </g>
+    </svg>
+  ),
+
+  // בין שנה 2 לשנה 40 — a bridge over the silent gap of years.
+  "time-bridge": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tb-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#tb-bg)" />
+      {/* two cliffs with a canyon of silence between */}
+      <path d="M800 80 L560 84 Q 540 90 536 110 L530 210 L800 210 Z" fill="#caa27b" />
+      <path d="M0 84 L240 88 Q 262 94 266 114 L272 210 L0 210 Z" fill="#caa27b" />
+      {/* the year labels as abstract sun-counts */}
+      <circle cx="690" cy="56" r="10" fill={COPPER} />
+      <circle cx="666" cy="56" r="6" fill={COPPER} opacity="0.6" />
+      {[96, 118, 140, 162].map((x, i) => (
+        <circle key={i} cx={x} cy={58} r={4 + (i === 3 ? 4 : 0)} fill={GRAPE} opacity={0.4 + i * 0.15} />
+      ))}
+      {/* the rope bridge spanning the gap */}
+      <path d="M266 100 Q 400 150 536 98" fill="none" stroke="#8a6844" strokeWidth="5" strokeLinecap="round" />
+      <path d="M266 84 Q 400 128 536 82" fill="none" stroke="#8a6844" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+      {[310, 360, 400, 440, 490].map((x, i) => (
+        <line key={i} x1={x} y1={92 + Math.abs(400 - x) * -0.04 + 22} x2={x} y2={112 + Math.abs(400 - x) * -0.06 + 22} stroke="#8a6844" strokeWidth="2.5" opacity="0.7" />
+      ))}
+    </svg>
+  ),
+
+  // אפר ומים חיים — ash meeting spring water in one vessel.
+  "ashes-water": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="awt-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#awt-bg)" />
+      {/* the vessel */}
+      <path d="M330 96 L470 96 L455 178 Q 400 194 345 178 Z" fill={COPPER} />
+      <ellipse cx="400" cy="96" rx="70" ry="13" fill="#8a5228" />
+      <ellipse cx="400" cy="98" rx="58" ry="9" fill="#5d90b8" />
+      {/* ash falling from one side */}
+      {[
+        [352, 34], [364, 52], [346, 66], [370, 78],
+      ].map(([x, y], i) => (
+        <circle key={`a-${i}`} cx={x} cy={y} r={3.2 - i * 0.3} fill="#b9b2c4" opacity="0.85" />
+      ))}
+      <path d="M340 22 q 14 -8 30 -2" fill="none" stroke="#8d8499" strokeWidth="5" strokeLinecap="round" />
+      {/* living water flowing from the other */}
+      <path d="M470 26 Q 452 54 440 88" fill="none" stroke="#5d90b8" strokeWidth="7" strokeLinecap="round" opacity="0.85" />
+      <path d="M482 30 Q 464 58 452 90" fill="none" stroke="#8fb6d4" strokeWidth="3.5" strokeLinecap="round" opacity="0.7" />
+      {/* ripples of the mix */}
+      {[18, 32].map((r, i) => (
+        <ellipse key={`r-${i}`} cx="400" cy="98" rx={r} ry={r * 0.16} fill="none" stroke="#8fb6d4" strokeWidth="2" opacity={0.6 - i * 0.25} />
+      ))}
+    </svg>
+  ),
+
+  // אמרתי אחכמה והיא רחוקה ממני — a ladder toward a star it cannot reach.
+  "beyond-reach": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="br-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#181226" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+        <radialGradient id="br-star" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#fdf6e3" />
+          <stop offset="1" stopColor="#fdf6e3" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#br-sky)" />
+      {[
+        [120, 60, 1.2], [240, 90, 1], [560, 70, 1.3], [680, 40, 1], [720, 110, 1.1],
+      ].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fdf6e3" opacity="0.7" />
+      ))}
+      {/* the far star */}
+      <circle cx="400" cy="34" r="30" fill="url(#br-star)" />
+      <circle cx="400" cy="34" r="6" fill="#fdf6e3" />
+      <path d="M400 20 L403 30 L413 32 L403 36 L400 46 L397 36 L387 32 L397 30 Z" fill="#fdf6e3" opacity="0.9" />
+      {/* the ground and the ladder that ends mid-air */}
+      <rect x="0" y="204" width="800" height="26" fill={INK} />
+      <g stroke="#caa27b" strokeWidth="6" strokeLinecap="round">
+        <line x1="368" y1="204" x2="388" y2="112" />
+        <line x1="428" y1="204" x2="410" y2="112" />
+      </g>
+      {[192, 172, 152, 132].map((y, i) => (
+        <line key={i} x1={372 + i * 3} y1={y} x2={424 - i * 3} y2={y} stroke="#caa27b" strokeWidth="4" strokeLinecap="round" />
+      ))}
+      {/* the honest gap between ladder-top and star */}
+      <path d="M399 104 Q 400 84 400 62" fill="none" stroke="#8d7ba0" strokeWidth="2" strokeDasharray="2 8" strokeLinecap="round" opacity="0.7" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
