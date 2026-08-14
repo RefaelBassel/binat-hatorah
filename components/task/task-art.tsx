@@ -2689,6 +2689,159 @@ const SCENES: Record<string, React.ReactNode> = {
       </g>
     </svg>
   ),
+
+  // מצור שלוש שנים — Shomron on its hill, ringed by the watch-fires
+  // of a patient empire.
+  "siege-ring": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sr-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2c2340" />
+          <stop offset="1" stopColor="#544468" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#sr-sky)" />
+      {/* the hill and the walled city */}
+      <path d="M180 250 Q 400 96 620 250 Z" fill="#6e5a8a" />
+      <g>
+        <rect x="330" y="118" width="140" height="46" rx="4" fill={GRAPE} stroke="#2c2340" strokeWidth="2" />
+        {[338, 366, 394, 422, 450].map((x, i) => (
+          <rect key={i} x={x} y="106" width="16" height="16" fill={GRAPE} stroke="#2c2340" strokeWidth="2" />
+        ))}
+        <rect x="382" y="88" width="36" height="34" rx="3" fill={GRAPE} stroke="#2c2340" strokeWidth="2" />
+        {/* one dim window still lit inside */}
+        <rect x="394" y="132" width="14" height="20" rx="6" fill={GLOW} opacity="0.75" />
+      </g>
+      {/* the ring of siege fires, all the way around the slope */}
+      <g>
+        {[
+          [130, 226], [220, 200], [300, 214], [400, 228],
+          [500, 214], [580, 200], [670, 226],
+        ].map(([x, y], i) => (
+          <g key={i} transform={`translate(${x},${y})`}>
+            <path d="M0 0 Q -7 -12 0 -22 Q 7 -12 0 0" fill={COPPER} />
+            <circle cy="2" r="3.5" fill={GLOW} />
+          </g>
+        ))}
+      </g>
+      {/* three thin moons — three years of waiting */}
+      <g fill={CARD} opacity="0.85">
+        <path d="M96 44 A 14 14 0 1 0 110 66 A 11 11 0 0 1 96 44" />
+        <path d="M146 34 A 14 14 0 1 0 160 56 A 11 11 0 0 1 146 34" opacity="0.6" />
+        <path d="M196 44 A 14 14 0 1 0 210 66 A 11 11 0 0 1 196 44" opacity="0.35" />
+      </g>
+    </svg>
+  ),
+
+  // ולא שמעו ויקשו את ערפם — the callers call, and every back is turned.
+  "turned-backs": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="220" fill={SAND} />
+      {/* the lone caller on a rise, horn raised */}
+      <path d="M0 220 L0 168 Q 70 150 130 162 L 150 220 Z" fill="#cbb391" />
+      <g transform="translate(84,140)">
+        <circle cy="-30" r="10" fill={COPPER} />
+        <path d="M-11 -22 Q 0 -28 11 -22 L 9 34 L -9 34 Z" fill={COPPER} />
+        <path d="M8 -34 L34 -46 L34 -30 Z" fill={GLOW} stroke={COPPER} strokeWidth="2" />
+      </g>
+      {/* his call, rippling out and thinning */}
+      <g fill="none" stroke={COPPER} strokeLinecap="round">
+        <path d="M126 92 Q 150 78 174 92" strokeWidth="4" opacity="0.8" />
+        <path d="M142 74 Q 178 52 214 74" strokeWidth="3" opacity="0.55" />
+        <path d="M158 56 Q 216 26 274 56" strokeWidth="2.5" opacity="0.3" />
+      </g>
+      {/* the crowd, every single back turned, walking away */}
+      <g fill={GRAPE}>
+        {[300, 356, 412, 468, 524, 580, 636, 692].map((x, i) => (
+          <g key={i} transform={`translate(${x},${158 + (i % 3) * 10})`} opacity={0.9 - (i % 3) * 0.18}>
+            <circle cy="-32" r="9" />
+            <path d="M-10 -25 Q 0 -30 10 -25 L 8 28 L -8 28 Z" />
+            {/* stiff straight neck — no head turns back */}
+            <path d="M0 -23 L0 -40" stroke={GRAPE} strokeWidth="3" />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // שתי עדשות — the same broken city seen through the historian's
+  // glass and the prophet's glass; both are true.
+  "two-lenses": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="230" fill={CARD} />
+      {/* the fallen city in the middle, small and gray */}
+      <g transform="translate(400,150)" opacity="0.8">
+        <rect x="-38" y="-16" width="26" height="30" fill="#a39a8b" transform="rotate(-8)" />
+        <rect x="6" y="-22" width="24" height="36" fill="#8d8477" transform="rotate(6)" />
+        <path d="M-44 18 L44 18" stroke="#8d8477" strokeWidth="5" strokeLinecap="round" />
+        <path d="M-14 -30 L-2 -44 L10 -30" fill="none" stroke="#a39a8b" strokeWidth="4" strokeLinecap="round" />
+      </g>
+      {/* the historian's lens (left): inside it — banners and swords */}
+      <g transform="translate(190,110)">
+        <circle r="72" fill="#f2ece2" stroke={COPPER} strokeWidth="5" />
+        <path d="M52 52 L86 86" stroke={COPPER} strokeWidth="9" strokeLinecap="round" />
+        <g stroke={INK} strokeWidth="4" strokeLinecap="round" fill="none">
+          <path d="M-30 24 L-30 -26 M-30 -26 L-2 -18 L-30 -8" />
+          <path d="M16 26 L38 -20 M8 -6 L46 4" />
+        </g>
+      </g>
+      {/* the prophet's lens (right): inside it — a broken tablet-heart */}
+      <g transform="translate(610,110)">
+        <circle r="72" fill="#f2ece2" stroke={GRAPE} strokeWidth="5" />
+        <path d="M-52 52 L-86 86" stroke={GRAPE} strokeWidth="9" strokeLinecap="round" />
+        <path
+          d="M0 34 C -30 10 -44 -6 -44 -22 C -44 -36 -33 -44 -20 -44 C -10 -44 -3 -38 0 -30 C 3 -38 10 -44 20 -44 C 33 -44 44 -36 44 -22 C 44 -6 30 10 0 34 Z"
+          fill="none" stroke={GRAPE} strokeWidth="4.5"
+        />
+        <path d="M-4 -34 L6 -12 L-6 6 L4 26" fill="none" stroke={GRAPE} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      {/* both lenses point at the same city */}
+      <path d="M262 132 Q 320 142 352 146 M538 132 Q 480 142 448 146" fill="none" stroke={INK} strokeWidth="2.5" strokeDasharray="3 10" strokeLinecap="round" opacity="0.5" />
+    </svg>
+  ),
+
+  // הדרך הארוכה — a thin line of exiles walking toward far rivers,
+  // one looking back at the hill that was home.
+  "long-road-exile": (
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="le-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e6d9c8" />
+          <stop offset="1" stopColor="#cdbfa9" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="240" fill="url(#le-sky)" />
+      {/* home: the small hill with the empty city, left, fading */}
+      <path d="M0 240 Q 90 160 200 240 Z" fill="#a08b6e" opacity="0.7" />
+      <g transform="translate(96,182)" opacity="0.55">
+        <rect x="-22" y="-14" width="44" height="16" rx="2" fill={GRAPE} />
+        <rect x="-8" y="-28" width="16" height="14" rx="2" fill={GRAPE} />
+      </g>
+      {/* far rivers on the horizon, right */}
+      <path d="M640 176 Q 700 170 800 178 M660 194 Q 720 188 800 196" fill="none" stroke="#5d90b8" strokeWidth="5" strokeLinecap="round" opacity="0.7" />
+      {/* the long road */}
+      <path d="M60 236 Q 400 196 780 186" fill="none" stroke="#b7a68c" strokeWidth="14" strokeLinecap="round" />
+      {/* the line of walkers with bundles, thinning into the distance */}
+      <g fill={GRAPE}>
+        {[
+          [220, 214, 1], [280, 210, 0.95], [340, 206, 0.9], [400, 202, 0.8],
+          [460, 199, 0.7], [520, 196, 0.6], [580, 193, 0.5], [640, 190, 0.4],
+        ].map(([x, y, s], i) => (
+          <g key={i} transform={`translate(${x},${y}) scale(${s})`} opacity={0.95 - i * 0.08}>
+            <circle cy="-30" r="8" />
+            <path d="M-9 -23 Q 0 -28 9 -23 L 7 18 L -7 18 Z" />
+            <circle cx="10" cy="-16" r="7" fill={COPPER} />
+          </g>
+        ))}
+      </g>
+      {/* the one who looks back */}
+      <g transform="translate(160,220)">
+        <circle cy="-32" r="9" fill={GRAPE} />
+        <path d="M-10 -24 Q 0 -30 10 -24 L 8 20 L -8 20 Z" fill={GRAPE} />
+        <path d="M-2 -32 L-16 -36" stroke={GRAPE} strokeWidth="4" strokeLinecap="round" />
+      </g>
+    </svg>
+  ),
 };
 
 export default function TaskArt({
