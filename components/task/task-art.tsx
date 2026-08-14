@@ -1815,6 +1815,131 @@ const SCENES: Record<string, React.ReactNode> = {
       <circle cx="414" cy="96" r="5" fill={GLOW} />
     </svg>
   ),
+  // עולת התמיד — one altar, morning sun and evening sun (lesson 14 hero).
+  "tamid-dawn": (
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="td-sky" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#f2dcb4" />
+          <stop offset="0.5" stopColor="#e0c8a8" />
+          <stop offset="1" stopColor="#6b5480" />
+        </linearGradient>
+        <linearGradient id="td-alt" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#d08a52" />
+          <stop offset="1" stopColor="#9a5f30" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="240" fill="url(#td-sky)" />
+      {/* morning sun (right, east) and evening sun (left) */}
+      <circle cx="690" cy="60" r="26" fill={GLOW} />
+      <circle cx="110" cy="64" r="22" fill="#e8a56a" opacity="0.9" />
+      <path d="M0 196 Q 300 182 800 190 V240 H0 Z" fill="#a87e54" />
+      {/* the altar, center, constant */}
+      <rect x="330" y="120" width="140" height="76" rx="7" fill="url(#td-alt)" />
+      <rect x="318" y="110" width="164" height="16" rx="6" fill="#8a5228" />
+      <path d="M322 110 L312 90 L340 102 Z" fill="#8a5228" />
+      <path d="M478 110 L488 90 L460 102 Z" fill="#8a5228" />
+      {/* steady flame */}
+      <path d="M390 108 Q 400 76 408 96 Q 416 84 412 106 Q 402 116 392 112 Z" fill={GLOW} />
+      <path d="M395 107 Q 400 92 404 100 Q 406 96 404 108 Z" fill="#d97b3f" />
+      {/* the word-rhythm: two small lambs-marks, one toward each sun */}
+      <circle cx="520" cy="176" r="6" fill={CARD} stroke={COPPER} strokeWidth="2" />
+      <circle cx="280" cy="176" r="6" fill={CARD} stroke={COPPER} strokeWidth="2" />
+    </svg>
+  ),
+
+  // על סף הירדן — the river bend and the waiting land.
+  "jordan-threshold": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="jt-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e9d9c2" />
+          <stop offset="1" stopColor="#d3ba9a" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#jt-bg)" />
+      {/* the land beyond: green hills */}
+      <path d="M0 96 Q 120 44 260 84 Q 380 40 520 78 Q 650 44 800 80 L800 0 L0 0 Z" fill="none" />
+      <path d="M0 100 Q 140 52 300 90 Q 460 50 620 88 Q 720 62 800 84 V0 H0 Z" fill="#6f8560" opacity="0.7" />
+      {/* the river winding across */}
+      <path d="M0 128 Q 200 108 400 132 T 800 120 L800 152 Q 600 166 400 148 T 0 158 Z" fill="#5d90b8" opacity="0.85" />
+      <path d="M60 136 Q 240 120 420 140" fill="none" stroke="#8fb6d4" strokeWidth="3" opacity="0.7" />
+      {/* the camp on the near bank */}
+      <g fill={GRAPE} opacity="0.75">
+        <path d="M240 196 L262 168 L284 196 Z" />
+        <path d="M330 200 L348 176 L366 200 Z" />
+        <path d="M430 196 L452 168 L474 196 Z" />
+      </g>
+    </svg>
+  ),
+
+  // מהתדיר אל הנדיר — the ladder of frequencies.
+  "frequency-ladder": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="fl-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#fl-bg)" />
+      {/* four bars, right to left: daily (tallest, most repeats) to yearly */}
+      {[
+        [560, 60, 14, GRAPE], [400, 96, 7, COPPER], [250, 128, 4, "#3e6b4f"], [110, 156, 1, "#b3892b"],
+      ].map(([x, h, count, color], i) => (
+        <g key={i}>
+          <rect x={(x as number) - 44} y={190 - (h as number) * 2} width="88" height={(h as number) * 2} rx="8" fill={color as string} opacity="0.25" />
+          {Array.from({ length: count as number }, (_, j) => (
+            <circle
+              key={j}
+              cx={(x as number) - 33 + (j % 7) * 11}
+              cy={182 - Math.floor(j / 7) * 12 - (h as number) * 2 + 14}
+              r="4"
+              fill={color as string}
+            />
+          ))}
+        </g>
+      ))}
+      {/* arc arrow from frequent to rare */}
+      <path d="M600 44 Q 400 6 96 130" fill="none" stroke={GRAPE} strokeWidth="2.5" strokeDasharray="2 8" strokeLinecap="round" opacity="0.7" />
+    </svg>
+  ),
+
+  // מהמזבח אל הסידור — the scroll's line flowing into a prayerbook.
+  "scroll-to-siddur": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sts-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#sts-bg)" />
+      {/* the scroll (right) */}
+      <g transform="translate(560,58)">
+        <rect x="14" y="4" width="120" height="80" rx="8" fill={CARD} />
+        <rect x="0" y="-4" width="18" height="96" rx="9" fill={SAND} />
+        <rect x="130" y="-4" width="18" height="96" rx="9" fill={SAND} />
+        {[22, 38, 54, 70].map((y, i) => (
+          <line key={i} x1="28" y1={y} x2="120" y2={y} stroke={GRAPE} strokeWidth="4" strokeLinecap="round" opacity={0.4 - i * 0.05} />
+        ))}
+      </g>
+      {/* the siddur (left) */}
+      <g transform="translate(120,64)">
+        <path d="M0 6 Q 60 -8 120 6 L120 82 Q 60 68 0 82 Z" fill={CARD} />
+        <line x1="60" y1="0" x2="60" y2="74" stroke={SAND} strokeWidth="3" />
+        {[24, 38, 52].map((y, i) => (
+          <g key={i}>
+            <line x1="12" y1={y} x2="52" y2={y} stroke={GRAPE} strokeWidth="3.5" strokeLinecap="round" opacity="0.45" />
+            <line x1="68" y1={y} x2="108" y2={y} stroke={GRAPE} strokeWidth="3.5" strokeLinecap="round" opacity="0.45" />
+          </g>
+        ))}
+      </g>
+      {/* the same golden line flowing from scroll to siddur */}
+      <path d="M556 100 Q 400 150 246 106" fill="none" stroke={GLOW} strokeWidth="4" strokeLinecap="round" />
+      <path d="M258 116 L242 104 L260 96" fill="none" stroke={GLOW} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
