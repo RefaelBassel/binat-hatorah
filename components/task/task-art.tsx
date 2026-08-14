@@ -1574,6 +1574,126 @@ const SCENES: Record<string, React.ReactNode> = {
       </g>
     </svg>
   ),
+  // שיטים בין ערביים — the camp at dusk, foreign lights glittering beyond (lesson 12 hero).
+  "shittim-dusk": (
+    <svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sd-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="0.65" stopColor="#6b4a68" />
+          <stop offset="1" stopColor="#b3654a" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="260" fill="url(#sd-sky)" />
+      <path d="M0 206 Q 240 190 480 202 T 800 196 V260 H0 Z" fill="#3a2c40" />
+      <path d="M0 234 Q 300 220 800 230 V260 H0 Z" fill={INK} />
+      {/* acacia trees — flat-topped */}
+      {[150, 320, 520].map((x, i) => (
+        <g key={i} transform={`translate(${x},${196 - (i % 2) * 8})`}>
+          <path d="M0 0 L-4 -34 M0 -18 L-18 -34 M0 -22 L14 -36" stroke="#4a3620" strokeWidth="5" strokeLinecap="round" fill="none" />
+          <ellipse cx="-2" cy="-42" rx="34" ry="9" fill="#5a6b48" />
+        </g>
+      ))}
+      {/* the camp tents */}
+      <g fill="#241c30">
+        <path d="M600 226 L622 198 L644 226 Z" />
+        <path d="M660 230 L678 206 L696 230 Z" />
+      </g>
+      {/* glittering foreign lights across the plain */}
+      {[
+        [60, 176], [96, 182], [130, 172], [700, 170], [740, 178], [770, 168],
+      ].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="3" fill={GLOW} opacity="0.9" />
+      ))}
+      <circle cx="95" cy="177" r="16" fill={GLOW} opacity="0.12" />
+      <circle cx="735" cy="173" r="16" fill={GLOW} opacity="0.12" />
+    </svg>
+  ),
+
+  // מרעה אל רעה — the slope of small steps, each darker.
+  "slippery-slope": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="ssl-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#ssl-bg)" />
+      {/* descending steps, right to left (RTL direction of reading) */}
+      {[
+        [620, 40, 0.15], [500, 70, 0.32], [380, 100, 0.5], [260, 130, 0.68], [140, 160, 0.88],
+      ].map(([x, y, o], i) => (
+        <rect key={i} x={x} y={y} width="120" height="120" fill={GRAPE} opacity={o} />
+      ))}
+      {/* a small figure midway, one foot on the next step down */}
+      <g fill={CARD} transform="translate(430,86)">
+        <circle cy="-24" r="8" />
+        <path d="M-9 -17 Q 0 -22 9 -17 L 7 12 Q 0 15 -7 12 Z" />
+        <path d="M2 12 L14 26" stroke={CARD} strokeWidth="5" strokeLinecap="round" />
+      </g>
+      {/* the innocent-looking first step label spot */}
+      <circle cx="680" cy="30" r="5" fill={COPPER} />
+    </svg>
+  ),
+
+  // ברית שלום לקנאי — a dove alighting on a spear set in the ground.
+  "dove-spear": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="dsp-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#39527a" />
+          <stop offset="1" stopColor="#8fb6d4" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="220" fill="url(#dsp-bg)" />
+      <rect x="0" y="190" width="800" height="30" fill="#5a6b48" />
+      {/* the spear, planted, no longer in a hand */}
+      <line x1="400" y1="196" x2="400" y2="52" stroke="#5a3a1c" strokeWidth="8" strokeLinecap="round" />
+      <path d="M400 30 L390 58 L410 58 Z" fill="#8d8499" />
+      {/* the dove perched on it */}
+      <g transform="translate(400,72)">
+        <ellipse cx="10" cy="0" rx="16" ry="10" fill="#f6f2e8" />
+        <circle cx="-6" cy="-6" r="6" fill="#f6f2e8" />
+        <path d="M-11 -6 L-17 -4 L-11 -2 Z" fill={COPPER} />
+        <path d="M12 -4 Q 26 -14 34 -6 Q 24 2 12 0 Z" fill="#e3dccb" />
+        <circle cx="-7" cy="-7" r="1.4" fill={INK} />
+      </g>
+      {/* olive sprig floating down */}
+      <path d="M470 110 q 10 8 4 20" fill="none" stroke="#5a6b48" strokeWidth="3" strokeLinecap="round" />
+      <ellipse cx="478" cy="118" rx="7" ry="3.5" fill="#5a6b48" transform="rotate(30 478 118)" />
+    </svg>
+  ),
+
+  // אש בתוך עששית — zeal held inside strict limits.
+  "lantern-flame": (
+    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="lf-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#241c30" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+        <radialGradient id="lf-glow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor={GLOW} stopOpacity="0.5" />
+          <stop offset="1" stopColor={GLOW} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="800" height="200" fill="url(#lf-bg)" />
+      <circle cx="400" cy="104" r="86" fill="url(#lf-glow)" />
+      {/* the lantern cage */}
+      <g stroke={COPPER} strokeWidth="5" fill="none" strokeLinecap="round">
+        <path d="M352 150 L352 74 Q 400 44 448 74 L448 150 Z" />
+        <line x1="376" y1="58" x2="376" y2="150" />
+        <line x1="424" y1="58" x2="424" y2="150" />
+        <line x1="352" y1="112" x2="448" y2="112" />
+      </g>
+      <rect x="344" y="148" width="112" height="12" rx="6" fill={COPPER} />
+      <path d="M392 34 Q 400 22 408 34" fill="none" stroke={COPPER} strokeWidth="5" strokeLinecap="round" />
+      {/* the flame inside — alive but contained */}
+      <path d="M392 138 Q 400 104 406 122 Q 414 108 410 132 Q 402 144 394 140 Z" fill={GLOW} />
+      <path d="M396 136 Q 401 120 404 128 Q 406 124 404 136 Z" fill="#d97b3f" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
