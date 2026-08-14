@@ -818,6 +818,97 @@ const SCENES: Record<string, React.ReactNode> = {
       <path d="M360 206 L378 182 L396 206 Z" fill={GRAPE} opacity="0.6" />
     </svg>
   ),
+  // פתיל תכלת — fringes with one sky-colored thread (lesson 6 hero).
+  "tekhelet-thread": (
+    <svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tt-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#39527a" />
+          <stop offset="0.6" stopColor="#5d739c" />
+          <stop offset="1" stopColor="#efe0cb" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="260" fill="url(#tt-sky)" />
+      {[
+        [110, 40, 1.3], [250, 66, 1], [420, 34, 1.4], [600, 58, 1], [710, 84, 1.2],
+      ].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fdf6e3" opacity="0.7" />
+      ))}
+      {/* the garment corner */}
+      <path d="M270 96 L530 96 L560 170 L240 170 Z" fill={CARD} stroke={SAND} strokeWidth="3" />
+      <path d="M270 96 L530 96 L522 118 L278 118 Z" fill={SAND} opacity="0.5" />
+      {/* fringes: white threads + one tekhelet */}
+      {[300, 340, 380, 460, 500].map((x, i) => (
+        <path key={i} d={`M${x} 170 q -4 26 2 52 q 3 12 -2 22`} fill="none" stroke="#e8e0d4" strokeWidth="5" strokeLinecap="round" />
+      ))}
+      <path d="M420 170 q -5 30 3 60 q 4 14 -3 26" fill="none" stroke="#3f68b0" strokeWidth="6" strokeLinecap="round" />
+      {/* the blue thread points up toward the sky */}
+      <path d="M424 92 Q 430 40 480 22" fill="none" stroke="#3f68b0" strokeWidth="2.5" strokeDasharray="2 8" strokeLinecap="round" opacity="0.8" />
+    </svg>
+  ),
+
+  // ראשית עריסותיכם — dough, and the small first portion lifted from it.
+  "bread-first": (
+    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="bf-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+        <radialGradient id="bf-dough" cx="0.4" cy="0.35" r="0.8">
+          <stop offset="0" stopColor="#f6e8cf" />
+          <stop offset="1" stopColor="#e2c9a0" />
+        </radialGradient>
+      </defs>
+      <rect width="800" height="200" fill="url(#bf-bg)" />
+      {/* wooden table */}
+      <rect x="60" y="150" width="680" height="16" rx="6" fill="#a87e54" />
+      {/* the big dough */}
+      <ellipse cx="430" cy="132" rx="150" ry="44" fill="url(#bf-dough)" />
+      <ellipse cx="380" cy="116" rx="34" ry="16" fill="#fbf2df" opacity="0.7" />
+      {/* the small lifted piece, glowing */}
+      <circle cx="240" cy="66" r="26" fill="url(#bf-dough)" stroke={COPPER} strokeWidth="2.5" />
+      <circle cx="240" cy="66" r="40" fill="none" stroke={GLOW} strokeWidth="2" strokeDasharray="1 7" strokeLinecap="round" opacity="0.8" />
+      {/* rising motion marks */}
+      <path d="M300 120 Q 268 96 258 84" fill="none" stroke={COPPER} strokeWidth="2.5" strokeDasharray="2 8" strokeLinecap="round" opacity="0.7" />
+      {/* scattered wheat */}
+      {[600, 640, 680].map((x, i) => (
+        <g key={i} transform={`translate(${x},108) rotate(${-16 + i * 12})`}>
+          <line x1="0" y1="0" x2="0" y2="34" stroke="#b3892b" strokeWidth="2.5" strokeLinecap="round" />
+          {[4, 10, 16].map((y) => (
+            <g key={y}>
+              <path d={`M0 ${y} q -7 -4 -9 -12`} fill="none" stroke="#b3892b" strokeWidth="2" strokeLinecap="round" />
+              <path d={`M0 ${y} q 7 -4 9 -12`} fill="none" stroke="#b3892b" strokeWidth="2" strokeLinecap="round" />
+            </g>
+          ))}
+        </g>
+      ))}
+    </svg>
+  ),
+
+  // תכלת → ים → רקיע → כסא הכבוד — the ladder of gazes (R' Meir).
+  "sea-to-sky": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="ss-all" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#2e5f8a" />
+          <stop offset="0.4" stopColor="#5d90b8" />
+          <stop offset="0.75" stopColor="#8fb6d4" />
+          <stop offset="1" stopColor="#dfeaf2" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#ss-all)" />
+      {/* sea waves at the bottom */}
+      {[196, 208].map((y, i) => (
+        <path key={i} d={`M0 ${y} Q 50 ${y - 8} 100 ${y} T 200 ${y} T 300 ${y} T 400 ${y} T 500 ${y} T 600 ${y} T 700 ${y} T 800 ${y}`} fill="none" stroke="#bcd6e8" strokeWidth="3" opacity={0.8 - i * 0.3} />
+      ))}
+      {/* the single tekhelet thread rising through all layers */}
+      <path d="M400 224 Q 380 170 404 120 Q 424 78 396 34" fill="none" stroke="#2b4f9e" strokeWidth="5" strokeLinecap="round" />
+      {/* the highest point — a radiant seat-of-glory glow, abstract */}
+      <circle cx="396" cy="26" r="16" fill="#ffffff" opacity="0.95" />
+      <circle cx="396" cy="26" r="28" fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="1 6" strokeLinecap="round" opacity="0.8" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
