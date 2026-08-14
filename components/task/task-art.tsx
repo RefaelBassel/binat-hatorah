@@ -231,6 +231,192 @@ const SCENES: Record<string, React.ReactNode> = {
       ))}
     </svg>
   ),
+  // ענן ביום, אש בלילה — the Mishkan under the double sign (lesson 2 hero).
+  "cloud-fire": (
+    <svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="cf-day" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#f2e2c8" />
+          <stop offset="0.45" stopColor="#e7cfae" />
+          <stop offset="0.55" stopColor="#6b5480" />
+          <stop offset="1" stopColor="#241c30" />
+        </linearGradient>
+        <radialGradient id="cf-cloud" cx="0.5" cy="0.6" r="0.6">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="cf-fire" cx="0.5" cy="0.7" r="0.6">
+          <stop offset="0" stopColor={GLOW} stopOpacity="0.9" />
+          <stop offset="1" stopColor={GLOW} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="800" height="280" fill="url(#cf-day)" />
+      {/* night stars on the dark half */}
+      {[
+        [520, 40, 1.2], [580, 84, 1], [640, 30, 1.5], [700, 66, 1], [750, 110, 1.3], [610, 130, 1],
+      ].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fdf6e3" opacity="0.85" />
+      ))}
+      <path d="M0 226 Q 220 200 440 224 T 800 214 V280 H0 Z" fill="#3a2c40" />
+      <path d="M0 254 Q 300 234 800 250 V280 H0 Z" fill={INK} />
+      {/* the Mishkan at center */}
+      <g>
+        <rect x="330" y="164" width="150" height="60" rx="6" fill="#54406b" />
+        <rect x="330" y="164" width="150" height="12" rx="6" fill={GLOW} opacity="0.85" />
+        {[348, 374, 400, 426, 452].map((x, i) => (
+          <rect key={i} x={x} y="184" width="7" height="32" rx="3" fill={COPPER} opacity="0.75" />
+        ))}
+      </g>
+      {/* cloud (day side) */}
+      <ellipse cx="368" cy="112" rx="86" ry="42" fill="url(#cf-cloud)" />
+      <ellipse cx="352" cy="88" rx="52" ry="26" fill="url(#cf-cloud)" />
+      {/* fire (night side) */}
+      <circle cx="452" cy="106" r="52" fill="url(#cf-fire)" />
+      <path d="M444 122 Q 452 84 458 104 Q 468 88 464 116 Q 474 108 466 126 Q 454 136 444 128 Z" fill={GLOW} />
+      <path d="M449 122 Q 453 102 457 112 Q 461 106 458 122 Z" fill="#d97b3f" />
+    </svg>
+  ),
+
+  // שתי חצוצרות כסף — sound rings going out over the camp.
+  "trumpets": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tr-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f1e6da" />
+        </linearGradient>
+        <linearGradient id="tr-metal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e8e4ea" />
+          <stop offset="0.5" stopColor="#b9b2c4" />
+          <stop offset="1" stopColor="#8d8499" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#tr-bg)" />
+      {/* two crossed silver trumpets */}
+      <g transform="translate(400,105)">
+        <g transform="rotate(-14)">
+          <rect x="-150" y="-7" width="200" height="14" rx="7" fill="url(#tr-metal)" />
+          <path d="M50 -16 L104 -30 L104 30 L50 16 Z" fill="url(#tr-metal)" />
+          <rect x="-96" y="-10" width="8" height="20" rx="4" fill={COPPER} opacity="0.8" />
+          <rect x="-40" y="-10" width="8" height="20" rx="4" fill={COPPER} opacity="0.8" />
+        </g>
+        <g transform="rotate(14) scale(-1,1)">
+          <rect x="-150" y="-7" width="200" height="14" rx="7" fill="url(#tr-metal)" />
+          <path d="M50 -16 L104 -30 L104 30 L50 16 Z" fill="url(#tr-metal)" />
+          <rect x="-96" y="-10" width="8" height="20" rx="4" fill={COPPER} opacity="0.8" />
+          <rect x="-40" y="-10" width="8" height="20" rx="4" fill={COPPER} opacity="0.8" />
+        </g>
+      </g>
+      {/* sound rings */}
+      {[26, 44, 62].map((r, i) => (
+        <path
+          key={`r-${i}`}
+          d={`M ${518 + r} 74 a ${r} ${r} 0 0 1 0 ${r * 0.9}`}
+          fill="none"
+          stroke={COPPER}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          opacity={0.7 - i * 0.18}
+        />
+      ))}
+      {[26, 44, 62].map((r, i) => (
+        <path
+          key={`l-${i}`}
+          d={`M ${282 - r} 74 a ${r} ${r} 0 0 0 0 ${r * 0.9}`}
+          fill="none"
+          stroke={COPPER}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          opacity={0.7 - i * 0.18}
+        />
+      ))}
+      {/* tents hearing the call */}
+      <g fill={GRAPE} opacity="0.5">
+        <path d="M96 176 L118 146 L140 176 Z" />
+        <path d="M156 182 L174 156 L192 182 Z" />
+        <path d="M660 176 L682 146 L704 176 Z" />
+        <path d="M610 182 L628 156 L646 182 Z" />
+      </g>
+    </svg>
+  ),
+
+  // הפניה לחובב — a fork in the desert road: homeward, or with the camp.
+  "crossroads": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="cr-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efe0cb" />
+          <stop offset="1" stopColor="#e0c8a8" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#cr-sky)" />
+      <path d="M0 170 Q 200 146 430 168 T 800 158 V230 H0 Z" fill="#caa27b" />
+      <path d="M0 196 Q 300 178 800 192 V230 H0 Z" fill="#b3885e" />
+      {/* the fork: one path toward the tents (camp), one away to the hills */}
+      <path d="M400 230 Q 396 200 380 182 Q 330 150 240 142" fill="none" stroke="#8a6844" strokeWidth="10" strokeLinecap="round" opacity="0.55" />
+      <path d="M400 230 Q 408 198 428 182 Q 490 148 590 148" fill="none" stroke="#8a6844" strokeWidth="10" strokeLinecap="round" opacity="0.55" />
+      {/* camp side (left target): tents + tiny cloud */}
+      <g fill={GRAPE}>
+        <path d="M176 148 L198 118 L220 148 Z" />
+        <path d="M136 152 L152 130 L168 152 Z" />
+      </g>
+      <ellipse cx="196" cy="92" rx="34" ry="14" fill="#ffffff" opacity="0.85" />
+      {/* homeland side (right target): distant hills */}
+      <path d="M560 150 Q 600 116 648 150 Z" fill="#9d7c56" />
+      <path d="M620 150 Q 664 108 716 150 Z" fill="#8a6844" />
+      {/* the deliberating figure at the fork */}
+      <g fill={INK} transform="translate(400,196)">
+        <circle cx="0" cy="-34" r="9" />
+        <path d="M-10 -26 Q 0 -32 10 -26 L 8 8 Q 0 12 -8 8 Z" />
+      </g>
+      {/* question mark hovering */}
+      <text x="425" y="150" fontSize="34" fontWeight="bold" fill={COPPER} opacity="0.85">?</text>
+    </svg>
+  ),
+
+  // וַיְהִי בִּנְסֹעַ הָאָרֹן — the ark going three days ahead of the camp.
+  "ark-way": (
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="aw-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={GRAPE} />
+          <stop offset="0.8" stopColor="#9d6a58" />
+          <stop offset="1" stopColor={COPPER} />
+        </linearGradient>
+        <radialGradient id="aw-glow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor={GLOW} stopOpacity="0.55" />
+          <stop offset="1" stopColor={GLOW} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="800" height="240" fill="url(#aw-sky)" />
+      <path d="M0 196 Q 240 172 480 194 T 800 186 V240 H0 Z" fill="#3a2c40" />
+      <path d="M0 220 Q 300 204 800 216 V240 H0 Z" fill={INK} />
+      {/* the way, stretching far ahead (left = forward in RTL) */}
+      <path d="M720 240 Q 520 208 300 196 Q 220 192 150 186" fill="none" stroke="#caa27b" strokeWidth="9" strokeLinecap="round" opacity="0.35" strokeDasharray="1 16" />
+      {/* the ark, glowing, ahead of everyone */}
+      <circle cx="170" cy="160" r="64" fill="url(#aw-glow)" />
+      <g transform="translate(140,142)">
+        <rect x="0" y="10" width="60" height="34" rx="5" fill={GLOW} />
+        <rect x="0" y="10" width="60" height="8" rx="4" fill="#d9a44c" />
+        {/* poles */}
+        <rect x="-16" y="38" width="92" height="5" rx="2.5" fill="#8a5a2c" />
+        {/* two keruvim wings */}
+        <path d="M14 10 Q 20 -6 30 8 Z" fill="#d9a44c" />
+        <path d="M46 10 Q 40 -6 30 8 Z" fill="#d9a44c" />
+      </g>
+      {/* the camp far behind (right) */}
+      <g fill="#241c30">
+        <path d="M600 206 L622 176 L644 206 Z" />
+        <path d="M654 210 L672 184 L690 210 Z" />
+        <path d="M704 206 L724 178 L744 206 Z" />
+      </g>
+      {[
+        [90, 44, 1.4], [200, 30, 1], [320, 56, 1.2], [470, 36, 1.4], [600, 60, 1], [710, 40, 1.3],
+      ].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fdf6e3" opacity="0.75" />
+      ))}
+    </svg>
+  ),
 };
 
 export default function TaskArt({

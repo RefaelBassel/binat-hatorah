@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type {
   PassageBlock,
+  PassageVerse,
   TaskBlock,
   TaskContent,
   QuestionBlock,
@@ -1773,6 +1774,9 @@ function BlockView({
       {q.helper && (
         <p className="mb-2 -mt-1 text-xs text-[color:var(--primary)]/55">💡 {q.helper}</p>
       )}
+      {q.helpVerses && (
+        <HelpVerses refText={q.helpVerses.ref} verses={q.helpVerses.verses} />
+      )}
       {q.fields ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {q.fields.map((f) => (
@@ -1806,6 +1810,49 @@ function BlockView({
         >
           ✨ נתקעתם? עזרה קטנה מקלוד
         </button>
+      )}
+    </div>
+  );
+}
+
+// "📖 הפסוקים" toggle next to an analysis question — the verses are always a
+// click away, so no question is ever answered from memory (rule 10).
+function HelpVerses({
+  refText,
+  verses,
+}: {
+  refText: string;
+  verses: PassageVerse[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-full border border-[color:var(--accent)]/40 px-3 py-1 text-[11px] font-semibold text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/10"
+      >
+        📖 {open ? "הסתרת הפסוקים" : `לקריאת הפסוקים — ${refText}`}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-xl border border-[color:var(--accent)]/25 bg-[color:var(--background)] p-4">
+          <p className="mb-1.5 text-[11px] font-bold text-[color:var(--accent)]">
+            📖 {refText}
+          </p>
+          <p
+            className="text-[16px] leading-[2.1] text-[color:var(--foreground)]"
+            style={{ textAlign: "justify", textAlignLast: "right" }}
+          >
+            {verses.map((v) => (
+              <span key={v.num}>
+                <span className="me-1 select-none text-[11px] font-bold text-[color:var(--accent)]/70">
+                  ({v.num})
+                </span>
+                {v.text}{" "}
+              </span>
+            ))}
+          </p>
+        </div>
       )}
     </div>
   );

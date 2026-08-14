@@ -58,6 +58,10 @@ export interface QuestionBlock {
   helper?: string; // small helper line (e.g. עזר: השתמשו במילת שאלה...)
   fields?: { key: string; label: string }[]; // multi-field questions (מתי/היכן)
   minWords?: number; // soft minimum for progress counting
+  // Verses behind a "📖 הפסוקים" toggle right next to the question, so
+  // analysis questions are answered from the text — never from memory
+  // (Rafael/Reut rule: every Part B analysis question carries its verses).
+  helpVerses?: { ref: string; verses: PassageVerse[] };
 }
 
 export interface CaseBlock {

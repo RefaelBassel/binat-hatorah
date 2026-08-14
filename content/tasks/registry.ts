@@ -1,5 +1,6 @@
 import type { TaskContent, PassageBlock } from "./types";
 import { lesson01, lesson01MainPassage } from "./lesson-01";
+import { lesson02, lesson02MainPassage } from "./lesson-02";
 
 // Registry of task content, keyed by content_ref stored on the tasks table.
 // The teacher publishes a task by picking a ref from here.
@@ -10,6 +11,7 @@ export interface RegisteredTask {
 
 export const TASK_REGISTRY: Record<string, RegisteredTask> = {
   "lesson-01": { content: lesson01, mainPassage: lesson01MainPassage },
+  "lesson-02": { content: lesson02, mainPassage: lesson02MainPassage },
 };
 
 export function getTaskContent(ref: string): RegisteredTask | null {
