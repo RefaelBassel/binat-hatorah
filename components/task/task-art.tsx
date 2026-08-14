@@ -2529,6 +2529,166 @@ const SCENES: Record<string, React.ReactNode> = {
       <path d="M112 122 Q 340 92 534 116" fill="none" stroke={COPPER} strokeWidth="3" strokeLinecap="round" strokeDasharray="8 8" />
     </svg>
   ),
+
+  // כרם קטן מול היכל — a modest family vineyard in the long shadow
+  // of the king's winter palace.
+  "vineyard-palace": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="vp-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f2e7d8" />
+          <stop offset="1" stopColor={SAND} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#vp-sky)" />
+      {/* the palace, tall and heavy on the right */}
+      <g>
+        <rect x="520" y="60" width="220" height="160" rx="6" fill={GRAPE} />
+        <rect x="556" y="26" width="60" height="44" rx="4" fill={GRAPE} />
+        <rect x="648" y="26" width="60" height="44" rx="4" fill={GRAPE} />
+        {[556, 604, 652, 700].map((x, i) => (
+          <rect key={i} x={x} y="96" width="22" height="34" rx="10" fill={GLOW} opacity="0.8" />
+        ))}
+        <rect x="612" y="160" width="40" height="60" rx="16" fill={COPPER} />
+      </g>
+      {/* the palace shadow reaching across the ground toward the vineyard */}
+      <path d="M520 220 L180 236 L520 236 Z" fill={INK} opacity="0.12" />
+      {/* the vineyard: neat little vines on trellises */}
+      <g>
+        {[90, 170, 250, 330].map((x, i) => (
+          <g key={i} transform={`translate(${x},196)`}>
+            <path d="M0 24 L0 -18" stroke="#7a5a3a" strokeWidth="5" strokeLinecap="round" />
+            <path d="M-24 -8 L24 -8" stroke="#7a5a3a" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="-16" cy="-16" r="10" fill="#5a7a4a" />
+            <circle cx="14" cy="-20" r="11" fill="#5a7a4a" />
+            <circle cx="0" cy="-26" r="9" fill="#5a7a4a" />
+            <circle cx="-6" cy="-4" r="4" fill={GRAPE} />
+            <circle cx="2" cy="-1" r="4" fill={GRAPE} />
+            <circle cx="-2" cy="5" r="4" fill={GRAPE} />
+          </g>
+        ))}
+      </g>
+      {/* a low stone fence marking the inherited plot */}
+      <g fill="#b7a68c">
+        {[60, 100, 140, 180, 220, 260, 300, 340, 380].map((x, i) => (
+          <rect key={i} x={x} y="226" width="34" height="12" rx="4" />
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // ספרים בשם המלך — sealed letters going out, stamped with a seal
+  // the king never pressed.
+  "sealed-letters": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="220" fill={SAND} />
+      {/* three scrolls fanning out toward the city */}
+      {[
+        [250, 120, -14],
+        [400, 100, 0],
+        [550, 120, 14],
+      ].map(([x, y, r], i) => (
+        <g key={i} transform={`translate(${x},${y}) rotate(${r})`}>
+          <rect x="-52" y="-34" width="104" height="68" rx="8" fill={CARD} stroke={COPPER} strokeWidth="2.5" />
+          <g stroke="#c9b8a6" strokeWidth="3" strokeLinecap="round">
+            <path d="M-36 -16 L36 -16 M-36 -2 L36 -2 M-36 12 L10 12" />
+          </g>
+          {/* the royal seal pressed in wax */}
+          <circle cx="30" cy="18" r="12" fill={COPPER} />
+          <path d="M24 18 L30 10 L36 18 L30 24 Z" fill={GLOW} />
+        </g>
+      ))}
+      {/* the hand that wrote them — not the king's */}
+      <g transform="translate(400,206)" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" fill="none">
+        <path d="M-18 12 Q 0 -2 18 12" />
+        <path d="M-11 6 L-13 -6 M0 4 L0 -10 M11 6 L13 -6" />
+      </g>
+      {/* the shadow of a crown that isn't there */}
+      <path d="M366 44 L376 24 L390 40 L400 18 L410 40 L424 24 L434 44 Z" fill="none" stroke={INK} strokeWidth="3" strokeDasharray="4 8" opacity="0.4" />
+    </svg>
+  ),
+
+  // עדי שקר — two pointing accusers, one seated innocent, and the
+  // crowd that goes along with what was written.
+  "false-witnesses": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="230" fill={CARD} />
+      <rect x="0" y="196" width="800" height="34" fill={SAND} />
+      {/* the seated man at the head of the fast — set up to fall */}
+      <g transform="translate(400,140)">
+        <rect x="-30" y="20" width="60" height="12" rx="4" fill="#cbb391" />
+        <circle cy="-24" r="12" fill={GRAPE} />
+        <path d="M-13 -15 Q 0 -22 13 -15 L 10 22 L -10 22 Z" fill={GRAPE} />
+      </g>
+      {/* two accusers, arms flung toward him */}
+      <g fill={INK}>
+        <g transform="translate(240,150)">
+          <circle cy="-30" r="10" />
+          <path d="M-11 -22 Q 0 -28 11 -22 L 9 34 L -9 34 Z" />
+        </g>
+        <g transform="translate(560,150)">
+          <circle cy="-30" r="10" />
+          <path d="M-11 -22 Q 0 -28 11 -22 L 9 34 L -9 34 Z" />
+        </g>
+      </g>
+      <path d="M254 136 L368 126" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+      <path d="M546 136 L432 126" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+      {/* crooked speech marks over both accusers — the same false line */}
+      <g fill="none" stroke={COPPER} strokeWidth="3.5" strokeLinecap="round">
+        <path d="M222 96 Q 240 84 258 96" />
+        <path d="M228 84 Q 240 76 252 84" />
+        <path d="M542 96 Q 560 84 578 96" />
+        <path d="M548 84 Q 560 76 572 84" />
+      </g>
+      {/* the crowd behind, gray and silent */}
+      <g fill={GRAPE} opacity="0.35">
+        {[80, 120, 160, 640, 680, 720].map((x, i) => (
+          <g key={i} transform={`translate(${x},${172 + (i % 2) * 8})`}>
+            <circle cy="-16" r="7" />
+            <path d="M-8 -10 Q 0 -14 8 -10 L 6 18 L -6 18 Z" />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // המלך נכנע — torn royal robes, sackcloth, and a crown set down
+  // on the floor beside a slow walker.
+  "torn-robes": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tr-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e6ddd0" />
+          <stop offset="1" stopColor={SAND} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#tr-bg)" />
+      {/* the royal robe, cast off and torn */}
+      <g transform="translate(230,150)">
+        <path d="M-70 30 Q -60 -30 -10 -34 L -4 -12 L -22 30 Z" fill={GRAPE} />
+        <path d="M6 -34 Q 60 -28 70 30 L 22 30 L 4 -12 Z" fill={GRAPE} />
+        <path d="M-10 -34 L-4 -12 L4 -12 L6 -34 Z" fill="none" stroke={INK} strokeWidth="2.5" strokeDasharray="3 6" opacity="0.6" />
+      </g>
+      {/* the crown, set on the ground */}
+      <g transform="translate(330,192)">
+        <path d="M-24 10 L-24 -8 L-12 2 L0 -12 L12 2 L24 -8 L24 10 Z" fill={GLOW} stroke={COPPER} strokeWidth="2.5" strokeLinejoin="round" />
+      </g>
+      {/* the man in sackcloth, walking slowly, head bowed */}
+      <g transform="translate(540,140)">
+        <circle cx="-6" cy="-38" r="11" fill={GRAPE} />
+        <path d="M-18 -30 Q -6 -38 8 -28 L 14 44 L -16 44 Z" fill="#8a7a5f" />
+        <g stroke="#6e6049" strokeWidth="2" opacity="0.8">
+          <path d="M-10 -16 L8 -16 M-12 0 L10 0 M-13 16 L12 16 M-14 32 L13 32" />
+        </g>
+      </g>
+      {/* slow small steps trailing behind */}
+      <g fill={INK} opacity="0.35">
+        <ellipse cx="470" cy="196" rx="9" ry="4" />
+        <ellipse cx="440" cy="200" rx="9" ry="4" />
+        <ellipse cx="412" cy="196" rx="9" ry="4" />
+      </g>
+    </svg>
+  ),
 };
 
 export default function TaskArt({
