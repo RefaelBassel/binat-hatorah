@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import type {
   PassageBlock,
   TaskBlock,
@@ -116,6 +117,7 @@ export default function TaskRunner({
   const [assistDraft, setAssistDraft] = useState("");
   const [assistPos, setAssistPos] = useState<{ x: number; y: number } | null>(null);
   const assistDrag = useRef<{ dx: number; dy: number } | null>(null);
+  const assistPanelRef = useRef<HTMLDivElement | null>(null);
 
   const clampAssistPos = (x: number, y: number) => {
     const w = typeof window !== "undefined" ? window.innerWidth : 1000;
@@ -128,13 +130,22 @@ export default function TaskRunner({
   };
 
   const onAssistDragStart = (e: React.PointerEvent) => {
-    if (!assistPos) return;
+    // Draggable from ANY starting position: when the panel sits in its
+    // default bottom-sheet spot (assistPos null), adopt its current rect as
+    // the starting position and drag from there.
+    let pos = assistPos;
+    if (!pos) {
+      const rect = assistPanelRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      pos = { x: rect.left, y: rect.top };
+      setAssistPos(pos);
+    }
     try {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
       // fine without capture
     }
-    assistDrag.current = { dx: e.clientX - assistPos.x, dy: e.clientY - assistPos.y };
+    assistDrag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
   };
   const onAssistDragMove = (e: React.PointerEvent) => {
     if (!assistDrag.current) return;
@@ -463,6 +474,9 @@ export default function TaskRunner({
 
   // ---------- submit ----------
   const [submitBusy, setSubmitBusy] = useState(false);
+  // Celebration modal after a successful submission (Reut): כל הכבוד + a way
+  // back to the home page.
+  const [celebrate, setCelebrate] = useState(false);
   const doSubmit = async (action: "submit" | "unsubmit") => {
     setSubmitBusy(true);
     try {
@@ -472,8 +486,10 @@ export default function TaskRunner({
         body: JSON.stringify({ action }),
       });
       const data = await res.json();
-      if (data.ok) setSubmitted(data.submitted);
-      else if (data.error) alert(data.error);
+      if (data.ok) {
+        setSubmitted(data.submitted);
+        if (action === "submit" && data.submitted) setCelebrate(true);
+      } else if (data.error) alert(data.error);
     } finally {
       setSubmitBusy(false);
     }
@@ -938,9 +954,49 @@ export default function TaskRunner({
         </div>
       )}
 
+      {/* ===== celebration after submitting ===== */}
+      {celebrate && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setCelebrate(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border-2 border-[color:var(--accent)]/40 p-8 text-center shadow-2xl"
+            style={{ backgroundColor: "var(--card)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div aria-hidden className="mb-3 text-5xl">
+              🎉
+            </div>
+            <h2 className="font-display text-2xl font-extrabold text-[color:var(--primary)]">
+              כל הכבוד!
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--foreground)]/75">
+              המשימה הוגשה למורה 👏 המשוב יחכה לכם בעמוד האישי, ועד מועד ההגשה
+              האחרון תמיד אפשר לבטל את ההגשה ולתקן.
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <Link
+                href="/"
+                className="rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+              >
+                לעמוד הבית ←
+              </Link>
+              <button
+                onClick={() => setCelebrate(false)}
+                className="rounded-full px-6 py-2 text-xs font-semibold text-[color:var(--primary)]/60 transition hover:text-[color:var(--primary)]"
+              >
+                להישאר כאן
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===== Claude assist panel — opens NEXT TO the word, draggable ===== */}
       {assist && (
         <div
+          ref={assistPanelRef}
           className="fixed z-40 rounded-2xl border border-[color:var(--primary)]/20 p-4 shadow-2xl"
           style={
             assistPos
@@ -965,16 +1021,17 @@ export default function TaskRunner({
             onPointerDown={onAssistDragStart}
             onPointerMove={onAssistDragMove}
             onPointerUp={onAssistDragEnd}
-            style={{ cursor: assistPos ? "grab" : "default", touchAction: "none" }}
-            title={assistPos ? "אפשר לגרור אותי לכל מקום" : undefined}
+            onPointerCancel={onAssistDragEnd}
+            style={{ cursor: "grab", touchAction: "none" }}
+            title="אפשר לגרור אותי לכל מקום"
           >
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary)]">
                 <span className="text-sm">✨</span>
               </div>
               <p className="text-[10px] text-[color:var(--primary)]/45">
-                קלוד רומז ומכוון — לא פותר במקומך 💪 אפשר לענות לו
-                {assistPos ? " ולגרור אותי" : ""}!
+                קלוד רומז ומכוון — לא פותר במקומך 💪 אפשר לענות לו ולגרור אותי
+                לכל מקום!
               </p>
             </div>
             <button
@@ -1502,8 +1559,8 @@ function InteractivePassage({
   let wordIndex = -1;
   return (
     <div className="relative mb-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] p-5 sm:p-7">
-      <p className="mb-3 flex items-center justify-between gap-2 text-xs font-bold tracking-wide text-[color:var(--accent)]">
-        <span>📖 {passage.ref}</span>
+      <p className="mb-3 flex items-center justify-between gap-2 font-bold tracking-wide text-[color:var(--accent)]">
+        <span className="font-display text-sm sm:text-base">📖 {passage.ref}</span>
         {passage.sefariaRef && (
           <a
             href={`https://www.sefaria.org.il/${passage.sefariaRef}?lang=he`}
@@ -1524,9 +1581,19 @@ function InteractivePassage({
       >
         {passage.verses.map((verse) => (
           <span key={verse.num}>
-            <span className="me-1 select-none text-[12px] text-[color:var(--primary)]/40">
-              ({verse.num})
-            </span>
+            {/* Multi-chapter passages carry "chapter, verse" nums — render
+                those as an explicit, prominent chip so it is unmistakable
+                that each verse comes from a different chapter (Reut). */}
+            {verse.num.includes(",") ? (
+              <span className="mx-1 inline-block -translate-y-0.5 select-none whitespace-nowrap rounded-full bg-[color:var(--accent)]/12 px-2.5 py-0.5 text-[12px] font-bold text-[color:var(--accent)]">
+                פרק {verse.num.split(",")[0].trim()} · פסוק{" "}
+                {verse.num.split(",")[1].trim()}
+              </span>
+            ) : (
+              <span className="me-1 select-none text-[12px] font-bold text-[color:var(--accent)]/70">
+                ({verse.num})
+              </span>
+            )}
             {verse.text.split(/\s+/).map((word, wi) => {
               wordIndex += 1;
               const idx = wordIndex;
@@ -1653,8 +1720,8 @@ function BlockView({
   if (block.type === "source") {
     return (
       <div className="rounded-2xl border-s-4 border-[color:var(--accent)] bg-[color:var(--card)] p-5 shadow-sm">
-        <p className="mb-2 flex items-center justify-between gap-2 text-sm font-bold text-[color:var(--accent)]">
-          <span>📜 {block.title}</span>
+        <p className="mb-2 flex items-center justify-between gap-2 font-bold text-[color:var(--accent)]">
+          <span className="font-display text-sm sm:text-base">📜 {block.title}</span>
           {block.sefariaRef && (
             <a
               href={`https://www.sefaria.org.il/${block.sefariaRef}?lang=he`}
