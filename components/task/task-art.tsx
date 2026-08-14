@@ -1694,6 +1694,127 @@ const SCENES: Record<string, React.ReactNode> = {
       <path d="M396 136 Q 401 120 404 128 Q 406 124 404 136 Z" fill="#d97b3f" />
     </svg>
   ),
+  // חמש בנות לפני פתח אוהל מועד (lesson 13 hero).
+  "five-daughters": (
+    <svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="fd-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efdcc4" />
+          <stop offset="1" stopColor="#ddc3a0" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="260" fill="url(#fd-sky)" />
+      <path d="M0 206 Q 240 192 480 202 T 800 198 V260 H0 Z" fill="#caa27b" />
+      <path d="M0 234 Q 300 222 800 230 V260 H0 Z" fill="#a87e54" />
+      {/* the Ohel Moed */}
+      <g transform="translate(520,130)">
+        <rect x="0" y="0" width="220" height="76" rx="8" fill="#54406b" />
+        <rect x="0" y="0" width="220" height="15" rx="7" fill={GLOW} opacity="0.85" />
+        <rect x="92" y="26" width="36" height="50" rx="4" fill="#241c30" />
+      </g>
+      {/* five figures, upright, together */}
+      <g fill={GRAPE}>
+        {[120, 175, 230, 285, 340].map((x, i) => (
+          <g key={i} transform={`translate(${x},${200 - Math.abs(2 - i) * 4}) scale(${1 - Math.abs(2 - i) * 0.05})`}>
+            <circle cy="-48" r="11" />
+            <path d="M-12 -39 Q 0 -46 12 -39 L 10 22 Q 0 27 -10 22 Z" />
+          </g>
+        ))}
+      </g>
+      {/* a shared, single speech-line rising from the group toward the tent */}
+      <path d="M360 130 Q 440 96 512 128" fill="none" stroke={COPPER} strokeWidth="2.5" strokeDasharray="2 8" strokeLinecap="round" />
+    </svg>
+  ),
+
+  // נחלה על המאזניים — a plot of land being weighed.
+  "scales-inheritance": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="si-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#si-bg)" />
+      <line x1="400" y1="34" x2="400" y2="60" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" />
+      <line x1="250" y1="60" x2="550" y2="60" stroke={GRAPE} strokeWidth="6" strokeLinecap="round" />
+      <circle cx="400" cy="30" r="7" fill={COPPER} />
+      {/* right pan: a little green field */}
+      <line x1="290" y1="60" x2="268" y2="108" stroke={GRAPE} strokeWidth="3" />
+      <line x1="290" y1="60" x2="312" y2="108" stroke={GRAPE} strokeWidth="3" />
+      <path d="M252 108 H328 Q 326 136 290 136 Q 254 136 252 108 Z" fill={GRAPE} opacity="0.2" />
+      <rect x="266" y="98" width="48" height="26" rx="4" fill="#6f8560" />
+      {[274, 286, 298].map((x, i) => (
+        <line key={i} x1={x} y1="102" x2={x} y2="120" stroke="#5a6b48" strokeWidth="2" />
+      ))}
+      {/* left pan: the family name — an empty name-tag stone */}
+      <line x1="510" y1="60" x2="488" y2="108" stroke={GRAPE} strokeWidth="3" />
+      <line x1="510" y1="60" x2="532" y2="108" stroke={GRAPE} strokeWidth="3" />
+      <path d="M472 108 H548 Q 546 136 510 136 Q 474 136 472 108 Z" fill={COPPER} opacity="0.2" />
+      <rect x="488" y="100" width="44" height="24" rx="5" fill={CARD} stroke={COPPER} strokeWidth="2.5" />
+      {[108, 114].map((y, i) => (
+        <line key={i} x1="496" y1={y} x2="524" y2={y} stroke={COPPER} strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+      ))}
+    </svg>
+  ),
+
+  // שנים עשר חלקים — the tribal mosaic, one plot glowing at the seam.
+  "tribes-mosaic": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tm-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e9d9c2" />
+          <stop offset="1" stopColor="#d3ba9a" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#tm-bg)" />
+      {/* a patchwork of tribal plots */}
+      {[
+        [90, 40, 150, 60, "#6f8560", 0.7], [250, 40, 130, 60, "#54406b", 0.55], [390, 40, 160, 60, "#8a6844", 0.6],
+        [560, 40, 150, 60, "#3e6b4f", 0.5], [90, 110, 130, 60, "#9d3438", 0.4], [230, 110, 170, 60, "#6f8560", 0.5],
+        [410, 110, 130, 60, "#54406b", 0.65], [550, 110, 160, 60, "#b3892b", 0.45],
+      ].map(([x, y, w, h, c, o], i) => (
+        <rect key={i} x={x as number} y={y as number} width={w as number} height={h as number} rx="8" fill={c as string} opacity={o as number} stroke="#fbf6f1" strokeWidth="3" />
+      ))}
+      {/* the plot at the seam, highlighted with a question of belonging */}
+      <rect x="410" y="110" width="130" height="60" rx="8" fill="none" stroke={GLOW} strokeWidth="4" />
+      <circle cx="475" cy="140" r="14" fill={CARD} opacity="0.9" />
+      <text x="469" y="147" fontSize="20" fontWeight="bold" fill={COPPER}>?</text>
+    </svg>
+  ),
+
+  // עמדה — one figure standing to speak, voice-line firm.
+  "standing-voice": (
+    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sv-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="200" fill="url(#sv-bg)" />
+      <rect x="0" y="170" width="800" height="30" fill={INK} />
+      {/* seated circle of listeners */}
+      <g fill="#8d7ba0" opacity="0.8">
+        {[160, 240, 560, 640].map((x, i) => (
+          <g key={i} transform={`translate(${x},158) scale(0.85)`}>
+            <circle cy="-22" r="8" />
+            <path d="M-9 -15 Q 0 -20 9 -15 L 7 10 Q 0 13 -7 10 Z" />
+          </g>
+        ))}
+      </g>
+      {/* the one standing */}
+      <g fill={CARD} transform="translate(400,150)">
+        <circle cy="-52" r="11" />
+        <path d="M-12 -43 Q 0 -50 12 -43 L 9 24 Q 0 28 -9 24 Z" />
+      </g>
+      {/* the firm voice-line, straight and bright */}
+      <line x1="412" y1="-0" x2="412" y2="0" stroke="none" />
+      <path d="M414 96 L620 60" stroke={GLOW} strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M414 96 L190 66" stroke={GLOW} strokeWidth="3.5" strokeLinecap="round" opacity="0.7" />
+      <circle cx="414" cy="96" r="5" fill={GLOW} />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
