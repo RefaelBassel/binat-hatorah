@@ -909,6 +909,130 @@ const SCENES: Record<string, React.ReactNode> = {
       <circle cx="396" cy="26" r="28" fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="1 6" strokeLinecap="round" opacity="0.8" />
     </svg>
   ),
+  // ויקהלו על משה — a crowd massing before the tent under a heavy sky (lesson 7 hero).
+  "gathering-storm": (
+    <svg viewBox="0 0 800 270" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="gs-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#241c30" />
+          <stop offset="0.7" stopColor="#4a3660" />
+          <stop offset="1" stopColor="#8a5a68" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="270" fill="url(#gs-sky)" />
+      {/* heavy cloud bank */}
+      <ellipse cx="220" cy="46" rx="150" ry="34" fill="#3a2c4a" opacity="0.9" />
+      <ellipse cx="480" cy="34" rx="180" ry="30" fill="#332946" opacity="0.9" />
+      <path d="M0 214 Q 240 192 480 212 T 800 204 V270 H0 Z" fill="#3a2c40" />
+      <path d="M0 242 Q 300 224 800 238 V270 H0 Z" fill={INK} />
+      {/* the Ohel Moed, small and lit, at the far side */}
+      <g transform="translate(640,158)">
+        <rect x="0" y="0" width="110" height="48" rx="6" fill="#54406b" />
+        <rect x="0" y="0" width="110" height="10" rx="5" fill={GLOW} opacity="0.85" />
+        <rect x="44" y="16" width="22" height="32" rx="3" fill={GLOW} opacity="0.9" />
+      </g>
+      {/* the massing crowd, facing it */}
+      <g fill={INK}>
+        {[
+          [120, 216, 1], [156, 222, 0.9], [192, 214, 1.05], [230, 224, 0.85], [264, 214, 1],
+          [300, 222, 0.9], [338, 212, 1.1], [376, 222, 0.9], [412, 214, 1], [448, 224, 0.85], [484, 214, 1],
+        ].map(([x, y, s], i) => (
+          <g key={i} transform={`translate(${x},${y}) scale(${s})`}>
+            <circle cy="-30" r="8" />
+            <path d="M-9 -23 Q 0 -28 9 -23 L 7 12 Q 0 15 -7 12 Z" />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // טלית שכולה תכלת — the parable garment, all blue.
+  "all-tekhelet": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="at-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f1e6da" />
+        </linearGradient>
+        <linearGradient id="at-blue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#4a74b8" />
+          <stop offset="1" stopColor="#2b4f9e" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#at-bg)" />
+      {/* regular tallit (right) — white with one blue thread */}
+      <g transform="translate(490,44)">
+        <path d="M0 0 L220 0 L236 108 L-16 108 Z" fill={CARD} stroke={SAND} strokeWidth="3" />
+        {[24, 60, 96, 168, 204].map((x, i) => (
+          <path key={i} d={`M${x} 108 q -3 18 2 34`} fill="none" stroke="#e0d8ca" strokeWidth="4" strokeLinecap="round" />
+        ))}
+        <path d="M132 108 q -4 20 3 40" fill="none" stroke="#3f68b0" strokeWidth="5" strokeLinecap="round" />
+      </g>
+      {/* the all-tekhelet tallit (left) — entirely blue, with a big ? */}
+      <g transform="translate(90,44)">
+        <path d="M0 0 L220 0 L236 108 L-16 108 Z" fill="url(#at-blue)" stroke="#23417e" strokeWidth="3" />
+        {[24, 60, 96, 132, 168, 204].map((x, i) => (
+          <path key={i} d={`M${x} 108 q -3 18 2 34`} fill="none" stroke="#4a74b8" strokeWidth="4" strokeLinecap="round" />
+        ))}
+        <text x="96" y="72" fontSize="44" fontWeight="bold" fill="#ffffff" opacity="0.9">?</text>
+      </g>
+    </svg>
+  ),
+
+  // מאתיים וחמישים מחתות — censers and rising smoke before the test.
+  "firepans": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="fp-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="220" fill="url(#fp-bg)" />
+      <rect x="0" y="192" width="800" height="28" fill={INK} />
+      {/* rows of small firepans, smoke curling up */}
+      {[90, 190, 290, 390, 490, 590, 690].map((x, i) => (
+        <g key={i}>
+          <path d={`M${x - 22} 186 Q ${x} 202 ${x + 22} 186 L ${x + 16} 176 L ${x - 16} 176 Z`} fill={COPPER} />
+          <rect x={x + 18} y="178" width="20" height="5" rx="2.5" fill={COPPER} />
+          <circle cx={x} cy="172" r="5" fill={GLOW} />
+          <path
+            d={`M${x} 164 q ${i % 2 ? 10 : -10} -18 0 -34 q ${i % 2 ? -10 : 10} -16 0 -32`}
+            fill="none"
+            stroke="#c8b8d4"
+            strokeWidth="4"
+            strokeLinecap="round"
+            opacity="0.55"
+          />
+        </g>
+      ))}
+      {/* one pan set apart, its smoke straight and bright */}
+      <g>
+        <path d="M378 118 Q 400 132 422 118 L 416 108 L 384 108 Z" fill={GLOW} opacity="0" />
+      </g>
+    </svg>
+  ),
+
+  // לא חמור אחד מהם נשאתי — open, empty hands.
+  "clean-hands": (
+    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="ch-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="200" fill="url(#ch-bg)" />
+      {/* two open palms, stylized, holding nothing */}
+      <g stroke={GRAPE} strokeWidth="5" strokeLinecap="round" fill="none">
+        <path d="M310 150 Q 296 120 306 92 M326 148 Q 316 112 322 84 M344 148 Q 338 110 342 82 M362 150 Q 358 114 360 88 M310 150 Q 336 168 368 150 Q 374 128 370 108" />
+        <path d="M490 150 Q 504 120 494 92 M474 148 Q 484 112 478 84 M456 148 Q 462 110 458 82 M438 150 Q 442 114 440 88 M490 150 Q 464 168 432 150 Q 426 128 430 108" />
+      </g>
+      {/* soft light above the empty palms */}
+      <circle cx="400" cy="58" r="26" fill={GLOW} opacity="0.35" />
+      <circle cx="400" cy="58" r="12" fill={GLOW} opacity="0.6" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
