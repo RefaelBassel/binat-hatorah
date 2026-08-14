@@ -2373,6 +2373,162 @@ const SCENES: Record<string, React.ReactNode> = {
       </g>
     </svg>
   ),
+
+  // פוסחים על שתי הסעיפים — one figure straddling two swaying branches
+  // of the same tree, a foot on each, committed to neither.
+  "two-branches": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tb-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e8ecdf" />
+          <stop offset="1" stopColor={SAND} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#tb-bg)" />
+      {/* the trunk, splitting into two great branches */}
+      <path d="M400 250 L400 176 Q 400 150 340 122 Q 260 88 210 96" fill="none" stroke="#7a5a3a" strokeWidth="16" strokeLinecap="round" />
+      <path d="M400 176 Q 400 150 460 122 Q 540 88 590 96" fill="none" stroke="#7a5a3a" strokeWidth="16" strokeLinecap="round" />
+      {/* leaves at each branch end */}
+      <g fill={GRAPE} opacity="0.5">
+        <circle cx="196" cy="88" r="30" />
+        <circle cx="238" cy="76" r="22" />
+      </g>
+      <g fill={COPPER} opacity="0.5">
+        <circle cx="604" cy="88" r="30" />
+        <circle cx="562" cy="76" r="22" />
+      </g>
+      {/* the straddler: one foot on each branch, arms out for balance */}
+      <g transform="translate(400,98)">
+        <circle cy="-34" r="11" fill={GRAPE} />
+        <path d="M-12 -26 Q 0 -32 12 -26 L 8 8 L -8 8 Z" fill={GRAPE} />
+        <path d="M-12 -20 L-38 -30 M12 -20 L38 -30" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" fill="none" />
+        <path d="M-6 8 L-52 26 M6 8 L52 26" stroke={GRAPE} strokeWidth="6" strokeLinecap="round" fill="none" />
+      </g>
+      {/* strain marks under both feet — the branches sway */}
+      <path d="M330 132 Q 344 140 358 134 M470 132 Q 456 140 442 134" fill="none" stroke={INK} strokeWidth="2.5" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  ),
+
+  // ואין קול ואין עונה — hundreds of cries rising and dissolving
+  // into an empty midday sky above a cold altar.
+  "unanswered-sky": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="us-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#dfe5ea" />
+          <stop offset="1" stopColor="#ece2d4" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#us-sky)" />
+      {/* the blazing indifferent noon sun */}
+      <circle cx="400" cy="34" r="22" fill={GLOW} opacity="0.9" />
+      <g stroke={GLOW} strokeWidth="3" strokeLinecap="round" opacity="0.6">
+        <path d="M400 2 L400 -8 M432 12 L440 4 M368 12 L360 4 M440 34 L452 34 M348 34 L360 34" />
+      </g>
+      {/* the cold altar */}
+      <rect x="352" y="168" width="96" height="34" rx="4" fill="#8d8477" />
+      <rect x="368" y="150" width="64" height="20" rx="3" fill="#a39a8b" />
+      {/* cries rising and fading out before they reach anything */}
+      <g fill="none" strokeLinecap="round">
+        {[
+          [240, 190, 0.55], [280, 175, 0.4], [316, 185, 0.3],
+          [484, 185, 0.3], [520, 175, 0.4], [560, 190, 0.55],
+        ].map(([x, y, o], i) => (
+          <g key={i} stroke={GRAPE} opacity={o as number}>
+            <path d={`M${x} ${y} Q ${(x as number) - 10} ${(y as number) - 34} ${x} ${(y as number) - 58}`} strokeWidth="4" />
+            <path d={`M${x} ${(y as number) - 70} Q ${(x as number) + 8} ${(y as number) - 88} ${x} ${(y as number) - 100}`} strokeWidth="2.5" strokeDasharray="3 8" />
+          </g>
+        ))}
+      </g>
+      {/* the callers, small and spent around the altar */}
+      <g fill={GRAPE} opacity="0.7">
+        {[236, 278, 318, 484, 524, 564].map((x, i) => (
+          <g key={i} transform={`translate(${x},206)`}>
+            <circle cy="-14" r="7" />
+            <path d="M-8 -8 Q 0 -12 8 -8 L 6 14 L -6 14 Z" />
+          </g>
+        ))}
+      </g>
+    </svg>
+  ),
+
+  // אש על המים — the drenched altar of twelve stones, the brimming
+  // trench, and fire falling from above anyway.
+  "fire-on-water": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="fw-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3a2d4f" />
+          <stop offset="1" stopColor="#6b5a86" />
+        </linearGradient>
+        <linearGradient id="fw-fire" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={GLOW} />
+          <stop offset="1" stopColor={COPPER} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#fw-sky)" />
+      {/* the column of fire, falling — wider above, meeting the altar below */}
+      <path d="M382 0 L418 0 Q 428 70 442 108 L 358 108 Q 372 70 382 0 Z" fill="url(#fw-fire)" opacity="0.9" />
+      <path d="M400 14 Q 394 60 400 96" stroke={CARD} strokeWidth="4" strokeLinecap="round" opacity="0.7" fill="none" />
+      {/* twelve stones in two courses */}
+      <g fill="#9b8fae" stroke="#3a2d4f" strokeWidth="2">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <rect key={i} x={340 + i * 21} y="128" width="19" height="15" rx="4" />
+        ))}
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <rect key={i} x={350 + i * 21} y="110" width="19" height="15" rx="4" />
+        ))}
+      </g>
+      {/* the water trench, full to the lip, ringing the altar */}
+      <ellipse cx="400" cy="172" rx="150" ry="26" fill="none" stroke="#5d90b8" strokeWidth="12" />
+      <ellipse cx="400" cy="172" rx="150" ry="26" fill="none" stroke="#8fb6d4" strokeWidth="4" strokeDasharray="20 14" />
+      {/* water still dripping from the soaked wood */}
+      <g fill="#8fb6d4">
+        <circle cx="366" cy="152" r="3.5" />
+        <circle cx="436" cy="150" r="3.5" />
+        <circle cx="402" cy="156" r="3" />
+      </g>
+    </svg>
+  ),
+
+  // עב קטנה ככף איש — the seventh look: a tiny palm-sized cloud
+  // rising from a huge empty sea.
+  "small-cloud": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sc-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e8e2d4" />
+          <stop offset="1" stopColor="#cfd8dd" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#sc-sky)" />
+      {/* the wide sea */}
+      <rect x="0" y="150" width="800" height="80" fill="#5d90b8" />
+      <g stroke="#8fb6d4" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.7">
+        <path d="M60 172 Q 90 166 120 172 M240 188 Q 270 182 300 188 M520 178 Q 550 172 580 178 M660 196 Q 690 190 720 196" />
+      </g>
+      {/* the one small cloud, palm-sized, just off the horizon */}
+      <g transform="translate(560,120)">
+        <ellipse cx="0" cy="0" rx="26" ry="12" fill={CARD} />
+        <ellipse cx="-14" cy="-6" rx="14" ry="9" fill={CARD} />
+        <ellipse cx="12" cy="-7" rx="12" ry="8" fill={CARD} />
+      </g>
+      {/* the watcher on the headland, hand shading his eyes */}
+      <path d="M0 230 L0 176 Q 60 160 120 168 L 150 230 Z" fill="#7a5a3a" />
+      <g transform="translate(84,150)">
+        <circle cy="-26" r="9" fill={GRAPE} />
+        <path d="M-10 -19 Q 0 -24 10 -19 L 8 26 L -8 26 Z" fill={GRAPE} />
+        <path d="M4 -30 L20 -34" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" />
+      </g>
+      {/* six faint empty looks, then the seventh that finds it */}
+      <g stroke={INK} strokeWidth="2" strokeLinecap="round" opacity="0.35" fill="none">
+        {[0, 1, 2].map((i) => (
+          <path key={i} d={`M112 ${128 - i * 10} Q 220 ${106 - i * 12} 330 ${100 - i * 12}`} strokeDasharray="2 12" />
+        ))}
+      </g>
+      <path d="M112 122 Q 340 92 534 116" fill="none" stroke={COPPER} strokeWidth="3" strokeLinecap="round" strokeDasharray="8 8" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
