@@ -1587,8 +1587,14 @@ function InteractivePassage({
                 that each verse comes from a different chapter (Reut). */}
             {verse.num.includes(",") ? (
               <span className="mx-1 inline-block -translate-y-0.5 select-none whitespace-nowrap rounded-full bg-[color:var(--accent)]/12 px-2.5 py-0.5 text-[12px] font-bold text-[color:var(--accent)]">
-                פרק {verse.num.split(",")[0].trim()} · פסוק{" "}
-                {verse.num.split(",")[1].trim()}
+                {/* "ט׳, א׳" → "פרק ט׳ · פסוק א׳"; cross-book nums like
+                    "דברים א׳, כ״ב" already name their place — no extra פרק. */}
+                {(() => {
+                  const p1 = verse.num.split(",")[0].trim();
+                  const p2 = verse.num.split(",")[1].trim();
+                  const label = p1.includes(" ") || p1.includes("פרק") ? p1 : `פרק ${p1}`;
+                  return `${label} · פסוק ${p2}`;
+                })()}
               </span>
             ) : (
               <span className="me-1 select-none text-[12px] font-bold text-[color:var(--accent)]/70">

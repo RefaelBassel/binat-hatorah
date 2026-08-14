@@ -692,6 +692,132 @@ const SCENES: Record<string, React.ReactNode> = {
       <path d="M150 168 Q 200 160 232 166" fill="none" stroke={COPPER} strokeWidth="2.5" strokeDasharray="2 8" strokeLinecap="round" opacity="0.6" />
     </svg>
   ),
+  // אשכול הענבים על המוט — the iconic carried cluster (lesson 5 hero).
+  "grape-cluster": (
+    <svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="gc-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efe0cb" />
+          <stop offset="1" stopColor="#dcc09b" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="280" fill="url(#gc-sky)" />
+      {/* distant green hills of the Land */}
+      <path d="M0 168 Q 160 108 340 156 Q 470 100 640 148 Q 720 120 800 142 V280 H0 Z" fill="#6f8560" opacity="0.65" />
+      <path d="M0 206 Q 240 168 520 200 T 800 190 V280 H0 Z" fill="#caa27b" />
+      <path d="M0 236 Q 300 214 800 230 V280 H0 Z" fill="#a87e54" />
+      {/* two bearers with the pole */}
+      <g>
+        <rect x="250" y="130" width="300" height="9" rx="4.5" fill="#7a5230" />
+        <g fill={INK}>
+          <g transform="translate(250,178)"><circle cy="-40" r="10" /><path d="M-11 -32 Q 0 -38 11 -32 L 9 16 Q 0 20 -9 16 Z" /></g>
+          <g transform="translate(550,178)"><circle cy="-40" r="10" /><path d="M-11 -32 Q 0 -38 11 -32 L 9 16 Q 0 20 -9 16 Z" /></g>
+        </g>
+        {/* the huge cluster hanging from the pole */}
+        <line x1="400" y1="139" x2="400" y2="156" stroke="#5a7a4a" strokeWidth="5" strokeLinecap="round" />
+        <g fill={GRAPE}>
+          {[
+            [400, 172, 15], [378, 184, 14], [422, 184, 14], [388, 204, 14], [412, 204, 14],
+            [368, 202, 12], [432, 202, 12], [400, 222, 13], [382, 236, 11], [418, 236, 11], [400, 250, 10],
+          ].map(([x, y, r], i) => (
+            <circle key={i} cx={x} cy={y} r={r} opacity={0.85 + (i % 3) * 0.05} />
+          ))}
+        </g>
+        <path d="M396 158 Q 380 148 366 158 Q 382 164 396 158 Z" fill="#5a7a4a" />
+        <path d="M404 158 Q 420 148 434 158 Q 418 164 404 158 Z" fill="#5a7a4a" />
+      </g>
+    </svg>
+  ),
+
+  // המילה הקטנה ״אפס״ — a tiny word tipping a whole scale of facts.
+  "tipping-word": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="tw-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f1e6da" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#tw-bg)" />
+      {/* a tilted balance: heavy pan of "facts", light pan with one small word — yet tilted its way */}
+      <line x1="400" y1="52" x2="400" y2="80" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" />
+      <g transform="rotate(9 400 80)">
+        <line x1="230" y1="80" x2="570" y2="80" stroke={GRAPE} strokeWidth="6" strokeLinecap="round" />
+        {/* facts pan (right, RTL first) — full of solid blocks */}
+        <line x1="270" y1="80" x2="248" y2="126" stroke={GRAPE} strokeWidth="3" />
+        <line x1="270" y1="80" x2="292" y2="126" stroke={GRAPE} strokeWidth="3" />
+        <path d="M232 126 H308 Q 306 152 270 152 Q 234 152 232 126 Z" fill={GRAPE} opacity="0.25" />
+        {[248, 268, 288].map((x, i) => (
+          <rect key={i} x={x - 9} y={112 - (i % 2) * 12} width="18" height="14" rx="3" fill={GRAPE} opacity="0.8" />
+        ))}
+        {/* the single-word pan (left) — one small copper dot, but the scale tips toward it */}
+        <line x1="530" y1="80" x2="508" y2="126" stroke={GRAPE} strokeWidth="3" />
+        <line x1="530" y1="80" x2="552" y2="126" stroke={GRAPE} strokeWidth="3" />
+        <path d="M492 126 H568 Q 566 152 530 152 Q 494 152 492 126 Z" fill={COPPER} opacity="0.25" />
+        <circle cx="530" cy="118" r="9" fill={COPPER} />
+      </g>
+      <circle cx="400" cy="48" r="7" fill={COPPER} />
+    </svg>
+  ),
+
+  // כחגבים בעינינו — self-image: a small figure casting a giant fearful shadow.
+  "grasshopper-eyes": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="ge-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e9d9c2" />
+          <stop offset="1" stopColor="#d3ba9a" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="220" fill="url(#ge-bg)" />
+      <path d="M0 178 Q 300 160 800 172 V220 H0 Z" fill="#b3885e" />
+      {/* the giant imagined shadow on the wall */}
+      <path d="M180 178 L232 44 Q 250 24 268 44 L320 178 Z" fill={INK} opacity="0.18" />
+      <circle cx="250" cy="38" r="26" fill={INK} opacity="0.18" />
+      {/* the actual small person */}
+      <g fill={GRAPE} transform="translate(480,150)">
+        <circle cy="-26" r="9" />
+        <path d="M-10 -18 Q 0 -24 10 -18 L 8 20 Q 0 24 -8 20 Z" />
+      </g>
+      {/* light source */}
+      <circle cx="700" cy="52" r="20" fill={GLOW} opacity="0.85" />
+      {[0, 1, 2].map((i) => (
+        <line key={i} x1={700 - 34 - i * 4} y1={52 + i * 14 - 10} x2={560} y2={92 + i * 18} stroke={GLOW} strokeWidth="2" opacity={0.35 - i * 0.09} strokeLinecap="round" />
+      ))}
+    </svg>
+  ),
+
+  // יום לשנה יום לשנה — a forty-loop spiral path in the desert.
+  "forty-years": (
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="fy-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#efe0cb" />
+          <stop offset="1" stopColor="#d8bd97" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="230" fill="url(#fy-bg)" />
+      {/* wandering looping path */}
+      <path
+        d="M740 200 Q 640 120 560 160 Q 480 200 470 140 Q 462 84 380 110 Q 300 136 330 180 Q 352 210 270 196 Q 180 180 210 130 Q 236 88 160 96 Q 90 104 110 160 Q 122 192 60 196"
+        fill="none"
+        stroke="#8a6844"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeDasharray="12 10"
+        opacity="0.55"
+      />
+      {/* forty small day/year marks along the top */}
+      {Array.from({ length: 20 }, (_, i) => 60 + i * 36).map((x, i) => (
+        <circle key={i} cx={x} cy={34 + (i % 2) * 10} r={3} fill={COPPER} opacity="0.6" />
+      ))}
+      {/* the distant land, waiting beyond */}
+      <path d="M0 96 Q 40 66 90 88 L 90 96 Z" fill="#6f8560" opacity="0.7" />
+      {/* a tent marking a stop */}
+      <path d="M600 196 L622 168 L644 196 Z" fill={GRAPE} opacity="0.8" />
+      <path d="M360 206 L378 182 L396 206 Z" fill={GRAPE} opacity="0.6" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
