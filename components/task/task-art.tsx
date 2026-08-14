@@ -2079,6 +2079,158 @@ const SCENES: Record<string, React.ReactNode> = {
       </g>
     </svg>
   ),
+
+  // חלום גבעון — a young king asleep by the great bamah, and above him
+  // an open dream: a glowing offer with no limits.
+  "givon-dream": (
+    <svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="gd-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#241b33" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+        <radialGradient id="gd-dream" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor={GLOW} stopOpacity="0.9" />
+          <stop offset="1" stopColor={GLOW} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="800" height="260" fill="url(#gd-sky)" />
+      {[[70, 40], [150, 26], [640, 34], [726, 58], [560, 20], [220, 62]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i % 2 ? 2 : 1.4} fill={CARD} opacity="0.8" />
+      ))}
+      {/* the great bamah at Givon — stepped stone altar, embers still warm */}
+      <g>
+        <rect x="580" y="176" width="150" height="44" rx="4" fill="#4f3f66" />
+        <rect x="600" y="150" width="110" height="30" rx="4" fill="#5b4a74" />
+        <path d="M640 138 Q 652 116 650 102 Q 664 120 658 138 Z" fill={COPPER} opacity="0.85" />
+        <path d="M662 140 Q 670 126 668 116" fill="none" stroke={GLOW} strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+      </g>
+      {/* Shlomo asleep, wrapped in a royal cloak */}
+      <g transform="translate(210,196)">
+        <path d="M-60 18 Q -70 6 -52 0 L 66 0 Q 84 6 74 18 Z" fill="#33284a" />
+        <circle cx="-38" cy="-8" r="13" fill={GRAPE} />
+        <path d="M-24 -6 Q 10 -22 62 -4 L 62 4 L -24 4 Z" fill={GRAPE} />
+        <path d="M-49 -17 L -27 -17 L -31 -25 L -37 -20 L -43 -25 Z" fill={GLOW} />
+      </g>
+      {/* the dream rising: bubbles up to a glowing open circle */}
+      <circle cx="252" cy="152" r="7" fill={CARD} opacity="0.35" />
+      <circle cx="286" cy="122" r="10" fill={CARD} opacity="0.45" />
+      <circle cx="330" cy="82" r="52" fill="url(#gd-dream)" />
+      <circle cx="330" cy="82" r="34" fill="none" stroke={GLOW} strokeWidth="2.5" opacity="0.9" />
+      {/* inside the dream: an open giving hand — "שאל מה אתן לך" */}
+      <g stroke={CARD} strokeWidth="4" strokeLinecap="round" fill="none">
+        <path d="M310 92 Q 330 100 350 92" />
+        <path d="M314 84 L314 72 M324 82 L324 66 M334 82 L334 64 M344 84 L344 70" />
+      </g>
+    </svg>
+  ),
+
+  // לב שומע — a heart that is all ears: sound waves of many voices
+  // flowing into one listening heart.
+  "listening-heart": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="220" fill={SAND} />
+      {/* many small voices on both sides */}
+      <g fill={GRAPE} opacity="0.7">
+        {[[70, 60], [96, 130], [64, 178], [724, 66], [704, 138], [736, 182]].map(([x, y], i) => (
+          <g key={i} transform={`translate(${x},${y})`}>
+            <circle r="9" />
+            <path d="M-10 8 Q 0 14 10 8 L 8 26 Q 0 30 -8 26 Z" />
+          </g>
+        ))}
+      </g>
+      {/* their speech-waves converging toward the heart */}
+      <g fill="none" stroke={COPPER} strokeWidth="3" strokeLinecap="round" opacity="0.75">
+        <path d="M120 70 Q 220 70 300 96" />
+        <path d="M136 130 Q 230 128 300 116" />
+        <path d="M112 172 Q 224 176 304 134" />
+        <path d="M680 76 Q 580 76 500 98" />
+        <path d="M668 142 Q 574 138 500 118" />
+        <path d="M692 184 Q 576 184 496 136" />
+      </g>
+      {/* the listening heart, with an inner ear curve */}
+      <path
+        d="M400 178 C 348 138 322 112 322 84 C 322 60 340 46 362 46 C 380 46 394 56 400 70 C 406 56 420 46 438 46 C 460 46 478 60 478 84 C 478 112 452 138 400 178 Z"
+        fill={GRAPE}
+      />
+      <path d="M386 78 Q 400 64 414 78 Q 424 90 412 100 Q 404 106 404 116" fill="none" stroke={GLOW} strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  ),
+
+  // חרב המשפט — the sword poised over the scales: a test, not a verdict.
+  // One pan holds the truth that is about to reveal itself.
+  "sword-scales": (
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="240" fill={CARD} />
+      <rect x="0" y="206" width="800" height="34" fill={SAND} />
+      {/* two mothers, facing the throne from either side */}
+      <g fill={GRAPE}>
+        <g transform="translate(150,150)">
+          <circle cy="-30" r="11" />
+          <path d="M-12 -22 Q 0 -28 12 -22 L 16 34 L -16 34 Z" />
+        </g>
+        <g transform="translate(650,150)" opacity="0.65">
+          <circle cy="-30" r="11" />
+          <path d="M-12 -22 Q 0 -28 12 -22 L 16 34 L -16 34 Z" />
+        </g>
+      </g>
+      {/* the reaching arms — one open in plea, one closed */}
+      <path d="M166 128 Q 220 112 268 116" fill="none" stroke={GRAPE} strokeWidth="6" strokeLinecap="round" />
+      <path d="M634 128 Q 600 124 574 130" fill="none" stroke={GRAPE} strokeWidth="6" strokeLinecap="round" opacity="0.65" />
+      {/* the scales of judgment */}
+      <g stroke={COPPER} strokeWidth="5" fill="none" strokeLinecap="round">
+        <path d="M400 66 L400 176" />
+        <path d="M316 84 L484 84" />
+        <path d="M316 84 L296 128 M316 84 L336 128" />
+        <path d="M484 84 L464 128 M484 84 L504 128" />
+        <path d="M296 128 Q 316 146 336 128" />
+        <path d="M464 128 Q 484 146 504 128" />
+        <path d="M360 176 L440 176" />
+      </g>
+      {/* the sword above — hanging, never falling */}
+      <g transform="translate(400,34)">
+        <path d="M0 -14 L0 22" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+        <path d="M-14 -14 L14 -14" stroke={COPPER} strokeWidth="6" strokeLinecap="round" />
+        <path d="M0 22 L-5 34 L0 46 L5 34 Z" fill={INK} />
+      </g>
+      {/* the living child — a small glow resting on one pan */}
+      <circle cx="316" cy="122" r="8" fill={GLOW} />
+    </svg>
+  ),
+
+  // מתנה ומתנה-בתנאי — two gifts from one crown: one handed whole,
+  // one held on a dashed line that spells "if".
+  "crown-two-gifts": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="800" height="220" fill={SAND} />
+      {/* the crown at the top center — the source of both promises */}
+      <g transform="translate(400,52)">
+        <path d="M-46 18 L-46 -14 L-23 4 L0 -22 L23 4 L46 -14 L46 18 Z" fill={GLOW} stroke={COPPER} strokeWidth="3" strokeLinejoin="round" />
+        <circle cx="-23" cy="-16" r="4" fill={COPPER} />
+        <circle cx="23" cy="-16" r="4" fill={COPPER} />
+        <circle cx="0" cy="-26" r="4" fill={COPPER} />
+      </g>
+      {/* left: the unconditional gift — a solid line straight to an open box */}
+      <path d="M368 84 Q 280 110 236 148" fill="none" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" />
+      <g transform="translate(210,168)">
+        <rect x="-34" y="-18" width="68" height="38" rx="6" fill={GRAPE} />
+        <rect x="-40" y="-30" width="80" height="16" rx="6" fill={COPPER} />
+        <path d="M0 -30 L0 20" stroke={GLOW} strokeWidth="6" />
+      </g>
+      {/* right: the conditional gift — a dashed line through a gate marked by a keyhole */}
+      <path d="M432 84 Q 520 110 564 148" fill="none" stroke={GRAPE} strokeWidth="5" strokeLinecap="round" strokeDasharray="4 14" />
+      <g transform="translate(500,116)">
+        <circle r="13" fill="none" stroke={COPPER} strokeWidth="4" />
+        <circle r="4" fill={COPPER} />
+        <path d="M0 3 L0 12" stroke={COPPER} strokeWidth="4" strokeLinecap="round" />
+      </g>
+      <g transform="translate(590,168)" opacity="0.85">
+        <rect x="-34" y="-18" width="68" height="38" rx="6" fill={GRAPE} opacity="0.55" />
+        <rect x="-40" y="-30" width="80" height="16" rx="6" fill={COPPER} opacity="0.55" />
+        <path d="M0 -30 L0 20" stroke={GLOW} strokeWidth="6" opacity="0.6" />
+      </g>
+    </svg>
+  ),
 };
 
 export default function TaskArt({
