@@ -1033,6 +1033,139 @@ const SCENES: Record<string, React.ReactNode> = {
       <circle cx="400" cy="58" r="12" fill={GLOW} opacity="0.6" />
     </svg>
   ),
+  // פרח מטה אהרן — the almond branch in bloom (lesson 8 hero).
+  "almond-branch": (
+    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="ab-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2b2240" />
+          <stop offset="1" stopColor={GRAPE} />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="250" fill="url(#ab-bg)" />
+      {/* soft dawn light inside the tent */}
+      <circle cx="400" cy="130" r="120" fill={GLOW} opacity="0.12" />
+      {/* the staff, diagonal */}
+      <path d="M180 210 Q 400 150 640 78" fill="none" stroke="#8a5a2c" strokeWidth="10" strokeLinecap="round" />
+      {/* blossoms along it */}
+      {[
+        [300, 178, 1], [380, 156, 1.15], [460, 132, 1], [540, 108, 1.2], [610, 88, 1],
+      ].map(([x, y, s], i) => (
+        <g key={`b-${i}`} transform={`translate(${x},${y}) scale(${s})`}>
+          {[0, 72, 144, 216, 288].map((a) => (
+            <ellipse key={a} cx="0" cy="-9" rx="4.5" ry="8" fill="#f6e7ee" transform={`rotate(${a})`} />
+          ))}
+          <circle r="4" fill={GLOW} />
+        </g>
+      ))}
+      {/* almonds */}
+      {[
+        [340, 170], [500, 122], [580, 96],
+      ].map(([x, y], i) => (
+        <ellipse key={`a-${i}`} cx={x} cy={y + 16} rx="7" ry="11" fill="#a8c08a" transform={`rotate(18 ${x} ${y + 16})`} />
+      ))}
+      {/* tiny leaves */}
+      {[
+        [260, 192], [420, 146], [560, 104],
+      ].map(([x, y], i) => (
+        <path key={`l-${i}`} d={`M${x} ${y} q 12 -14 26 -8 q -14 12 -26 8`} fill="#6f8560" />
+      ))}
+    </svg>
+  ),
+
+  // רקועי פחים ציפוי למזבח — hammered plates, a warning that became part of the altar.
+  "altar-plates": (
+    <svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="ap2-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CARD} />
+          <stop offset="1" stopColor="#f0e2cf" />
+        </linearGradient>
+        <linearGradient id="ap2-copper" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#d08a52" />
+          <stop offset="1" stopColor="#9a5f30" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="210" fill="url(#ap2-bg)" />
+      {/* the altar block */}
+      <rect x="270" y="66" width="260" height="110" rx="8" fill="url(#ap2-copper)" />
+      <rect x="258" y="56" width="284" height="18" rx="6" fill="#8a5228" />
+      {/* horns */}
+      <path d="M262 56 L252 34 L282 48 Z" fill="#8a5228" />
+      <path d="M538 56 L548 34 L518 48 Z" fill="#8a5228" />
+      {/* hammered plates pattern — each plate was once a censer */}
+      {[0, 1, 2].map((r) =>
+        [0, 1, 2, 3].map((c) => (
+          <rect key={`${r}-${c}`} x={282 + c * 60} y={78 + r * 32} width="52" height="26" rx="4" fill="none" stroke="#7a481f" strokeWidth="2" opacity="0.7" />
+        ))
+      )}
+      {/* hammer marks */}
+      {[
+        [300, 88], [372, 120], [432, 96], [492, 150], [312, 152], [462, 130],
+      ].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="3" fill="#7a481f" opacity="0.5" />
+      ))}
+    </svg>
+  ),
+
+  // ויעמד בין המתים ובין החיים — a line of incense smoke holding the divide.
+  "smoke-barrier": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="sb-dark" x1="1" y1="0" x2="0" y2="0">
+          <stop offset="0" stopColor="#241c30" />
+          <stop offset="0.5" stopColor="#4a3660" />
+          <stop offset="0.52" stopColor="#8a6a48" />
+          <stop offset="1" stopColor="#e0c8a8" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="220" fill="url(#sb-dark)" />
+      {/* the figure with the censer, standing exactly on the divide */}
+      <g transform="translate(400,150)">
+        <circle cy="-52" r="11" fill={INK} />
+        <path d="M-13 -42 Q 0 -50 13 -42 L 10 26 Q 0 31 -10 26 Z" fill={INK} />
+        {/* censer swinging */}
+        <path d="M13 -30 q 20 8 24 24" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M34 -4 q 10 6 2 14 q -10 2 -12 -6 Z" fill={COPPER} />
+        <circle cx="30" cy="0" r="3.5" fill={GLOW} />
+      </g>
+      {/* the rising smoke wall */}
+      <path d="M400 132 q -14 -22 2 -44 q 14 -20 -2 -40 q -12 -16 2 -34" fill="none" stroke="#e8e0f0" strokeWidth="7" strokeLinecap="round" opacity="0.75" />
+      <path d="M416 138 q 12 -26 -2 -48 q -10 -20 4 -38" fill="none" stroke="#e8e0f0" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  ),
+
+  // שנים עשר מטות — twelve staffs, one alive with blossom.
+  "twelve-staffs": (
+    <svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs>
+        <linearGradient id="ts-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3d2f50" />
+          <stop offset="1" stopColor="#54406b" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="220" fill="url(#ts-bg)" />
+      <rect x="60" y="182" width="680" height="12" rx="6" fill="#2b2240" />
+      {/* eleven plain staffs */}
+      {[110, 165, 220, 275, 330, 440, 495, 550, 605, 660, 715].map((x, i) => (
+        <rect key={i} x={x - 5} y={58 + (i % 3) * 6} width="10" height={124 - (i % 3) * 6} rx="5" fill="#8a5a2c" opacity="0.85" />
+      ))}
+      {/* the blossoming one, center */}
+      <rect x="380" y="42" width="11" height="140" rx="5.5" fill="#a06a34" />
+      <circle cx="385" cy="60" r="16" fill={GLOW} opacity="0.25" />
+      {[
+        [368, 74, 0.9], [402, 62, 1], [386, 44, 1.1],
+      ].map(([x, y, s], i) => (
+        <g key={i} transform={`translate(${x},${y}) scale(${s})`}>
+          {[0, 72, 144, 216, 288].map((a) => (
+            <ellipse key={a} cx="0" cy="-7" rx="3.6" ry="6.5" fill="#f6e7ee" transform={`rotate(${a})`} />
+          ))}
+          <circle r="3.2" fill={GLOW} />
+        </g>
+      ))}
+      <ellipse cx="404" cy="92" rx="6" ry="9" fill="#a8c08a" transform="rotate(16 404 92)" />
+    </svg>
+  ),
 };
 
 export default function TaskArt({
