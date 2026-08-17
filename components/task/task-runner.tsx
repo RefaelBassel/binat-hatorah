@@ -11,6 +11,14 @@ import type {
 } from "@/content/tasks/types";
 import { DECODE_STAGES } from "@/content/tasks/registry";
 import TaskArt from "./task-art";
+import {
+  NARRATION_CREDIT,
+  getVerseAudioContext,
+  resolveVerse,
+  chapterFromHebText,
+  setVerseAudioContext,
+  useVerseAudio,
+} from "./verse-audio";
 
 // =============================================================================
 // TaskRunner — the interactive task page body.
@@ -41,6 +49,9 @@ interface WordMenuState {
   passageRef: string;
   x: number;
   y: number;
+  // resolved audio location of the verse this word belongs to (if playable)
+  audioChapter?: string;
+  audioVerse?: number;
 }
 
 interface Props {
@@ -92,6 +103,12 @@ export default function TaskRunner({
   const [workSeconds, setWorkSeconds] = useState(initialWorkSeconds);
   const [clock, setClock] = useState("");
   const [menu, setMenu] = useState<WordMenuState | null>(null);
+  const vAudio = useVerseAudio();
+  // Register the task's book + main chapter so passages, help-verses and the
+  // word menu can resolve verse audio without prop-threading.
+  useEffect(() => {
+    setVerseAudioContext(content.bookRef, mainPassage.sefariaRef);
+  }, [content.bookRef, mainPassage.sefariaRef]);
   // Question composer — ask about a word, part of a verse, or a whole verse,
   // from ANY stage. Saved straight into the personal question bank.
   const [qComposer, setQComposer] = useState<{
@@ -861,6 +878,20 @@ export default function TaskRunner({
               🧽 הסרת כל הסימונים מהמילה
             </button>
           )}
+          {menu.audioChapter != null &&
+            menu.audioVerse != null &&
+            vAudio.has(menu.audioChapter, menu.audioVerse) && (
+              <button
+                onClick={() => {
+                  vAudio.play(menu.audioChapter!, menu.audioVerse!);
+                  setMenu(null);
+                }}
+                title={NARRATION_CREDIT}
+                className="mt-1.5 w-full rounded-lg bg-[color:var(--accent)]/10 px-2 py-1 text-[11px] font-semibold text-[color:var(--accent)] hover:bg-[color:var(--accent)]/15"
+              >
+                🔊 השמעת הפסוק בקול
+              </button>
+            )}
           <button
             onClick={() => {
               askClaude(
@@ -1558,20 +1589,56 @@ function InteractivePassage({
   onAskQuestion?: (ref: string) => void;
 }) {
   let wordIndex = -1;
+  const vAudio = useVerseAudio();
+  const audioCtx = getVerseAudioContext();
+  // whole-passage listening works when every verse resolves to one chapter
+  const locs = passage.verses.map((v) =>
+    resolveVerse(v.num, passage.sefariaRef, audioCtx)
+  );
+  const first = locs[0];
+  const last = locs[locs.length - 1];
+  const spanPlayable =
+    first &&
+    last &&
+    locs.every((l) => l && l.chapter === first.chapter) &&
+    vAudio.has(first.chapter, first.idx) &&
+    vAudio.has(first.chapter, last.idx);
+  const spanPlaying =
+    spanPlayable &&
+    vAudio.playing?.chapter === first.chapter &&
+    vAudio.playing.from === first.idx &&
+    vAudio.playing.to === last.idx;
   return (
     <div className="relative mb-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] p-5 sm:p-7">
       <p className="mb-3 flex items-center justify-between gap-2 font-bold tracking-wide text-[color:var(--accent)]">
         <span className="font-display text-sm sm:text-base">📖 {passage.ref}</span>
-        {passage.sefariaRef && (
-          <a
-            href={`https://www.sefaria.org.il/${passage.sefariaRef}?lang=he`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-[color:var(--border)] px-2.5 py-0.5 text-[10px] font-semibold text-[color:var(--primary)]/60 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-          >
-            לקריאה בספריא ↗
-          </a>
-        )}
+        <span className="flex items-center gap-1.5">
+          {spanPlayable && (
+            <button
+              type="button"
+              onClick={() => vAudio.play(first!.chapter, first!.idx, last!.idx)}
+              title={NARRATION_CREDIT}
+              className={[
+                "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold transition",
+                spanPlaying
+                  ? "border-[color:var(--accent)] bg-[color:var(--accent)]/10 text-[color:var(--accent)]"
+                  : "border-[color:var(--border)] text-[color:var(--primary)]/60 hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]",
+              ].join(" ")}
+            >
+              {spanPlaying ? "⏸ עצירה" : "🔊 האזנה לקטע"}
+            </button>
+          )}
+          {passage.sefariaRef && (
+            <a
+              href={`https://www.sefaria.org.il/${passage.sefariaRef}?lang=he`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-[color:var(--border)] px-2.5 py-0.5 text-[10px] font-semibold text-[color:var(--primary)]/60 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            >
+              לקריאה בספריא ↗
+            </a>
+          )}
+        </span>
       </p>
       <div
         className={[
@@ -1580,26 +1647,66 @@ function InteractivePassage({
         ].join(" ")}
         style={{ textAlign: "justify", textAlignLast: "right" }}
       >
-        {passage.verses.map((verse) => (
-          <span key={verse.num}>
+        {passage.verses.map((verse, vi) => {
+          const loc = locs[vi];
+          const playable = Boolean(loc && vAudio.has(loc.chapter, loc.idx));
+          const playingThis = Boolean(loc && vAudio.isPlaying(loc.chapter, loc.idx));
+          const playVerse = playable
+            ? (e: React.MouseEvent) => {
+                e.stopPropagation();
+                vAudio.play(loc!.chapter, loc!.idx);
+              }
+            : undefined;
+          return (
+          <span
+            key={verse.num}
+            style={
+              playingThis
+                ? { background: "rgba(185,106,59,0.12)", borderRadius: 6 }
+                : undefined
+            }
+          >
             {/* Multi-chapter passages carry "chapter, verse" nums — render
                 those as an explicit, prominent chip so it is unmistakable
                 that each verse comes from a different chapter (Reut). */}
             {verse.num.includes(",") ? (
-              <span className="mx-1 inline-block -translate-y-0.5 select-none whitespace-nowrap rounded-full bg-[color:var(--accent)]/12 px-2.5 py-0.5 text-[12px] font-bold text-[color:var(--accent)]">
+              <button
+                type="button"
+                onClick={playVerse}
+                disabled={!playable}
+                title={playable ? `השמעת הפסוק 🔊 (${NARRATION_CREDIT})` : undefined}
+                className={[
+                  "mx-1 inline-block -translate-y-0.5 select-none whitespace-nowrap rounded-full bg-[color:var(--accent)]/12 px-2.5 py-0.5 text-[12px] font-bold text-[color:var(--accent)]",
+                  playable ? "cursor-pointer transition hover:bg-[color:var(--accent)]/25" : "cursor-default",
+                ].join(" ")}
+              >
                 {/* "ט׳, א׳" → "פרק ט׳ · פסוק א׳"; cross-book nums like
                     "דברים א׳, כ״ב" already name their place — no extra פרק. */}
                 {(() => {
                   const p1 = verse.num.split(",")[0].trim();
                   const p2 = verse.num.split(",")[1].trim();
                   const label = p1.includes(" ") || p1.includes("פרק") ? p1 : `פרק ${p1}`;
-                  return `${label} · פסוק ${p2}`;
+                  return `${playingThis ? "🔊 " : ""}${label} · פסוק ${p2}`;
                 })()}
-              </span>
+              </button>
             ) : (
-              <span className="me-1 select-none text-[12px] font-bold text-[color:var(--accent)]/70">
-                ({verse.num})
-              </span>
+              <button
+                type="button"
+                onClick={playVerse}
+                disabled={!playable}
+                title={playable ? `השמעת הפסוק 🔊 (${NARRATION_CREDIT})` : undefined}
+                className={[
+                  "me-1 select-none text-[12px] font-bold",
+                  playingThis
+                    ? "text-[color:var(--accent)]"
+                    : "text-[color:var(--accent)]/70",
+                  playable
+                    ? "cursor-pointer rounded px-0.5 transition hover:bg-[color:var(--accent)]/15 hover:text-[color:var(--accent)]"
+                    : "cursor-default",
+                ].join(" ")}
+              >
+                {playingThis ? "🔊" : ""}({verse.num})
+              </button>
             )}
             {verse.text.split(/\s+/).map((word, wi) => {
               wordIndex += 1;
@@ -1625,6 +1732,8 @@ function InteractivePassage({
                         passageRef: passage.ref,
                         x: rect.left,
                         y: rect.bottom,
+                        audioChapter: loc?.chapter,
+                        audioVerse: loc?.idx,
                       });
                     }}
                     className={[
@@ -1647,11 +1756,17 @@ function InteractivePassage({
               );
             })}
           </span>
-        ))}
+          );
+        })}
       </div>
       {!readOnly && (
         <p className="mt-3 pb-2 text-[11px] text-[color:var(--primary)]/45">
           💡 לחצו על מילה לסימון 📌 מילה מנחה או 🤔 מילה קשה · יש שאלה? לחצו על הבועית 💭 שמתחת לקטע
+          {spanPlayable && (
+            <>
+              {" "}· 🔊 לחיצה על מספר פסוק משמיעה אותו ({NARRATION_CREDIT})
+            </>
+          )}
         </p>
       )}
       {/* the question bubble — grows out of the passage box itself */}
@@ -1831,6 +1946,19 @@ function HelpVerses({
   verses: PassageVerse[];
 }) {
   const [open, setOpen] = useState(false);
+  const vAudio = useVerseAudio();
+  const audioCtx = getVerseAudioContext();
+  // chapter named in the ref text ("פרק ל״ב...") wins; otherwise the task's
+  // main chapter. Individual verses may still override via "chapter, verse".
+  const chapterHint =
+    chapterFromHebText(refText, audioCtx.bookId) ?? audioCtx.fallbackChapter;
+  const anyPlayable = verses.some((v) => {
+    const loc = resolveVerse(v.num, undefined, {
+      bookId: audioCtx.bookId,
+      fallbackChapter: chapterHint,
+    });
+    return loc && vAudio.has(loc.chapter, loc.idx);
+  });
   return (
     <div className="mb-3">
       <button
@@ -1849,15 +1977,44 @@ function HelpVerses({
             className="text-[16px] leading-[2.1] text-[color:var(--foreground)]"
             style={{ textAlign: "justify", textAlignLast: "right" }}
           >
-            {verses.map((v) => (
-              <span key={v.num}>
-                <span className="me-1 select-none text-[11px] font-bold text-[color:var(--accent)]/70">
-                  ({v.num})
+            {verses.map((v) => {
+              const loc = resolveVerse(v.num, undefined, {
+                bookId: audioCtx.bookId,
+                fallbackChapter: chapterHint,
+              });
+              const playable = Boolean(loc && vAudio.has(loc.chapter, loc.idx));
+              const playingThis = Boolean(
+                loc && vAudio.isPlaying(loc.chapter, loc.idx)
+              );
+              return (
+                <span
+                  key={v.num}
+                  onClick={
+                    playable ? () => vAudio.play(loc!.chapter, loc!.idx) : undefined
+                  }
+                  title={
+                    playable ? `השמעת הפסוק 🔊 (${NARRATION_CREDIT})` : undefined
+                  }
+                  className={playable ? "cursor-pointer" : undefined}
+                  style={
+                    playingThis
+                      ? { background: "rgba(185,106,59,0.12)", borderRadius: 6 }
+                      : undefined
+                  }
+                >
+                  <span className="me-1 select-none text-[11px] font-bold text-[color:var(--accent)]/70">
+                    {playingThis ? "🔊" : ""}({v.num})
+                  </span>
+                  {v.text}{" "}
                 </span>
-                {v.text}{" "}
-              </span>
-            ))}
+              );
+            })}
           </p>
+          {anyPlayable && (
+            <p className="mt-2 text-[10px] text-[color:var(--primary)]/40">
+              🔊 לחיצה על פסוק משמיעה אותו · {NARRATION_CREDIT}
+            </p>
+          )}
         </div>
       )}
     </div>
