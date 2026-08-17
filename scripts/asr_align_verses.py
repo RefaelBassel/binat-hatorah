@@ -113,6 +113,9 @@ def band_align(text_words: list[str], asr_words: list[str], band: int = 90):
     return mapping
 
 
+CACHE_DIR = Path(__file__).resolve().parent / ".asr-cache"
+
+
 def transcribe_words(model, ffmpeg: str, source: Path):
     segments, _ = model.transcribe(
         str(source), language="he", word_timestamps=True,
@@ -130,7 +133,20 @@ def transcribe_words(model, ffmpeg: str, source: Path):
     return words
 
 
-def align_chapter_asr(model, ffmpeg: str, mp3: Path, verses: list[str]):
+# Transcription is by far the slowest step (~real-time on CPU); cache the
+# word list per chapter so boundary-logic iterations re-run in seconds.
+def transcribe_words_cached(model, ffmpeg: str, mp3: Path, ref: str):
+    CACHE_DIR.mkdir(exist_ok=True)
+    cache = CACHE_DIR / f"{ref}.json"
+    if cache.exists():
+        return [tuple(w) for w in json.loads(cache.read_text(encoding="utf-8"))]
+    asr = transcribe_words(model, ffmpeg, mp3)
+    if asr:
+        cache.write_text(json.dumps(asr, ensure_ascii=False), encoding="utf-8")
+    return asr
+
+
+def align_chapter_asr(model, ffmpeg: str, mp3: Path, verses: list[str], ref: str):
     n = len(verses)
     # verse word streams (normalized, empty words dropped)
     verse_words = []
@@ -142,7 +158,7 @@ def align_chapter_asr(model, ffmpeg: str, mp3: Path, verses: list[str]):
     for vi, ws in enumerate(verse_words):
         v_of.extend([vi] * len(ws))
 
-    asr = transcribe_words(model, ffmpeg, mp3)
+    asr = transcribe_words_cached(model, ffmpeg, mp3, ref)
     if len(asr) < len(flat) * 0.5:
         # PyAV chokes on corrupt frames some source MP3s carry — decode to a
         # temp WAV with the (more tolerant) ffmpeg CLI and retry
@@ -157,6 +173,9 @@ def align_chapter_asr(model, ffmpeg: str, mp3: Path, verses: list[str]):
             )
             if wav.exists():
                 asr = transcribe_words(model, ffmpeg, wav)
+                if len(asr) >= len(flat) * 0.5:
+                    (CACHE_DIR / f"{ref}.json").write_text(
+                        json.dumps(asr, ensure_ascii=False), encoding="utf-8")
     if len(asr) < len(flat) * 0.5:
         return None, f"ASR too sparse ({len(asr)} words vs {len(flat)} in text)"
 
@@ -223,26 +242,60 @@ def align_chapter_asr(model, ffmpeg: str, mp3: Path, verses: list[str]):
             t = left_t + span * (sum(w[run_start:k + 1]) / seg_w)
             est_end[k] = t - 0.15
 
-    # snap boundaries to silences
+    # Boundaries come from the AUDIO, not from ASR times: whisper word
+    # timestamps lag systematically (students heard verse starts clipped
+    # and the next verse's opening leak in). For each consecutive pair,
+    # the true boundary is the LONGEST pause found between the two verses'
+    # anchor words — the window is widened backwards to compensate the lag.
     dur, sil = detect_silences(ffmpeg, str(mp3), -30, 0.15)
-    spans = []
-    for i in range(n):
-        s, e = est_start[i], est_end[i]
-        # start: if a silence ends within [s-1.2, s+0.6], start at its end
-        for ss, se in sil:
-            if s - 1.2 <= se <= s + 0.6:
-                s = se
-        # end: if a silence starts within [e-0.6, e+1.2], end at its start
-        for ss, se in sil:
-            if e - 0.6 <= ss <= e + 1.2:
-                e = ss
-                break
-        spans.append([round(max(0, s - 0.12), 2), round(e + 0.15, 2)])
+    LAG = 0.45  # typical whisper-small timestamp lag, seconds
 
-    # final monotonic cleanup
+    def longest_pause(lo: float, hi: float):
+        best = None
+        for ss, se in sil:
+            mid = (ss + se) / 2
+            if lo <= mid <= hi:
+                if best is None or (se - ss) > (best[1] - best[0]):
+                    best = (ss, se)
+        return best
+
+    bounds: list[tuple[float, float]] = []  # (end of verse i, start of i+1)
+    for i in range(n - 1):
+        left = est_end[i]
+        right = est_start[i + 1]
+        pause = longest_pause(min(left, right) - 1.9, max(left, right) + 0.5)
+        if pause:
+            bounds.append((pause[0], pause[1]))
+        else:
+            mid = (left + right) / 2 - LAG
+            bounds.append((mid, mid))
+
+    # first verse start: latest pause that ends shortly before its first word
+    first_start = max(0.0, est_start[0] - LAG)
+    lead = longest_pause(est_start[0] - 2.2, est_start[0] + 0.4)
+    if lead:
+        first_start = lead[1]
+    # last verse end: first pause after its last word (or the word end + tail)
+    last_end = est_end[n - 1] + 0.3
+    for ss, se in sil:
+        if est_end[n - 1] - 0.8 <= ss <= est_end[n - 1] + 2.0:
+            last_end = ss
+            break
+    if dur:
+        last_end = min(last_end, dur)
+
+    spans = []
+    cur = first_start
+    for i in range(n - 1):
+        end_i, next_start = bounds[i]
+        spans.append([round(max(0, cur - 0.1), 2), round(end_i + 0.12, 2)])
+        cur = next_start
+    spans.append([round(max(0, cur - 0.1), 2), round(last_end + 0.12, 2)])
+
+    # monotonic sanity
     for i in range(1, n):
-        if spans[i][0] < spans[i - 1][1] - 0.5:
-            spans[i][0] = spans[i - 1][1]
+        if spans[i][0] < spans[i - 1][0] + 0.4:
+            spans[i][0] = spans[i - 1][0] + 0.4
         if spans[i][1] <= spans[i][0]:
             spans[i][1] = spans[i][0] + 1.0
 
@@ -275,7 +328,7 @@ def main():
                 continue
             mp3 = AUDIO_DIR / f"{book}.{ch}.mp3"
             verses = fetch_verses(ref)
-            spans, report = align_chapter_asr(model, ffmpeg, mp3, verses)
+            spans, report = align_chapter_asr(model, ffmpeg, mp3, verses, ref)
             if spans is None:
                 problems.append(f"{ref}: {report} (kept previous spans)")
                 print(f"KEEP {ref}: {report}", flush=True)
