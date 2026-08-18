@@ -47,6 +47,16 @@ export default function ClassBoard({ taskId }: { taskId: number }) {
     };
   }, [taskId]);
 
+  // the board is chrome-free for the projector, so it needs its own way
+  // out — a discreet corner button plus the Escape key
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") window.location.href = "/dashboard";
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   useEffect(() => {
     const tick = () => {
       const d = new Date();
@@ -94,6 +104,16 @@ export default function ClassBoard({ taskId }: { taskId: number }) {
 
   return (
     <div className="min-h-screen px-8 py-6" style={{ background: "var(--background)" }}>
+      {/* discreet exit — barely visible on the projector, obvious on hover */}
+      <a
+        href="/dashboard"
+        title="יציאה מהלוח (או מקש Esc)"
+        aria-label="יציאה מהלוח"
+        className="fixed top-3 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] text-sm font-bold text-[color:var(--primary)]/70 opacity-40 shadow-sm transition hover:opacity-100"
+        style={{ insetInlineEnd: 12 }}
+      >
+        ✕
+      </a>
       {/* header */}
       <header className="mb-6 flex items-start justify-between gap-6">
         <div>
