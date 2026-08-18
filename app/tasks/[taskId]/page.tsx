@@ -13,6 +13,7 @@ import {
   getMarkings,
 } from "@/lib/tasks";
 import { getTaskContent, countTaskUnits } from "@/content/tasks/registry";
+import { isStudentMode } from "@/lib/student-mode";
 import { formatFullDate } from "@/lib/hebrew";
 
 export default async function TaskPage({
@@ -62,7 +63,9 @@ export default async function TaskPage({
   return (
     <>
       <TopNav />
-      {isTeacher && <ClassPulseDrawer taskId={taskId} />}
+      {/* teacher tooling stays hidden in student mode — the whole point of
+          that mode is experiencing the site exactly as a student does */}
+      {isTeacher && !(await isStudentMode()) && <ClassPulseDrawer taskId={taskId} />}
       {!guest && (
         <ReflectionDrawer
           taskId={taskId}
