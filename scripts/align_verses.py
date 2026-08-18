@@ -28,6 +28,9 @@ OUT_PATH = AUDIO_DIR / "audio-map.json"
 # Strip nikud, taamim and Hebrew punctuation to get a consonantal weight.
 MARKS = re.compile(r"[֑-ׇ׳״‏‎־|׀]")
 TAGS = re.compile(r"<[^>]+>")
+# Sefaria text carries HTML entities and parsha markers ({פ}/{ס}) that are
+# NOT read aloud — they must never reach word comparisons.
+NOISE = re.compile(r"&[a-z]+;|\{[פס]\}")
 
 
 def fetch_verses(sefaria_ref: str) -> list[str]:
@@ -37,7 +40,7 @@ def fetch_verses(sefaria_ref: str) -> list[str]:
     verses = data["he"]
     if not isinstance(verses, list):
         raise RuntimeError(f"unexpected he payload for {sefaria_ref}")
-    return [TAGS.sub("", v) for v in verses]
+    return [NOISE.sub(" ", TAGS.sub("", v)) for v in verses]
 
 
 def weight(verse: str) -> float:

@@ -270,11 +270,13 @@ def align_chapter_asr(model, ffmpeg: str, mp3: Path, verses: list[str], ref: str
             mid = (left + right) / 2 - LAG
             bounds.append((mid, mid))
 
-    # first verse start: latest pause that ends shortly before its first word
+    # first verse start: latest pause that ends shortly before its first word.
+    # Soft onsets (ו, מ, נ...) cross the silence threshold LATE, so never
+    # start at the detected silence end — back off well into the pause.
     first_start = max(0.0, est_start[0] - LAG)
     lead = longest_pause(est_start[0] - 2.2, est_start[0] + 0.4)
     if lead:
-        first_start = lead[1]
+        first_start = max(lead[0] + 0.1, lead[1] - 0.4)
     # last verse end: first pause after its last word (or the word end + tail)
     last_end = est_end[n - 1] + 0.3
     for ss, se in sil:
@@ -289,7 +291,9 @@ def align_chapter_asr(model, ffmpeg: str, mp3: Path, verses: list[str], ref: str
     for i in range(n - 1):
         end_i, next_start = bounds[i]
         spans.append([round(max(0, cur - 0.1), 2), round(end_i + 0.12, 2)])
-        cur = next_start
+        # same soft-onset compensation at every verse start: begin well
+        # inside the pause, not at its detected end
+        cur = max(end_i + 0.15, next_start - 0.4)
     spans.append([round(max(0, cur - 0.1), 2), round(last_end + 0.12, 2)])
 
     # monotonic sanity

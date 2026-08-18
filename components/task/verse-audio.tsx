@@ -128,7 +128,9 @@ function notify() {
 export function loadAudioMap(): Promise<AudioMap> {
   if (mapCache) return Promise.resolve(mapCache);
   if (!mapPromise) {
-    mapPromise = fetch("/audio/tanach/audio-map.json")
+    // no-store: the map is tiny and its timestamps get tuned — a stale
+    // cached copy silently plays wrong verse boundaries
+    mapPromise = fetch("/audio/tanach/audio-map.json", { cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<AudioMap>) : {}))
       .then((m) => (mapCache = m ?? {}))
       .catch(() => (mapCache = {}));
