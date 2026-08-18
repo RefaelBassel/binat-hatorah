@@ -21,6 +21,20 @@ export default async function OnboardingPage() {
       sql: "UPDATE users SET full_name = ?, address_form = ?, onboarded_at = ? WHERE id = ?",
       args: [fullName, valid, now, userId],
     });
+    // Late joiners get every already-published task: assignment normally
+    // happens at publish time, so without this a student who signs up
+    // after publication would see an empty task list (and stay invisible
+    // on the class board).
+    if (session.user.role !== "teacher") {
+      const tasks = await db().execute({ sql: "SELECT id FROM tasks", args: [] });
+      for (const t of tasks.rows) {
+        await db().execute({
+          sql: `INSERT OR IGNORE INTO task_assignments (task_id, user_id, assigned_at)
+                VALUES (?, ?, ?)`,
+          args: [Number(t.id), userId, now],
+        });
+      }
+    }
     // Explicitly refresh the JWT cookie so the app sees onboarded=true
     // on the next request (without this we'd get a redirect loop).
     await updateSession({
