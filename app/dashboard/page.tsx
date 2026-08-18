@@ -180,6 +180,24 @@ export default async function DashboardPage() {
         )}
       </div>
 
+      {/* verse-audio QA */}
+      <div className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
+        <div>
+          <h2 className="font-display text-lg font-bold text-[color:var(--primary)]">
+            🔊 ביקורת השמעת פסוקים
+          </h2>
+          <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
+            כל פרק ממופה, פסוק-פסוק — האזינו ובדקו שכל פסוק מתחיל ונגמר נקי
+          </p>
+        </div>
+        <Link
+          href="/dashboard/audio-qa"
+          className="shrink-0 rounded-full bg-[color:var(--primary)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+        >
+          לעמוד הביקורת ←
+        </Link>
+      </div>
+
       {/* recent reflections */}
       <div className="mb-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
         <h2 className="mb-3 font-display text-lg font-bold text-[color:var(--primary)]">
