@@ -138,6 +138,9 @@ export default function ReflectionDrawer({
           display: "flex",
           alignItems: "center",
           insetInlineStart: "auto",
+          // transparent wrapper overlaps the class-pulse drawer's handle —
+          // only the handle and panel may catch pointer events
+          pointerEvents: "none",
         }}
         dir="rtl"
       >
@@ -157,6 +160,7 @@ export default function ReflectionDrawer({
             cursor: dragging ? "grabbing" : "grab",
             touchAction: "none",
             border: "none",
+            pointerEvents: "auto",
           }}
         >
           <span style={{ fontSize: 14 }} aria-hidden>
@@ -185,6 +189,7 @@ export default function ReflectionDrawer({
             // subtle "inside of a drawer" depth on the leading edge
             boxShadow:
               "inset -12px 0 18px -14px rgba(46,36,56,0.35), 0 18px 45px -18px rgba(46,36,56,0.45)",
+            pointerEvents: "auto",
           }}
         >
           <div className="border-b border-[color:var(--border)] px-4 py-3">

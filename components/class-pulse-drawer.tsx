@@ -120,6 +120,9 @@ export default function ClassPulseDrawer({ taskId }: { taskId: number }) {
           display: "flex",
           alignItems: "flex-start",
           insetInlineStart: "auto",
+          // the wrapper is a large transparent box that overlaps the other
+          // drawer's handle — it must never swallow clicks itself
+          pointerEvents: "none",
         }}
         dir="rtl"
       >
@@ -138,6 +141,7 @@ export default function ClassPulseDrawer({ taskId }: { taskId: number }) {
             cursor: dragging ? "grabbing" : "grab",
             touchAction: "none",
             border: "none",
+            pointerEvents: "auto",
           }}
         >
           <span style={{ fontSize: 14 }} aria-hidden>📊</span>
@@ -152,6 +156,7 @@ export default function ClassPulseDrawer({ taskId }: { taskId: number }) {
             maxHeight: "72vh",
             background: "var(--card)",
             boxShadow: "inset -12px 0 18px -14px rgba(46,36,56,0.35), 0 18px 45px -18px rgba(46,36,56,0.45)",
+            pointerEvents: "auto",
           }}
         >
           <div className="border-b border-[color:var(--border)] px-4 py-3">
