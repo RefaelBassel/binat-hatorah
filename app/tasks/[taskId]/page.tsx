@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import TopNav from "@/components/top-nav";
+import ClassPulseDrawer from "@/components/class-pulse-drawer";
 import ReflectionDrawer from "@/components/reflection-drawer";
 import TaskRunner from "@/components/task/task-runner";
 import {
@@ -61,6 +62,7 @@ export default async function TaskPage({
   return (
     <>
       <TopNav />
+      {isTeacher && <ClassPulseDrawer taskId={taskId} />}
       {!guest && (
         <ReflectionDrawer
           taskId={taskId}

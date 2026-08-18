@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import PageShell from "@/components/page-shell";
+import ClassPulseDrawer from "@/components/class-pulse-drawer";
 import { getTask, taskRoster, STATUS_META } from "@/lib/tasks";
 import { formatHebDate, formatWorkTime } from "@/lib/hebrew";
 
@@ -36,12 +37,20 @@ export default async function DashboardTaskPage({
       title={task.title}
       subtitle={`להגשה עד ${formatHebDate(task.due_at)} · ${roster.length} בכיתה`}
     >
-      <p className="mb-6 text-center">
+      <ClassPulseDrawer taskId={task.id} />
+      <p className="mb-6 flex items-center justify-center gap-5 text-center">
         <Link
           href={`/tasks/${taskId}`}
           className="text-sm font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline"
         >
           👀 צפייה במשימה כפי שהכיתה רואה אותה ←
+        </Link>
+        <Link
+          href={`/dashboard/class-board/${taskId}`}
+          target="_blank"
+          className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+        >
+          🖥️ לוח כיתה להקרנה
         </Link>
       </p>
 
