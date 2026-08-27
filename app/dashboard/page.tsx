@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ClassReflections from "@/components/class-reflections";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import PageShell from "@/components/page-shell";
@@ -198,10 +199,18 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      {/* the class reflection journey — live charts */}
+      <div className="mb-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
+        <h2 className="mb-4 font-display text-lg font-bold text-[color:var(--primary)]">
+          🪞 מסע הרפלקציה של הכיתה
+        </h2>
+        <ClassReflections />
+      </div>
+
       {/* recent reflections */}
       <div className="mb-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
         <h2 className="mb-3 font-display text-lg font-bold text-[color:var(--primary)]">
-          🪞 רפלקציות אחרונות מהכיתה
+          🪞 רפלקציות אחרונות — במילים שלהם
         </h2>
         {reflections.length === 0 ? (
           <p className="text-sm text-[color:var(--foreground)]/60">

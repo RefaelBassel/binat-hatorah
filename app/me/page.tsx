@@ -6,7 +6,15 @@ import ReflectionDrawer from "@/components/reflection-drawer";
 import ContinueFab from "@/components/continue-fab";
 import QuestionBank from "@/components/question-bank";
 import AddressFormPicker from "@/components/address-form-picker";
-import ReflectionGraph, { type ReflectionPoint } from "@/components/reflection-graph";
+import MeReflections from "@/components/me-reflections";
+
+// row shape for the archive list + the trend chart's initial points
+interface ReflectionPoint {
+  createdAt: number;
+  difficulty: number;
+  pshat: number;
+  argument: number;
+}
 import { db } from "@/lib/db";
 import { tasksForStudent, STATUS_META } from "@/lib/tasks";
 import { unreadFor, markAllRead } from "@/lib/notify";
@@ -283,14 +291,18 @@ export default async function MePage() {
           <h2 className="mb-3 font-display text-base font-bold text-[color:var(--primary)]">
             🪞 הרפלקציות שלי {reflections.length > 0 && `(${reflections.length})`}
           </h2>
-          {reflections.length === 0 ? (
-            <p className="text-xs leading-6 text-[color:var(--foreground)]/55">
-              בסוף כל שיעור (או בכל רגע, דרך לשונית הרפלקציה בצד) תוכלי לספר
-              איך היה — והגרף שלך יצמח כאן 🌱
-            </p>
-          ) : (
+          <MeReflections
+            initialPoints={reflections.map((r) => ({
+              t: r.createdAt,
+              difficulty: r.difficulty,
+              pshat: r.pshat,
+              argument: r.argument,
+              note: r.note,
+              contextRef: r.contextRef,
+            }))}
+          />
+          {reflections.length > 0 && (
             <>
-              {reflections.length >= 2 && <ReflectionGraph points={reflections} />}
               <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto">
                 {[...reflections].reverse().map((r, i) => (
                   <li key={i} className="rounded-xl bg-[color:var(--background)] px-4 py-2.5 text-xs leading-6">
