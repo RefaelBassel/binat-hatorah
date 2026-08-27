@@ -15,6 +15,7 @@ interface StudentSeries {
 
 export default function ClassReflections() {
   const [students, setStudents] = useState<StudentSeries[] | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -89,6 +90,20 @@ export default function ClassReflections() {
     0
   );
 
+  // chip selector: most recently active first; default = the most recent
+  // sharer (falls back to the first student)
+  const sorted = [...students].sort(
+    (a, b) =>
+      (b.points[b.points.length - 1]?.t ?? 0) -
+      (a.points[a.points.length - 1]?.t ?? 0)
+  );
+  const selected =
+    sorted.find((s) => s.id === selectedId) ??
+    sorted.find((s) => s.points.length > 0) ??
+    sorted[0] ??
+    null;
+  const selectedLast = selected?.points[selected.points.length - 1] ?? null;
+
   return (
     <div className="space-y-5">
       {/* headline stats */}
@@ -115,61 +130,79 @@ export default function ClassReflections() {
         />
       </div>
 
-      {/* per-student mini trends */}
-      {withAny.length > 0 && (
+      {/* per-student trend — one chart, a chip selector to move between
+          students (a chart per student would stretch the dashboard forever) */}
+      {students.length > 0 && (
         <div>
           <p className="mb-2 text-[12px] font-bold text-[color:var(--primary)]/75">
             המסע של כל תלמיד/ה
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[...students]
-              .sort(
-                (a, b) =>
-                  (b.points[b.points.length - 1]?.t ?? 0) -
-                  (a.points[a.points.length - 1]?.t ?? 0)
-              )
-              .map((s) => {
-                const last = s.points[s.points.length - 1];
+          <div className="mb-3 max-h-28 overflow-y-auto rounded-xl bg-[color:var(--background)] p-2">
+            <div className="flex flex-wrap gap-1.5">
+              {sorted.map((s) => {
+                const active = s.id === selected?.id;
+                const empty = s.points.length === 0;
                 return (
-                  <div
+                  <button
                     key={s.id}
-                    className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-3"
+                    type="button"
+                    onClick={() => setSelectedId(s.id)}
+                    className={[
+                      "rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                      active
+                        ? "bg-[color:var(--primary)] text-white shadow"
+                        : empty
+                          ? "bg-[color:var(--card)] text-[color:var(--foreground)]/40 hover:text-[color:var(--foreground)]/70"
+                          : "bg-[color:var(--card)] text-[color:var(--primary)] hover:bg-[color:var(--primary)]/10",
+                    ].join(" ")}
                   >
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <p className="truncate text-xs font-bold text-[color:var(--primary)]">
-                        {s.name}
-                      </p>
-                      <span className="shrink-0 text-[10px] text-[color:var(--primary)]/50">
-                        {s.points.length === 0
-                          ? "אין עדיין"
-                          : `${s.points.length} רפלקציות`}
+                    {s.name}
+                    {!empty && (
+                      <span className={active ? "opacity-80" : "opacity-50"}>
+                        {" "}
+                        · {s.points.length}
                       </span>
-                    </div>
-                    {s.points.length === 0 ? (
-                      <p className="py-4 text-center text-[10px] text-[color:var(--foreground)]/40">
-                        טרם שיתפ/ה רפלקציה
-                      </p>
-                    ) : (
-                      <>
-                        <ReflectionTrend points={s.points} mini />
-                        {last && (
-                          <p className="mt-1 text-[10px] text-[color:var(--primary)]/50">
-                            אחרונה:{" "}
-                            {new Intl.DateTimeFormat("he-IL", {
-                              day: "numeric",
-                              month: "numeric",
-                              timeZone: "Asia/Jerusalem",
-                            }).format(new Date(last.t * 1000))}
-                            {" · "}קושי {last.difficulty} · פשט {last.pshat} · טיעון{" "}
-                            {last.argument}
-                          </p>
-                        )}
-                      </>
                     )}
-                  </div>
+                  </button>
                 );
               })}
+            </div>
           </div>
+
+          {selected && (
+            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-[color:var(--primary)]">
+                  {selected.name}
+                </p>
+                {selectedLast ? (
+                  <p className="text-[10px] text-[color:var(--primary)]/50">
+                    {selected.points.length} רפלקציות · אחרונה:{" "}
+                    {new Intl.DateTimeFormat("he-IL", {
+                      day: "numeric",
+                      month: "numeric",
+                      timeZone: "Asia/Jerusalem",
+                    }).format(new Date(selectedLast.t * 1000))}
+                    {" · "}קושי {selectedLast.difficulty} · פשט {selectedLast.pshat}
+                    {" · "}טיעון {selectedLast.argument}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-[color:var(--primary)]/50">
+                    טרם שיתפ/ה רפלקציה
+                  </p>
+                )}
+              </div>
+              <ReflectionTrend
+                points={selected.points}
+                emptyHint="עוד אין רפלקציות — כשישתפו, המסע יופיע כאן 🌱"
+              />
+              {selectedLast?.note && (
+                <p className="mt-2 rounded-lg bg-[color:var(--background)] px-3 py-1.5 text-[11px] text-[color:var(--foreground)]/75">
+                  💬 מהרפלקציה האחרונה: {selectedLast.note}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
