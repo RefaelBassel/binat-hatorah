@@ -14,7 +14,12 @@ import {
   republishTask,
   updateTaskDueDate,
 } from "@/lib/tasks";
-import { formatHebDate, formatWorkTime } from "@/lib/hebrew";
+import {
+  formatHebDate,
+  formatHebTime,
+  formatWorkTime,
+  israelWallTimeToUnix,
+} from "@/lib/hebrew";
 
 async function requireTeacherAction() {
   const session = await auth();
@@ -46,11 +51,10 @@ export default async function DashboardTaskPage({
     "use server";
     if (!(await requireTeacherAction())) return;
     const dueDate = String(formData.get("dueDate") ?? "");
+    const dueTimeRaw = String(formData.get("dueTime") ?? "");
+    const dueTime = /^\d{2}:\d{2}$/.test(dueTimeRaw) ? dueTimeRaw : "23:59";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return;
-    const dueAt = Math.floor(
-      new Date(`${dueDate}T23:59:00+03:00`).getTime() / 1000
-    );
-    await updateTaskDueDate(taskId, dueAt);
+    await updateTaskDueDate(taskId, israelWallTimeToUnix(dueDate, dueTime));
     revalidatePath(`/dashboard/task/${taskId}`);
     revalidatePath("/dashboard");
   }
@@ -71,13 +75,14 @@ export default async function DashboardTaskPage({
     revalidatePath("/dashboard");
   }
 
-  // current due date as yyyy-mm-dd in Israel time, for the date input
+  // current due date+time in Israel time, for the form inputs
   const dueDateValue = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jerusalem",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(task.due_at * 1000));
+  const dueTimeValue = formatHebTime(task.due_at);
 
   const roster = await taskRoster(taskId);
   const groups = {
@@ -91,7 +96,7 @@ export default async function DashboardTaskPage({
   return (
     <PageShell
       title={task.title}
-      subtitle={`להגשה עד ${formatHebDate(task.due_at)} · ${roster.length} בכיתה`}
+      subtitle={`להגשה עד ${formatHebDate(task.due_at)} בשעה ${formatHebTime(task.due_at)} · ${roster.length} בכיתה`}
     >
       <ClassPulseDrawer taskId={task.id} />
       <p className="mb-6 flex items-center justify-center gap-5 text-center">
@@ -145,15 +150,22 @@ export default async function DashboardTaskPage({
                 required
                 className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
               />
+              <input
+                type="time"
+                name="dueTime"
+                defaultValue={dueTimeValue}
+                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
+              />
               <button
                 type="submit"
                 className="rounded-full bg-[color:var(--primary)] px-5 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
               >
-                עדכון התאריך
+                עדכון
               </button>
             </form>
             <p className="mt-2 text-[11px] text-[color:var(--primary)]/55">
-              כרגע: {formatHebDate(task.due_at)} · השינוי חל מיד על כל הכיתה
+              כרגע: {formatHebDate(task.due_at)} בשעה {formatHebTime(task.due_at)} ·
+              השינוי חל מיד על כל הכיתה
             </p>
           </div>
 

@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { allStudents, allTasksWithStats, now } from "@/lib/tasks";
 import { sweepOverdue } from "@/lib/notify";
 import { TASK_REGISTRY } from "@/content/tasks/registry";
-import { formatHebDate } from "@/lib/hebrew";
+import { formatHebDate, formatHebTime, israelWallTimeToUnix } from "@/lib/hebrew";
 import { revalidatePath } from "next/cache";
 
 export default async function DashboardPage() {
@@ -74,9 +74,11 @@ export default async function DashboardPage() {
     if (session?.user?.role !== "teacher" || session.user.guest) return;
     const contentRef = String(formData.get("contentRef") ?? "");
     const dueDate = String(formData.get("dueDate") ?? "");
+    const dueTimeRaw = String(formData.get("dueTime") ?? "");
+    const dueTime = /^\d{2}:\d{2}$/.test(dueTimeRaw) ? dueTimeRaw : "23:59";
     if (!TASK_REGISTRY[contentRef] || !dueDate) return;
     const t = now();
-    const dueAt = Math.floor(new Date(`${dueDate}T23:59:00+03:00`).getTime() / 1000);
+    const dueAt = israelWallTimeToUnix(dueDate, dueTime);
     const title = TASK_REGISTRY[contentRef].content.title;
     const teacherId = Number(session.user.id);
 
@@ -168,6 +170,17 @@ export default async function DashboardPage() {
                 type="date"
                 name="dueDate"
                 required
+                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
+                עד השעה
+              </span>
+              <input
+                type="time"
+                name="dueTime"
+                defaultValue="23:59"
                 className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
               />
             </label>

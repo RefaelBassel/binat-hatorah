@@ -59,6 +59,44 @@ export function formatFullDate(unixSeconds: number): string {
   return `יום ${day}, ${h.day} ב${h.month} ${h.year} · ${greg}`;
 }
 
+export function formatHebTime(unixSeconds: number): string {
+  return new Intl.DateTimeFormat("he-IL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jerusalem",
+  }).format(new Date(unixSeconds * 1000));
+}
+
+// Convert an Israel WALL-CLOCK date+time ("2026-09-10", "18:30") to unix
+// seconds, DST-correct. (The old fixed "+03:00" trick silently drifted an
+// hour in winter — invisible at 23:59, visible once teachers pick times.)
+export function israelWallTimeToUnix(dateStr: string, timeStr: string): number {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const wanted = `${dateStr} ${timeStr}`;
+  // first guess assumes +03:00, then correct by the observed difference
+  let guessMs = new Date(`${dateStr}T${timeStr}:00+03:00`).getTime();
+  for (let i = 0; i < 2; i++) {
+    const parts = fmt.formatToParts(new Date(guessMs));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    const seen = `${get("year")}-${get("month")}-${get("day")} ${get("hour") === "24" ? "00" : get("hour")}:${get("minute")}`;
+    if (seen === wanted) break;
+    const diffMin =
+      (new Date(`${wanted.replace(" ", "T")}:00Z`).getTime() -
+        new Date(`${seen.replace(" ", "T")}:00Z`).getTime()) /
+      60000;
+    guessMs += diffMin * 60000;
+  }
+  return Math.floor(guessMs / 1000);
+}
+
 export function formatWorkTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);

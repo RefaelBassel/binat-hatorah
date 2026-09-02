@@ -14,7 +14,7 @@ import {
 } from "@/lib/tasks";
 import { getTaskContent, countTaskUnits } from "@/content/tasks/registry";
 import { isStudentMode } from "@/lib/student-mode";
-import { formatFullDate } from "@/lib/hebrew";
+import { formatFullDate, formatHebTime } from "@/lib/hebrew";
 
 export default async function TaskPage({
   params,
@@ -84,7 +84,7 @@ export default async function TaskPage({
             🎯 מיומנויות מרכזיות: {reg.content.skill}
           </p>
           <p className="mt-1 text-xs text-[color:var(--primary)]/55">
-            📅 להגשה עד: {formatFullDate(task.due_at)}
+            📅 להגשה עד: {formatFullDate(task.due_at)} בשעה {formatHebTime(task.due_at)}
           </p>
         </div>
 
