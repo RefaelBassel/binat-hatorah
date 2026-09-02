@@ -284,7 +284,12 @@ export default async function DashboardPage() {
             <Link
               key={t.id}
               href={`/dashboard/task/${t.id}`}
-              className="group block rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-sm transition hover:border-[color:var(--accent)]/60 hover:shadow-md"
+              className={[
+                "group block rounded-2xl border bg-[color:var(--card)] p-5 shadow-sm transition hover:shadow-md",
+                t.cancelled
+                  ? "border-[color:var(--danger)]/40 opacity-60 hover:border-[color:var(--danger)]"
+                  : "border-[color:var(--border)] hover:border-[color:var(--accent)]/60",
+              ].join(" ")}
             >
               <h3 className="font-display text-base font-bold text-[color:var(--primary)]">
                 {t.title}
@@ -292,7 +297,12 @@ export default async function DashboardPage() {
               <p className="mt-1 text-xs text-[color:var(--primary)]/55">
                 📅 פורסמה {formatHebDate(t.publishedAt)} · להגשה עד {formatHebDate(t.dueAt)}
               </p>
-              <div className="mt-3 flex gap-2 text-[11px] font-bold">
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
+                {t.cancelled && (
+                  <span className="rounded-full bg-[color:var(--danger)]/10 px-3 py-1 text-[color:var(--danger)]">
+                    🚫 מבוטלת — לא מוצגת לתלמידים
+                  </span>
+                )}
                 <span className="rounded-full bg-[color:var(--primary)]/10 px-3 py-1 text-[color:var(--primary)]">
                   👥 {t.assigned}
                 </span>

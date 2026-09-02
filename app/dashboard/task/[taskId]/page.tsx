@@ -1,10 +1,27 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import PageShell from "@/components/page-shell";
 import ClassPulseDrawer from "@/components/class-pulse-drawer";
-import { getTask, taskRoster, STATUS_META } from "@/lib/tasks";
+import ConfirmButton from "@/components/confirm-button";
+import {
+  getTask,
+  taskRoster,
+  STATUS_META,
+  isTaskCancelled,
+  cancelTaskAssignment,
+  republishTask,
+  updateTaskDueDate,
+} from "@/lib/tasks";
 import { formatHebDate, formatWorkTime } from "@/lib/hebrew";
+
+async function requireTeacherAction() {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id || user.role !== "teacher" || user.guest) return null;
+  return user;
+}
 
 // Teacher view of one task: full roster, color-coded statuses (including
 // טרם נלמדה), work time, progress, and links into each submission.
@@ -22,6 +39,45 @@ export default async function DashboardTaskPage({
   const taskId = Number(raw);
   const task = await getTask(taskId);
   if (!task) notFound();
+  const cancelled = await isTaskCancelled(taskId);
+
+  // ----- management actions (teacher-only, verified inside each action) -----
+  async function changeDueDate(formData: FormData) {
+    "use server";
+    if (!(await requireTeacherAction())) return;
+    const dueDate = String(formData.get("dueDate") ?? "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return;
+    const dueAt = Math.floor(
+      new Date(`${dueDate}T23:59:00+03:00`).getTime() / 1000
+    );
+    await updateTaskDueDate(taskId, dueAt);
+    revalidatePath(`/dashboard/task/${taskId}`);
+    revalidatePath("/dashboard");
+  }
+
+  async function cancelForClass() {
+    "use server";
+    if (!(await requireTeacherAction())) return;
+    await cancelTaskAssignment(taskId);
+    revalidatePath(`/dashboard/task/${taskId}`);
+    revalidatePath("/dashboard");
+  }
+
+  async function republishForClass() {
+    "use server";
+    if (!(await requireTeacherAction())) return;
+    await republishTask(taskId);
+    revalidatePath(`/dashboard/task/${taskId}`);
+    revalidatePath("/dashboard");
+  }
+
+  // current due date as yyyy-mm-dd in Israel time, for the date input
+  const dueDateValue = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(task.due_at * 1000));
 
   const roster = await taskRoster(taskId);
   const groups = {
@@ -53,6 +109,73 @@ export default async function DashboardTaskPage({
           🖥️ לוח כיתה להקרנה
         </Link>
       </p>
+
+      {/* ===== task management: due date + cancellation ===== */}
+      {cancelled ? (
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-[color:var(--danger)]/40 bg-[color:var(--danger)]/5 p-5">
+          <div>
+            <p className="font-display text-base font-bold text-[color:var(--danger)]">
+              🚫 המשימה מבוטלת
+            </p>
+            <p className="mt-1 text-sm text-[color:var(--foreground)]/70">
+              היא אינה מוצגת לאף תלמיד/ה. כל העבודות שנשמרו — נשמרות, ויחזרו
+              עם הפרסום מחדש.
+            </p>
+          </div>
+          <form action={republishForClass}>
+            <button
+              type="submit"
+              className="rounded-full bg-[color:var(--primary)] px-6 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+            >
+              📣 פרסום מחדש לכל הכיתה
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="mb-8 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
+            <p className="mb-2 text-sm font-bold text-[color:var(--primary)]">
+              📅 תאריך אחרון להגשה
+            </p>
+            <form action={changeDueDate} className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                name="dueDate"
+                defaultValue={dueDateValue}
+                required
+                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
+              />
+              <button
+                type="submit"
+                className="rounded-full bg-[color:var(--primary)] px-5 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+              >
+                עדכון התאריך
+              </button>
+            </form>
+            <p className="mt-2 text-[11px] text-[color:var(--primary)]/55">
+              כרגע: {formatHebDate(task.due_at)} · השינוי חל מיד על כל הכיתה
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[color:var(--danger)]/30 bg-[color:var(--card)] p-5">
+            <p className="mb-2 text-sm font-bold text-[color:var(--danger)]">
+              🚫 ביטול ההקצאה
+            </p>
+            <p className="mb-3 text-[11px] leading-5 text-[color:var(--foreground)]/65">
+              המשימה תוסר מכל התלמידים ולא תופיע אצלם. העבודות שכבר נשמרו
+              לא נמחקות — ואפשר לפרסם מחדש בכל רגע.
+            </p>
+            <form action={cancelForClass}>
+              <ConfirmButton
+                message={`לבטל את ההקצאה של ״${task.title}״ לכל הכיתה? המשימה תוסר מכל התלמידים (העבודות שנשמרו יישארו, ואפשר לפרסם מחדש).`}
+                className="rounded-full border-2 border-[color:var(--danger)]/60 px-5 py-1.5 text-sm font-bold text-[color:var(--danger)] transition hover:bg-[color:var(--danger)]/10"
+              >
+                ביטול ההקצאה לכל הכיתה
+              </ConfirmButton>
+            </form>
+          </div>
+        </div>
+      )}
 
       {(
         [

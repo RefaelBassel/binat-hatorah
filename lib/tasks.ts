@@ -218,12 +218,83 @@ export async function allStudents() {
   }));
 }
 
+// ---------- task management: due-date changes and cancellation ----------
+
+// Cancellations live in a small marker table created lazily on first use,
+// so the feature ships without a manual migration run against production
+// (the canonical DDL is also recorded in migrations/0006_task_cancellations.sql
+// for fresh databases).
+let cancellationsReady = false;
+export async function ensureCancellationsTable() {
+  if (cancellationsReady) return;
+  await db().execute(
+    `CREATE TABLE IF NOT EXISTS task_cancellations (
+       task_id INTEGER PRIMARY KEY REFERENCES tasks(id),
+       cancelled_at INTEGER NOT NULL
+     )`
+  );
+  cancellationsReady = true;
+}
+
+export async function isTaskCancelled(taskId: number): Promise<boolean> {
+  await ensureCancellationsTable();
+  const res = await db().execute({
+    sql: "SELECT 1 FROM task_cancellations WHERE task_id = ?",
+    args: [taskId],
+  });
+  return res.rows.length > 0;
+}
+
+// Cancel = remove the task from every student (their saved work stays
+// untouched) and mark it so late-joiner auto-assignment skips it.
+export async function cancelTaskAssignment(taskId: number) {
+  await ensureCancellationsTable();
+  await db().execute({
+    sql: "INSERT OR IGNORE INTO task_cancellations (task_id, cancelled_at) VALUES (?, ?)",
+    args: [taskId, now()],
+  });
+  await db().execute({
+    sql: "DELETE FROM task_assignments WHERE task_id = ?",
+    args: [taskId],
+  });
+}
+
+// Republish = clear the mark and assign every onboarded student again.
+export async function republishTask(taskId: number) {
+  await ensureCancellationsTable();
+  await db().execute({
+    sql: "DELETE FROM task_cancellations WHERE task_id = ?",
+    args: [taskId],
+  });
+  const students = await db().execute({
+    sql: "SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL",
+    args: [],
+  });
+  const t = now();
+  for (const r of students.rows) {
+    await db().execute({
+      sql: `INSERT OR IGNORE INTO task_assignments (task_id, user_id, assigned_at)
+            VALUES (?, ?, ?)`,
+      args: [taskId, Number(r.id), t],
+    });
+  }
+}
+
+export async function updateTaskDueDate(taskId: number, dueAt: number) {
+  await db().execute({
+    sql: "UPDATE tasks SET due_at = ? WHERE id = ?",
+    args: [dueAt, taskId],
+  });
+}
+
 export async function allTasksWithStats() {
+  await ensureCancellationsTable();
   const res = await db().execute({
     sql: `SELECT t.id, t.content_ref, t.title, t.published_at, t.due_at,
             (SELECT COUNT(*) FROM task_assignments a WHERE a.task_id = t.id) AS assigned,
             (SELECT COUNT(*) FROM task_progress p WHERE p.task_id = t.id AND p.submitted_at IS NOT NULL) AS submitted,
-            (SELECT COUNT(*) FROM grades g WHERE g.task_id = t.id AND g.approved_at IS NOT NULL) AS graded
+            (SELECT COUNT(*) FROM grades g WHERE g.task_id = t.id AND g.approved_at IS NOT NULL) AS graded,
+            EXISTS(SELECT 1 FROM task_cancellations c WHERE c.task_id = t.id) AS cancelled
           FROM tasks t ORDER BY t.due_at ASC`,
     args: [],
   });
@@ -236,6 +307,7 @@ export async function allTasksWithStats() {
     assigned: Number(r.assigned),
     submitted: Number(r.submitted),
     graded: Number(r.graded),
+    cancelled: Boolean(Number(r.cancelled)),
   }));
 }
 
