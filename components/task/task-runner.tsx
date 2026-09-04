@@ -104,6 +104,40 @@ export default function TaskRunner({
   const [clock, setClock] = useState("");
   const [menu, setMenu] = useState<WordMenuState | null>(null);
   const vAudio = useVerseAudio();
+
+  // ----- Part B pagination: one sub-task (section) rendered at a time -----
+  const questionKeysOf = (sec: TaskContent["sections"][number]) => {
+    const keys: string[] = [];
+    for (const b of sec.blocks) {
+      if (b.type !== "question") continue;
+      const q = b as QuestionBlock;
+      if (q.fields?.length) {
+        for (const f of q.fields) keys.push(`${q.key}:${f.key}`);
+      } else {
+        keys.push(q.key);
+      }
+    }
+    return keys;
+  };
+  // open on the first sub-task that still has unanswered questions
+  const [activeSection, setActiveSection] = useState(() => {
+    const idx = content.sections.findIndex((sec) =>
+      questionKeysOf(sec).some((k) => !(initialAnswers[k] ?? "").trim())
+    );
+    return idx === -1 ? 0 : idx;
+  });
+  const partBRef = useRef<HTMLDivElement | null>(null);
+  const sectionStats = content.sections.map((sec) => {
+    const keys = questionKeysOf(sec);
+    return {
+      total: keys.length,
+      done: keys.filter((k) => (answers[k] ?? "").trim()).length,
+    };
+  });
+  const gotoSection = (si: number) => {
+    setActiveSection(Math.max(0, Math.min(content.sections.length - 1, si)));
+    partBRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   // Register the task's book + main chapter so passages, help-verses and the
   // word menu can resolve verse audio without prop-threading.
   useEffect(() => {
@@ -749,9 +783,13 @@ export default function TaskRunner({
         />
       )}
 
-      {/* ===== Part B (stage 8): the worksheet ===== */}
+      {/* ===== Part B (stage 8): the worksheet, one sub-task at a time =====
+          Rendering every section at once made long tasks heavy (hundreds of
+          filled textareas + justified nikud text is expensive layout), so
+          Part B is paginated: a sub-task navigator + only the active
+          section in the DOM. Answers auto-save, so switching is free. */}
       {stage === 8 && (
-        <div className="space-y-10">
+        <div className="space-y-8" ref={partBRef}>
           <div className="rounded-2xl border-2 border-[color:var(--primary)]/25 bg-[color:var(--card)] p-6 text-center">
             <p className="mb-1 text-[11px] font-semibold tracking-[0.3em] text-[color:var(--accent)]">
               חלק ב
@@ -763,39 +801,107 @@ export default function TaskRunner({
               סיימתם את קריאת הפשט 👏 עכשיו מעמיקים בטקסט ובמקורות, ומתרגלים את
               המיומנות השנייה: טענה, נימוק וביסוס מן הכתובים.
             </p>
+            {/* sub-task navigator */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              {content.sections.map((section, si) => {
+                const st = sectionStats[si];
+                const active = si === activeSection;
+                const complete = st.total > 0 && st.done >= st.total;
+                return (
+                  <button
+                    key={section.key}
+                    type="button"
+                    onClick={() => gotoSection(si)}
+                    className={[
+                      "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition",
+                      active
+                        ? "border-[color:var(--primary)] bg-[color:var(--primary)] text-white shadow"
+                        : complete
+                          ? "border-[color:var(--success)]/50 bg-[color:var(--success)]/10 text-[color:var(--success)] hover:bg-[color:var(--success)]/20"
+                          : "border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--primary)] hover:border-[color:var(--accent)]",
+                    ].join(" ")}
+                  >
+                    <span>{complete ? "✓" : si + 1}</span>
+                    <span className="max-w-40 truncate">{section.title}</span>
+                    {st.total > 0 && (
+                      <span className={active ? "opacity-75" : "opacity-50"}>
+                        {st.done}/{st.total}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[10px] text-[color:var(--primary)]/45">
+              חלק ב מחולק ל-{content.sections.length} תתי-משימות — כל מה שנכתב
+              נשמר אוטומטית במעבר ביניהן
+            </p>
           </div>
-          {content.sections.map((section, si) => (
-            <section key={section.key}>
-              <div className="mb-4 flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary)] font-display text-sm font-bold text-white">
-                  {si + 1}
-                </span>
-                <h2 className="font-display text-xl font-bold text-[color:var(--primary)]">
-                  {section.title}
-                </h2>
-                {section.minutes && (
-                  <span className="rounded-full bg-[color:var(--accent)]/15 px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--accent)]">
-                    ⏳ ~{section.minutes} דק׳
+
+          {(() => {
+            const si = activeSection;
+            const section = content.sections[si];
+            if (!section) return null;
+            const st = sectionStats[si];
+            return (
+              <section key={section.key}>
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary)] font-display text-sm font-bold text-white">
+                    {si + 1}
                   </span>
-                )}
-              </div>
-              <div className="space-y-5">
-                {section.blocks.map((block) => (
-                  <BlockView
-                    key={block.key}
-                    block={block}
-                    answers={answers}
-                    setAnswer={setAnswer}
-                    markOf={markOf}
-                    setMenu={setMenu}
-                    readOnly={readOnly}
-                    askClaude={askClaude}
-                    onAskQuestion={openPassageQuestion}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+                  <h2 className="font-display text-xl font-bold text-[color:var(--primary)]">
+                    {section.title}
+                  </h2>
+                  {section.minutes && (
+                    <span className="rounded-full bg-[color:var(--accent)]/15 px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--accent)]">
+                      ⏳ ~{section.minutes} דק׳
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-5">
+                  {section.blocks.map((block) => (
+                    <BlockView
+                      key={block.key}
+                      block={block}
+                      answers={answers}
+                      setAnswer={setAnswer}
+                      markOf={markOf}
+                      setMenu={setMenu}
+                      readOnly={readOnly}
+                      askClaude={askClaude}
+                      onAskQuestion={openPassageQuestion}
+                    />
+                  ))}
+                </div>
+
+                {/* prev / next between sub-tasks */}
+                <div className="mt-6 flex items-center justify-between">
+                  {si > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => gotoSection(si - 1)}
+                      className="rounded-full border border-[color:var(--border)] px-5 py-2 text-xs font-bold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
+                    >
+                      → לתת-המשימה הקודמת
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  {si < content.sections.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={() => gotoSection(si + 1)}
+                      className="rounded-full bg-[color:var(--primary)] px-6 py-2 text-xs font-bold text-white shadow transition hover:scale-[1.02]"
+                    >
+                      {st.done >= st.total && st.total > 0
+                        ? "סיימתי כאן — לתת-המשימה הבאה ←"
+                        : "לתת-המשימה הבאה ←"}
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
 
           {/* submit */}
           {!submitted && (
