@@ -24,7 +24,19 @@ export async function POST(
   if (action === "unsubmit") {
     if (t > guard.task.due_at) {
       return NextResponse.json(
-        { error: "המועד האחרון עבר — לא ניתן לבטל הגשה." },
+        { error: "המועד האחרון עבר — לתיקון אחרי המועד פנו למורה, שיכול/ה להחזיר את המשימה לעבודה." },
+        { status: 400 }
+      );
+    }
+    // a graded-and-approved submission is final for the student — otherwise
+    // the approved grade would silently refer to edited work
+    const approved = await db().execute({
+      sql: "SELECT 1 FROM grades WHERE task_id = ? AND user_id = ? AND approved_at IS NOT NULL",
+      args: [guard.task.id, guard.userId],
+    });
+    if (approved.rows.length > 0) {
+      return NextResponse.json(
+        { error: "המשימה כבר נבדקה ואושרה — לתיקון נוסף פנו למורה." },
         { status: 400 }
       );
     }

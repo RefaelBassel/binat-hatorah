@@ -12,6 +12,7 @@ import {
 import { getTaskContent } from "@/content/tasks/registry";
 import { formatWorkTime } from "@/lib/hebrew";
 import { salvageGradeProposal } from "@/lib/grade-utils";
+import ConfirmButton from "@/components/confirm-button";
 import { DECODE_STAGES } from "@/content/tasks/registry";
 
 const MARK_LABEL: Record<string, string> = {
@@ -53,6 +54,29 @@ export default async function SubmissionPage({
   const answers = await getAnswers(taskId, studentId);
   const markings = await getMarkings(taskId, studentId);
   const progress = await getProgress(taskId, studentId);
+
+  // Teacher rescue: return a submitted task to the student for revision —
+  // works even after the deadline (the student-side unsubmit does not).
+  async function returnForRevision() {
+    "use server";
+    const s = await auth();
+    if (s?.user?.role !== "teacher" || s.user.guest) return;
+    const t = Math.floor(Date.now() / 1000);
+    await db().execute({
+      sql: "UPDATE task_progress SET submitted_at = NULL, updated_at = ? WHERE task_id = ? AND user_id = ?",
+      args: [t, taskId, studentId],
+    });
+    const { notifyStudent } = await import("@/lib/notify");
+    await notifyStudent(studentId, {
+      kind: `returned:${taskId}:${studentId}:${t}`,
+      title: `המשימה ״${task!.title}״ הוחזרה אליך לתיקון`,
+      body: "המורה פתח/ה את ההגשה מחדש — אפשר להמשיך לעבוד ולהגיש שוב.",
+      link: `/tasks/${taskId}`,
+    });
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath(`/dashboard/submission/${taskId}/${studentId}`);
+    revalidatePath(`/dashboard/task/${taskId}`);
+  }
 
   const questionsRes = await db().execute({
     sql: "SELECT question, created_at FROM question_bank WHERE user_id = ? AND task_id = ? ORDER BY created_at",
@@ -180,6 +204,24 @@ export default async function SubmissionPage({
             ))}
           </div>
         </section>
+
+        {/* return-for-revision — visible while submitted and not yet approved */}
+        {progress?.submitted_at != null && grade?.approved_at == null && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+            <p className="text-sm text-[color:var(--foreground)]/70">
+              🔓 הגיש/ה מוקדם מדי או צריך/ה לתקן? אפשר להחזיר את המשימה
+              לעבודה — גם אחרי המועד האחרון. התלמיד/ה יקבל/תקבל התראה.
+            </p>
+            <form action={returnForRevision}>
+              <ConfirmButton
+                message={`להחזיר את ״${task.title}״ לתיקון אצל ${studentName}? ההגשה תיפתח מחדש והתלמיד/ה יוכל/תוכל להמשיך לעבוד ולהגיש שוב.`}
+                className="shrink-0 rounded-full border-2 border-[color:var(--accent)]/60 px-4 py-1.5 text-xs font-bold text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/10"
+              >
+                החזרה לתיקון
+              </ConfirmButton>
+            </form>
+          </div>
+        )}
 
         {/* grading — stored proposals pass through the salvage cleaner, so
             drafts written by the old raw-JSON path display properly */}

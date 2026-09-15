@@ -625,16 +625,23 @@ export default function TaskRunner({
       </div>
 
       {submitted && (
-        <div className="mb-6 rounded-xl border border-[color:var(--success)]/40 bg-[color:var(--success)]/10 px-4 py-3 text-sm text-[color:var(--success)]">
-          ✅ המשימה הוגשה! עכשיו רגע קטן לעצמך — פתחו את לשונית 🪞 הרפלקציה שבצד וספרו איך היה. {Date.now() / 1000 <= dueAt && "אפשר לבטל את ההגשה ולתקן עד המועד האחרון."}
-          {Date.now() / 1000 <= dueAt && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[color:var(--success)]/40 bg-[color:var(--success)]/10 px-4 py-3 text-sm text-[color:var(--success)]">
+          <span>
+            ✅ המשימה הוגשה! עכשיו רגע קטן לעצמך — פתחו את לשונית 🪞 הרפלקציה
+            שבצד וספרו איך היה.
+          </span>
+          {Date.now() / 1000 <= dueAt ? (
             <button
               onClick={() => doSubmit("unsubmit")}
               disabled={submitBusy}
-              className="ms-3 rounded-lg border border-[color:var(--success)]/50 px-3 py-1 text-xs font-semibold hover:bg-[color:var(--success)]/10"
+              className="shrink-0 rounded-full border-2 border-[color:var(--success)]/60 bg-white px-4 py-1.5 text-xs font-bold text-[color:var(--success)] shadow-sm transition hover:bg-[color:var(--success)]/10 disabled:opacity-50"
             >
-              ביטול הגשה ותיקון
+              🔓 {submitBusy ? "רגע..." : "ביטול ההגשה וחזרה לעבודה"}
             </button>
+          ) : (
+            <span className="text-xs text-[color:var(--success)]/80">
+              המועד האחרון עבר — לתיקון אחרי המועד, פנו למורה.
+            </span>
           )}
         </div>
       )}
@@ -1125,6 +1132,17 @@ export default function TaskRunner({
                 className="rounded-full px-6 py-2 text-xs font-semibold text-[color:var(--primary)]/60 transition hover:text-[color:var(--primary)]"
               >
                 להישאר כאן
+              </button>
+              {/* the immediate-regret escape hatch: submitted too early? */}
+              <button
+                onClick={() => {
+                  setCelebrate(false);
+                  doSubmit("unsubmit");
+                }}
+                disabled={submitBusy}
+                className="rounded-full px-6 py-1.5 text-[11px] font-semibold text-[color:var(--accent)] underline-offset-2 transition hover:underline"
+              >
+                רגע, הגשתי מוקדם מדי — ביטול ההגשה וחזרה לעבודה
               </button>
             </div>
           </div>
