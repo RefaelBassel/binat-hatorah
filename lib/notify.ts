@@ -27,21 +27,26 @@ export async function teacherIds(): Promise<{ id: number; email: string }[]> {
   return res.rows.map((r) => ({ id: Number(r.id), email: String(r.email) }));
 }
 
-// Bell + email to every teacher.
+// Bell to every teacher; email too unless email: false (Reut asked to stop
+// per-submission emails — the bell is enough for the routine flow).
 export async function notifyTeachers(opts: {
   kind: string;
   title: string;
   body?: string;
   link?: string;
+  email?: boolean;
 }) {
+  const { email = true, ...notice } = opts;
   const teachers = await teacherIds();
   for (const t of teachers) {
-    await createNotification({ userId: t.id, ...opts });
-    await sendEmail({
-      to: t.email,
-      subject: `בינת התורה · ${opts.title}`,
-      html: `<div dir="rtl"><p>${opts.title}</p><p>${opts.body ?? ""}</p></div>`,
-    });
+    await createNotification({ userId: t.id, ...notice });
+    if (email) {
+      await sendEmail({
+        to: t.email,
+        subject: `בינת התורה · ${notice.title}`,
+        html: `<div dir="rtl"><p>${notice.title}</p><p>${notice.body ?? ""}</p></div>`,
+      });
+    }
   }
 }
 

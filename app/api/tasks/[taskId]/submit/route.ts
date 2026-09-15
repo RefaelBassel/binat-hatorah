@@ -52,7 +52,8 @@ export async function POST(
     args: [t, t, guard.task.id, guard.userId],
   });
 
-  // Teacher notification: bell + email.
+  // Teacher notification: bell only — Reut asked not to be emailed on every
+  // submission; the bell and in-site notifications are enough.
   const session = await auth();
   const name = session?.user?.fullName ?? session?.user?.email ?? "תלמידה";
   await notifyTeachers({
@@ -60,6 +61,7 @@ export async function POST(
     title: `הגשה חדשה: ${name} הגיש/ה את ״${guard.task.title}״`,
     body: "אפשר לבדוק את ההגשה בדשבורד המורה.",
     link: `/dashboard/task/${guard.task.id}`,
+    email: false,
   });
 
   return NextResponse.json({ ok: true, submitted: true });
