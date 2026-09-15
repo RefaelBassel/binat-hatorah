@@ -287,6 +287,88 @@ export async function updateTaskDueDate(taskId: number, dueAt: number) {
   });
 }
 
+// ---------- focus mode (מצב מיקוד) ----------
+// Transparent classroom attention tracking: leaving the task window and
+// blocked external pastes are recorded per (task, student). Pedagogy locked
+// with Rafael: the student sees their own quiet counter, the teacher sees
+// per-student detail privately, the projected board shows only a CLASS
+// aggregate, and nothing ever changes a grade automatically.
+let focusReady = false;
+export async function ensureFocusTable() {
+  if (focusReady) return;
+  await db().execute(
+    `CREATE TABLE IF NOT EXISTS focus_events (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       task_id INTEGER NOT NULL,
+       user_id INTEGER NOT NULL,
+       kind TEXT NOT NULL,          -- 'blur' | 'paste-blocked'
+       away_ms INTEGER,             -- blur only: how long outside the window
+       created_at INTEGER NOT NULL
+     )`
+  );
+  await db().execute(
+    "CREATE INDEX IF NOT EXISTS idx_focus_task_user ON focus_events(task_id, user_id)"
+  );
+  focusReady = true;
+}
+
+export async function recordFocusEvents(
+  taskId: number,
+  userId: number,
+  events: { kind: "blur" | "paste-blocked"; awayMs?: number }[]
+) {
+  await ensureFocusTable();
+  const t = now();
+  for (const e of events.slice(0, 20)) {
+    await db().execute({
+      sql: `INSERT INTO focus_events (task_id, user_id, kind, away_ms, created_at)
+            VALUES (?, ?, ?, ?, ?)`,
+      args: [
+        taskId,
+        userId,
+        e.kind === "paste-blocked" ? "paste-blocked" : "blur",
+        e.kind === "blur" ? Math.min(Math.max(0, Math.round(e.awayMs ?? 0)), 3600_000) : null,
+        t,
+      ],
+    });
+  }
+}
+
+export interface FocusStats {
+  exits: number;
+  awayMs: number;
+  pasteBlocked: number;
+}
+
+// Per-student focus stats for one task, optionally windowed (e.g., the
+// current lesson — last 90 minutes).
+export async function focusStatsFor(
+  taskId: number,
+  sinceUnix?: number
+): Promise<Map<number, FocusStats>> {
+  await ensureFocusTable();
+  const res = await db().execute({
+    sql: `SELECT user_id, kind, COUNT(*) AS n, COALESCE(SUM(away_ms), 0) AS away
+          FROM focus_events
+          WHERE task_id = ? AND created_at >= ?
+          GROUP BY user_id, kind`,
+    args: [taskId, sinceUnix ?? 0],
+  });
+  const map = new Map<number, FocusStats>();
+  for (const r of res.rows) {
+    const uid = Number(r.user_id);
+    const stats = map.get(uid) ?? { exits: 0, awayMs: 0, pasteBlocked: 0 };
+    if (String(r.kind) === "blur") {
+      stats.exits = Number(r.n);
+      stats.awayMs = Number(r.away);
+    } else {
+      stats.pasteBlocked = Number(r.n);
+    }
+    map.set(uid, stats);
+  }
+  return map;
+}
+
 export async function allTasksWithStats() {
   await ensureCancellationsTable();
   const res = await db().execute({

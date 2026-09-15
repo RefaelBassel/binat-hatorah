@@ -21,6 +21,9 @@ interface StudentRow {
   workSeconds: number;
   lastBeat: number | null;
   status: "active" | "idle" | "submitted" | "absent";
+  focusExits: number;
+  focusAwaySec: number;
+  pasteBlocked: number;
 }
 
 interface ClassStatus {
@@ -279,7 +282,27 @@ function StudentGroup({
                 <span>
                   {s.stage >= 8 ? "חלק ב — העמקה ודיון" : `חלק א · שלב ${s.stage || 1} מתוך 7`}
                 </span>
-                <span>⏱ {Math.round(s.workSeconds / 60)} דק׳</span>
+                <span className="flex items-center gap-2">
+                  {/* focus detail — teacher-private, never on the board */}
+                  {(s.focusExits > 0 || s.pasteBlocked > 0) && (
+                    <span
+                      className={
+                        s.focusExits >= 3
+                          ? "flex items-center gap-1 font-bold text-[color:var(--warning)]"
+                          : "flex items-center gap-1"
+                      }
+                      title="יציאות מחלון המשימה בשיעור הנוכחי · זמן בחוץ · הדבקות שנחסמו"
+                    >
+                      {s.focusExits >= 3 && (
+                        <span className="inline-block h-2 w-2 rounded-full bg-[color:var(--warning)]" />
+                      )}
+                      🎯 {s.focusExits}
+                      {s.focusAwaySec >= 60 && ` · ${Math.round(s.focusAwaySec / 60)}ד׳ בחוץ`}
+                      {s.pasteBlocked > 0 && ` · 📋 ${s.pasteBlocked}`}
+                    </span>
+                  )}
+                  <span>⏱ {Math.round(s.workSeconds / 60)} דק׳</span>
+                </span>
               </div>
             </li>
           );

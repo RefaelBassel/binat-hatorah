@@ -60,6 +60,20 @@ export default async function TaskPage({
       });
   const initialQuestions = bankRows.rows.map((r) => String(r.question));
 
+  // focus counter continuity: exits already recorded in the current lesson
+  // window (last 90 minutes), so a page refresh doesn't reset the counter
+  let initialFocusExits = 0;
+  if (!guest && !isTeacher) {
+    const { ensureFocusTable } = await import("@/lib/tasks");
+    await ensureFocusTable();
+    const f = await db().execute({
+      sql: `SELECT COUNT(*) AS n FROM focus_events
+            WHERE task_id = ? AND user_id = ? AND kind = 'blur' AND created_at >= ?`,
+      args: [taskId, userId, Math.floor(Date.now() / 1000) - 90 * 60],
+    });
+    initialFocusExits = Number(f.rows[0]?.n ?? 0);
+  }
+
   return (
     <>
       <TopNav />
@@ -100,6 +114,7 @@ export default async function TaskPage({
           initialStage={progress?.stage ?? 1}
           initialWorkSeconds={progress?.work_seconds ?? 0}
           submitted={Boolean(progress?.submitted_at)}
+          initialFocusExits={initialFocusExits}
           dueAt={task.due_at}
           totalUnits={countTaskUnits(reg)}
         />

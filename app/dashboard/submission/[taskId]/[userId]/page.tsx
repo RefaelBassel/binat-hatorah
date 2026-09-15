@@ -8,6 +8,7 @@ import {
   getAnswers,
   getMarkings,
   getProgress,
+  focusStatsFor,
 } from "@/lib/tasks";
 import { getTaskContent } from "@/content/tasks/registry";
 import { formatWorkTime } from "@/lib/hebrew";
@@ -54,6 +55,8 @@ export default async function SubmissionPage({
   const answers = await getAnswers(taskId, studentId);
   const markings = await getMarkings(taskId, studentId);
   const progress = await getProgress(taskId, studentId);
+  const focusMap = await focusStatsFor(taskId);
+  const focus = focusMap.get(studentId) ?? { exits: 0, awayMs: 0, pasteBlocked: 0 };
 
   // Teacher rescue: return a submitted task to the student for revision —
   // works even after the deadline (the student-side unsubmit does not).
@@ -204,6 +207,26 @@ export default async function SubmissionPage({
             ))}
           </div>
         </section>
+
+        {/* focus picture — context for the teacher, never an automatic verdict */}
+        {(focus.exits > 0 || focus.pasteBlocked > 0) && (
+          <div className="mb-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+            <p className="text-sm font-bold text-[color:var(--primary)]">
+              🎯 תמונת מיקוד (לאורך כל העבודה על המשימה)
+            </p>
+            <p className="mt-1 text-sm text-[color:var(--foreground)]/75">
+              {focus.exits} יציאות מחלון המשימה
+              {focus.awayMs >= 60000 &&
+                ` · כ-${Math.round(focus.awayMs / 60000)} דקות מחוץ לחלון`}
+              {focus.pasteBlocked > 0 &&
+                ` · ${focus.pasteBlocked} ניסיונות הדבקה חיצונית נחסמו`}
+            </p>
+            <p className="mt-1 text-[11px] text-[color:var(--primary)]/50">
+              נתון רקע לשיקול דעת ולשיחה — יציאה יכולה להיות גם התראת מערכת או
+              מעבר תמים. אין לכך השפעה אוטומטית על הציון.
+            </p>
+          </div>
+        )}
 
         {/* return-for-revision — visible while submitted and not yet approved */}
         {progress?.submitted_at != null && grade?.approved_at == null && (

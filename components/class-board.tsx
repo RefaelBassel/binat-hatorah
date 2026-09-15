@@ -23,6 +23,7 @@ interface ClassStatus {
   totalUnits: number;
   units: { key: string; label: string; part: "a" | "b" }[];
   students: StudentRow[];
+  classFocusPct?: number | null;
 }
 
 export default function ClassBoard({ taskId }: { taskId: number }) {
@@ -143,8 +144,27 @@ export default function ClassBoard({ taskId }: { taskId: number }) {
           <p className="font-display text-xl font-bold text-[color:var(--primary)]">
             📊 הכיתה יחד
           </p>
-          <p className="text-sm font-bold text-[color:var(--primary)]/70">
-            🟢 {present.length - submittedCount} עובדים · ✅ {submittedCount} הגישו · ⚪ {away.length} לא נוכחים
+          <p className="flex items-center gap-3 text-sm font-bold text-[color:var(--primary)]/70">
+            {/* class-level focus only — the board never shows per-student focus */}
+            {data.classFocusPct != null && (
+              <span
+                className="rounded-full px-3 py-1"
+                style={{
+                  background:
+                    data.classFocusPct >= 85
+                      ? "rgba(62,107,79,0.12)"
+                      : "rgba(179,137,43,0.12)",
+                  color:
+                    data.classFocusPct >= 85 ? "var(--success)" : "var(--warning)",
+                }}
+                title="אחוז הנוכחים שנשארו ממוקדים במשימה (עד 2 יציאות מהחלון)"
+              >
+                🎯 מיקוד כיתתי: {data.classFocusPct}%
+              </span>
+            )}
+            <span>
+              🟢 {present.length - submittedCount} עובדים · ✅ {submittedCount} הגישו · ⚪ {away.length} לא נוכחים
+            </span>
           </p>
         </div>
         <div className="h-5 overflow-hidden rounded-full bg-[color:var(--border)]">

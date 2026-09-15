@@ -68,9 +68,19 @@ interface Props {
   submitted: boolean;
   dueAt: number;
   totalUnits: number;
+  initialFocusExits?: number;
 }
 
 type MarkKind = "leitwort" | "hard" | "question";
+
+// Paste-guard normalization: nikud, taamim, punctuation and spacing all
+// vanish, so a verse pasted from anywhere still matches the task's own text.
+function normalizeForPaste(s: string): string {
+  return s
+    .replace(/[֑-ׇ]/g, "")
+    .replace(/[^א-תa-zA-Z0-9]/g, "")
+    .toLowerCase();
+}
 
 const MARK_STYLE: Record<string, { bg: string; border: string; label: string; emoji: string }> = {
   leitwort: { bg: "#efe6f3", border: "#413055", label: "מילה מנחה", emoji: "📌" },
@@ -92,6 +102,7 @@ export default function TaskRunner({
   submitted: initialSubmitted,
   dueAt,
   totalUnits,
+  initialFocusExits = 0,
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
   const [markings, setMarkings] = useState<Marking[]>(initialMarkings);
@@ -211,6 +222,104 @@ export default function TaskRunner({
   const [questionDraft, setQuestionDraft] = useState("");
   const [banked, setBanked] = useState<string[]>(initialQuestions ?? []);
   const readOnly = submitted;
+
+  // ---------- focus mode (מצב מיקוד) ----------
+  // Transparent attention tracking, decided with Rafael: the student sees
+  // their own quiet counter and gets ONE gentle nudge at 3 exits; teachers
+  // see detail privately; the projected board shows a class aggregate only;
+  // nothing here ever touches a grade. Teachers walking a task are skipped.
+  const trackFocus = !canReset && !submitted;
+  const [focusExits, setFocusExits] = useState(initialFocusExits);
+  const [focusNudge, setFocusNudge] = useState(false);
+  const nudgeShown = useRef(initialFocusExits >= 3);
+  const awaySince = useRef<number | null>(null);
+
+  const reportFocus = (events: { kind: string; awayMs?: number }[]) => {
+    try {
+      navigator.sendBeacon?.(
+        `/api/tasks/${taskId}/focus`,
+        new Blob([JSON.stringify({ events })], { type: "application/json" })
+      ) ||
+        fetch(`/api/tasks/${taskId}/focus`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ events }),
+          keepalive: true,
+        });
+    } catch {
+      // focus reporting must never break the task page
+    }
+  };
+
+  useEffect(() => {
+    if (!trackFocus) return;
+    const onAway = () => {
+      if (awaySince.current == null) awaySince.current = Date.now();
+    };
+    const onBack = () => {
+      if (awaySince.current == null) return;
+      const awayMs = Date.now() - awaySince.current;
+      awaySince.current = null;
+      // ignore sub-1.5s flickers (OS toasts, accidental Alt-Tab bounce)
+      if (awayMs < 1500) return;
+      reportFocus([{ kind: "blur", awayMs }]);
+      setFocusExits((n) => {
+        const next = n + 1;
+        if (next >= 3 && !nudgeShown.current) {
+          nudgeShown.current = true;
+          setFocusNudge(true);
+        }
+        return next;
+      });
+    };
+    const onVisibility = () =>
+      document.visibilityState === "hidden" ? onAway() : onBack();
+    window.addEventListener("blur", onAway);
+    window.addEventListener("focus", onBack);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("blur", onAway);
+      window.removeEventListener("focus", onBack);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackFocus, taskId]);
+
+  // Paste guard: short pastes pass; anything longer passes only if it comes
+  // from the task's own verses/sources (we ourselves say "העתיקו את הפסוק").
+  // External text is blocked with a warm message and counted for the teacher.
+  const [pasteMsg, setPasteMsg] = useState(false);
+  const allowedCorpus = useMemo(() => {
+    const parts: string[] = [];
+    const addVerses = (vs: { text: string }[]) =>
+      vs.forEach((v) => parts.push(v.text));
+    addVerses(mainPassage.verses);
+    for (const sec of content.sections) {
+      for (const b of sec.blocks) {
+        if (b.type === "passage") addVerses(b.verses);
+        if (b.type === "source") parts.push(b.text);
+        if (b.type === "question" && (b as QuestionBlock).helpVerses) {
+          addVerses((b as QuestionBlock).helpVerses!.verses);
+        }
+      }
+    }
+    return normalizeForPaste(parts.join(" "));
+  }, [content, mainPassage]);
+
+  const onGuardedPaste = (e: React.ClipboardEvent) => {
+    if (!trackFocus) return;
+    const target = e.target as HTMLElement;
+    if (target.tagName !== "TEXTAREA" && target.tagName !== "INPUT") return;
+    // the Claude chat panel is a conversation, not an answer field
+    if (target.closest('[data-paste-free="true"]')) return;
+    const text = e.clipboardData?.getData("text") ?? "";
+    if (text.trim().split(/\s+/).length <= 2) return;
+    if (allowedCorpus.includes(normalizeForPaste(text))) return;
+    e.preventDefault();
+    setPasteMsg(true);
+    setTimeout(() => setPasteMsg(false), 4000);
+    reportFocus([{ kind: "paste-blocked" }]);
+  };
   // How to label the student's own messages in the assist chat — first name
   // when we have it, otherwise the dual form (never a gendered guess).
   const meLabel = (studentName ?? "").trim().split(/\s+/)[0] || "את/ה";
@@ -577,7 +686,40 @@ export default function TaskRunner({
   const overdue = Date.now() / 1000 > dueAt && !submitted;
 
   return (
-    <div className="mx-auto w-full max-w-3xl" onClick={() => setMenu(null)}>
+    <div
+      className="mx-auto w-full max-w-3xl"
+      onClick={() => setMenu(null)}
+      onPaste={onGuardedPaste}
+    >
+      {/* focus-mode toasts: warm, once, never shaming */}
+      {focusNudge && (
+        <div className="fixed bottom-5 left-1/2 z-[70] w-[min(420px,92vw)] -translate-x-1/2 rounded-2xl border border-[color:var(--accent)]/40 bg-[color:var(--card)] px-5 py-3 text-center text-sm shadow-2xl">
+          <p className="font-bold text-[color:var(--primary)]">
+            🎯 שמנו לב שיצאת כמה פעמים מהמשימה
+          </p>
+          <p className="mt-0.5 text-xs text-[color:var(--foreground)]/70">
+            הכול בסדר? חוזרים למיקוד — הקטע מחכה לך.
+          </p>
+          <button
+            onClick={() => setFocusNudge(false)}
+            className="mt-2 rounded-full bg-[color:var(--primary)] px-5 py-1 text-xs font-bold text-white"
+          >
+            חוזר/ת למיקוד 💪
+          </button>
+        </div>
+      )}
+      {pasteMsg && (
+        <div className="fixed bottom-5 left-1/2 z-[70] w-[min(420px,92vw)] -translate-x-1/2 rounded-2xl border border-[color:var(--accent)]/40 bg-[color:var(--card)] px-5 py-3 text-center text-sm shadow-2xl">
+          <p className="font-bold text-[color:var(--primary)]">
+            ✍️ כאן כותבים במילים שלכם
+          </p>
+          <p className="mt-0.5 text-xs text-[color:var(--foreground)]/70">
+            הדבקה מותרת רק לפסוקים ולמקורות מתוך המשימה. במילים שלך — זה
+            בדיוק מה שמעניין את המורה (ואת קלוד 😉).
+          </p>
+        </div>
+      )}
+
       {/* ===== sticky status bar: labeled clock, work stopwatch, progress ===== */}
       <div
         className="sticky top-[57px] z-20 -mx-2 mb-6 rounded-b-xl border-b border-x border-[color:var(--border)] px-4 py-2"
@@ -604,6 +746,19 @@ export default function TaskRunner({
                 זמן העבודה שלי
               </p>
             </div>
+            {trackFocus && focusExits > 0 && (
+              <div
+                className="text-center"
+                title="יציאות מחלון המשימה בזמן העבודה — נראה גם למורה"
+              >
+                <p className="tabular-nums text-base font-bold leading-5 text-[color:var(--primary)]/60">
+                  🎯 {focusExits}
+                </p>
+                <p className="text-[10px] leading-3 text-[color:var(--primary)]/50">
+                  יציאות מהמשימה
+                </p>
+              </div>
+            )}
           </div>
           <div className="max-w-[45%] flex-1" title="כמה מהמשימה כבר עשיתי">
             <div className="flex items-center gap-2">
@@ -1153,6 +1308,7 @@ export default function TaskRunner({
       {assist && (
         <div
           ref={assistPanelRef}
+          data-paste-free="true"
           className="fixed z-40 rounded-2xl border border-[color:var(--primary)]/20 p-4 shadow-2xl"
           style={
             assistPos

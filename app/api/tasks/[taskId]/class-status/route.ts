@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireTeacher } from "@/lib/api-auth";
-import { getTask, now } from "@/lib/tasks";
+import { getTask, now, focusStatsFor } from "@/lib/tasks";
 import {
   getTaskContent,
   countTaskUnits,
@@ -81,6 +81,8 @@ export async function GET(
   }
 
   const t = now();
+  // focus picture for the current lesson: the last 90 minutes
+  const focus = await focusStatsFor(task.id, t - 90 * 60);
   const students = roster.rows.map((r) => {
     const uid = Number(r.id);
     const stage = r.stage != null ? Number(r.stage) : 0;
@@ -97,6 +99,7 @@ export async function GET(
         : opened
           ? "idle"
           : "absent";
+    const f = focus.get(uid) ?? { exits: 0, awayMs: 0, pasteBlocked: 0 };
     return {
       id: uid,
       name: (r.full_name as string | null) ?? String(r.email),
@@ -106,12 +109,30 @@ export async function GET(
       workSeconds: r.work_seconds != null ? Number(r.work_seconds) : 0,
       lastBeat,
       status,
+      focusExits: f.exits,
+      focusAwaySec: Math.round(f.awayMs / 1000),
+      pasteBlocked: f.pasteBlocked,
     };
   });
+
+  // class focus for the projected board: share of PRESENT students (working
+  // now or already submitted this lesson) with at most 2 window exits.
+  // Aggregate only — the board never shows per-student focus.
+  const present = students.filter(
+    (s) => s.status === "active" || s.status === "submitted"
+  );
+  const classFocusPct =
+    present.length === 0
+      ? null
+      : Math.round(
+          (100 * present.filter((s) => s.focusExits <= 2).length) /
+            present.length
+        );
 
   return NextResponse.json({
     ok: true,
     now: t,
+    classFocusPct,
     task: {
       id: task.id,
       title: reg.content.title,
