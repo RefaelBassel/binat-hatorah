@@ -7,6 +7,7 @@ import { getTask, getAnswers, getMarkings, now } from "@/lib/tasks";
 import { getTaskContent } from "@/content/tasks/registry";
 import { CLAUDE_MODEL } from "@/lib/claude";
 import { addressInstruction } from "@/lib/address-form";
+import { salvageGradeProposal } from "@/lib/grade-utils";
 
 // Claude proposes a score + feedback for a submission. The teacher edits and
 // approves — nothing reaches the student without teacher approval.
@@ -75,6 +76,10 @@ export async function POST(req: Request) {
     .map((m) => `${m.kind}: ${m.wordText}${m.note ? ` (${m.note})` : ""}`)
     .join(", ");
 
+  // Structured output via FORCED tool use: the API hands back a parsed
+  // object, so the proposal can never leak into the feedback box as a raw
+  // JSON string (which is exactly what happened when the old prose-JSON
+  // approach met a feedback containing quotes or newlines).
   const client = new Anthropic({ apiKey });
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
@@ -82,9 +87,34 @@ export async function POST(req: Request) {
     system: `את/ה עוזר/ת הערכה למורה באתר "בינת התורה" (תנ"ך, כיתה י — בנים ובנות, תיכון שחרית).
 הערך/כי את ההגשה בעברית: ציון 0-100 והערכה מילולית חמה, מפורטת ובונה (מה חוזק, מה לשפר, דוגמה אחת קונקרטית).
 בהירות מוחלטת — המשוב מגיע לתלמיד/ה בכיתה י: בלי ניסוחים עמומים; כשמתייחסים למילה מהקטע או ממה שנכתב — צטט/י אותה במדויק; שיהיה ברור בדיוק מה היה טוב ולמה, ומה הצעד הבא.
+המשוב הוא טקסט רגיל בלבד — בלי Markdown, בלי כוכביות ובלי כותרות; להדגשה השתמש/י במירכאות.
 שים/י לב במיוחד ל: הבנת הפשט, איכות פירוק הטיעון (טענה/נימוק/ביסוס), עומק השאלות שנשאלו, ואיכות הסימונים (מילה מנחה, מילים קשות).
 שפה: ${addressInstruction(studentRow.rows[0]?.address_form as string | null)} מותר לפנות בשם הפרטי.
-זו הצעה בלבד — המורה עורך/ת ומאשר/ת. החזר/י JSON בלבד במבנה: {"score": <מספר>, "feedback": "<טקסט>"}`,
+זו הצעה בלבד — המורה עורך/ת ומאשר/ת. הגש/הגישי את ההערכה דרך הכלי submit_grade.`,
+    tools: [
+      {
+        name: "submit_grade",
+        description: "הגשת הצעת הציון והמשוב למורה",
+        input_schema: {
+          type: "object" as const,
+          properties: {
+            score: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100,
+              description: "הציון המוצע, 0-100",
+            },
+            feedback: {
+              type: "string",
+              description:
+                "ההערכה המילולית לתלמיד/ה — טקסט רגיל בלבד, בלי Markdown",
+            },
+          },
+          required: ["score", "feedback"],
+        },
+      },
+    ],
+    tool_choice: { type: "tool", name: "submit_grade" },
     messages: [
       {
         role: "user",
@@ -103,15 +133,24 @@ ${qa.join("\n\n")}`,
     ],
   });
 
-  const text = msg.content.find((c) => c.type === "text")?.text ?? "";
   let score: number | null = null;
-  let feedback = text;
-  try {
-    const parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-    score = Math.min(100, Math.max(0, Math.round(Number(parsed.score))));
-    feedback = String(parsed.feedback ?? "");
-  } catch {
-    // keep raw text as feedback
+  let feedback = "";
+  const toolUse = msg.content.find((c) => c.type === "tool_use");
+  if (toolUse && toolUse.type === "tool_use") {
+    const input = toolUse.input as { score?: unknown; feedback?: unknown };
+    if (Number.isFinite(Number(input.score))) {
+      score = Math.min(100, Math.max(0, Math.round(Number(input.score))));
+    }
+    feedback = String(input.feedback ?? "")
+      .replace(/\*\*/g, "")
+      .trim();
+  }
+  if (!feedback) {
+    // extremely defensive: if no tool call came back, salvage whatever text did
+    const text = msg.content.find((c) => c.type === "text")?.text ?? "";
+    const rescued = salvageGradeProposal(text, score);
+    score = rescued.score;
+    feedback = rescued.feedback;
   }
 
   const t = now();

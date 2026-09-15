@@ -11,6 +11,7 @@ import {
 } from "@/lib/tasks";
 import { getTaskContent } from "@/content/tasks/registry";
 import { formatWorkTime } from "@/lib/hebrew";
+import { salvageGradeProposal } from "@/lib/grade-utils";
 import { DECODE_STAGES } from "@/content/tasks/registry";
 
 const MARK_LABEL: Record<string, string> = {
@@ -64,6 +65,19 @@ export default async function SubmissionPage({
     args: [taskId, studentId],
   });
   const grade = gradeRes.rows[0];
+
+  // legacy rows may hold the proposal as a raw JSON blob — clean for display
+  const salvageIfBlob = (raw: string | null, score: number | null) => {
+    if (raw == null) return null;
+    return salvageGradeProposal(raw, score).feedback;
+  };
+  const salvaged =
+    grade?.claude_feedback != null
+      ? salvageGradeProposal(
+          String(grade.claude_feedback),
+          grade.claude_score != null ? Number(grade.claude_score) : null
+        )
+      : null;
 
   return (
     <PageShell
@@ -167,15 +181,18 @@ export default async function SubmissionPage({
           </div>
         </section>
 
-        {/* grading */}
+        {/* grading — stored proposals pass through the salvage cleaner, so
+            drafts written by the old raw-JSON path display properly */}
         <GradePanel
           taskId={taskId}
           studentId={studentId}
           studentName={studentName}
-          initialClaudeScore={grade?.claude_score != null ? Number(grade.claude_score) : null}
-          initialClaudeFeedback={(grade?.claude_feedback as string | null) ?? null}
+          initialClaudeScore={salvaged?.score ?? null}
+          initialClaudeFeedback={salvaged?.feedback ?? null}
           initialScore={grade?.score != null ? Number(grade.score) : null}
-          initialFeedback={(grade?.feedback as string | null) ?? null}
+          initialFeedback={
+            salvageIfBlob((grade?.feedback as string | null) ?? null, null)
+          }
           approved={grade?.approved_at != null}
         />
       </div>
