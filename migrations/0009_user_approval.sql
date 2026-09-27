@@ -4,4 +4,5 @@
 -- needs no manual run; this file is the canonical DDL for fresh databases.
 ALTER TABLE users ADD COLUMN approved_at INTEGER;
 ALTER TABLE users ADD COLUMN blocked_at INTEGER;
-UPDATE users SET approved_at = created_at WHERE role = 'teacher';
+-- one-time grandfathering: accounts that existed before the gate stay in
+UPDATE users SET approved_at = created_at WHERE approved_at IS NULL;

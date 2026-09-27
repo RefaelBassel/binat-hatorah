@@ -14,6 +14,10 @@ export async function ensureApprovalColumns() {
   const cols = new Set(info.rows.map((r) => String(r.name)));
   if (!cols.has("approved_at")) {
     await db().execute("ALTER TABLE users ADD COLUMN approved_at INTEGER");
+    // one-time grandfathering (Rafael, 2026-09-27, option ב): every account
+    // that existed before the gate stays in; the gate applies to newcomers,
+    // and strangers already inside are removed by hand from the roster
+    await db().execute("UPDATE users SET approved_at = created_at WHERE approved_at IS NULL");
   }
   if (!cols.has("blocked_at")) {
     await db().execute("ALTER TABLE users ADD COLUMN blocked_at INTEGER");
