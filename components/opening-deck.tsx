@@ -321,14 +321,14 @@ export default function OpeningDeckPlayer({
 
 // In-place editor for the opener / hook (the plenary slide is edited where
 // the plenary question lives — the thinking card or the closing screen).
-function OpeningEditor({
+export function OpeningEditor({
   contentRef,
   initial,
   onClose,
 }: {
   contentRef: string;
   initial: OpeningDeck | null;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const router = useRouter();
   const [opener, setOpener] = useState(initial?.opener ?? "");
@@ -392,16 +392,18 @@ function OpeningEditor({
                 body: JSON.stringify({ contentRef, field: "opening", reset: true }),
               });
               router.refresh();
-              onClose();
+              onClose?.();
             }}
             className="text-xs font-semibold"
             style={{ color: `${GRAPE}80` }}
           >
             ↺ לנוסח המקורי
           </button>
-          <button type="button" onClick={onClose} className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: "#e9ddd2", color: GRAPE }}>
-            חזרה למצגת
-          </button>
+          {onClose && (
+            <button type="button" onClick={onClose} className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: "#e9ddd2", color: GRAPE }}>
+              חזרה למצגת
+            </button>
+          )}
         </div>
       </div>
     </div>
