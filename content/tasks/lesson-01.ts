@@ -62,8 +62,86 @@ export const lesson01: TaskContent = {
     minQuestions: 2,
   },
 
-  // Part A stage 7 — two very simple pshat comprehension questions,
-  // answerable straight from the verses (no commentators).
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "why-not",
+      kind: "choice",
+      prompt: "מדוע לא יכלו האנשים לעשות את הפסח במועדו? (פסוק ו׳)",
+      part: "פסוק ו׳ — מי לא יכול היה לעשות את הפסח, ולמה",
+      options: [
+        "היו רחוקים מהמחנה",
+        "היו טמאים לנפש אדם",
+        "לא היה להם קורבן",
+        "שכחו את המועד",
+      ],
+      answer: 1,
+    },
+    {
+      key: "before-whom",
+      kind: "choice",
+      prompt: "לפני מי ניגשו האנשים עם הבקשה שלהם? (פסוק ו׳)",
+      part: "פסוק ו׳ — אל מי פנו האנשים",
+      options: ["לפני משה בלבד", "לפני משה ולפני אהרן", "לפני כל העדה", "לפני הכהנים"],
+      answer: 1,
+    },
+    {
+      key: "nigara",
+      kind: "choice",
+      prompt: "״לָמָּה נִגָּרַע״ — מה האנשים מבקשים במילים האלה? (פסוק ז׳)",
+      part: "פסוק ז׳ — משמעות ״לָמָּה נִגָּרַע״",
+      options: [
+        "שלא יחסירו מהם את ההשתתפות בקורבן ה׳",
+        "שיפטרו אותם מחובת הפסח",
+        "שיענישו את מי שגרם להם להיטמא",
+        "שידחו את הפסח לכל העם",
+      ],
+      answer: 0,
+    },
+    {
+      key: "moshe-immediate",
+      kind: "truefalse",
+      prompt: "משה ענה לאנשים מיד, מתוך מה שכבר ידע. (פסוק ח׳)",
+      part: "פסוק ח׳ — תגובת משה: ״עִמְדוּ וְאֶשְׁמְעָה״",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ח׳):",
+      part: "סדר האירועים בפרק (פסוקים א׳–ח׳)",
+      options: [
+        "ה׳ מצווה לעשות את הפסח במועדו",
+        "בני ישראל עושים את הפסח במדבר סיני",
+        "אנשים טמאים ניגשים אל משה ואל אהרן",
+        "משה אומר: ״עִמְדוּ וְאֶשְׁמְעָה״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה מרגישים האנשים כשהם אומרים ״לָמָּה נִגָּרַע״?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the school dilemma in Part B.
+  plenary: {
+    question:
+      "האם הנהלת בית הספר צריכה להחריג את שני התלמידים שנעדרו מהמבחן בגלל תחרות הרובוטיקה — או שהתקנון חייב להיות שווה לכולם, בלי יוצאים מן הכלל?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "קרה לכם פעם שהחמצתם משהו חשוב — ולא באשמתכם? מה עשיתם עם זה?",
+    hook: "בפרק שלנו קבוצה קטנה של אנשים לא יכולה להשתתף במה שכל העם עושה. במקום לשתוק, הם ניגשים ושואלים: לָמָּה נִגָּרַע?",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "who-and-why",

@@ -110,7 +110,55 @@ export interface DecodeConfig {
   minQuestions: number; // question stage: minimum questions to formulate
 }
 
-export interface TaskContent {
+// ---------- comprehension check (צ'ק הבנה) ----------
+// Part A stage 7. Closed questions the server scores instantly to a 1-10
+// number that is SEPARATE from the task grade and visible live to the
+// teacher. `part` names the piece of the chapter the question tests — the
+// class heat-map ("היכן הכיתה מתקשה") aggregates wrong answers by part.
+export type CheckKind = "choice" | "truefalse" | "order";
+
+export interface CheckQuestion {
+  key: string;
+  kind: CheckKind;
+  prompt: string;
+  part: string; // e.g. 'פסוק ז׳ — משמעות ״נִגָּרַע״'
+  // choice: the options in display order; answer = index of the correct one
+  // truefalse: options ignored; answer = 0 (נכון) | 1 (לא נכון)
+  // order: options in the CORRECT order (shuffled for display); answer = 0
+  options: string[];
+  answer: number;
+}
+
+// The one open question at the end of the check — "לגיוון". Never scored,
+// never part of the instant number; the teacher reads it in the submission.
+export interface CheckOpenQuestion {
+  key: string;
+  prompt: string;
+}
+
+// The plenary question (שאלת המליאה): reserved for live human discussion.
+// Shown to students only as "💭 שאלה למחשבה" after Part B — no answer field,
+// no Claude help, no grade. The teacher projects it from the closing screen.
+export interface PlenaryQuestion {
+  question: string;
+}
+
+// אור פותח — the teacher's opening deck. Title/chapter slide → opener →
+// (optional) hook → the plenary question as "we'll return to this".
+export interface OpeningDeck {
+  opener: string; // "שאלה לפתיחה"
+  hook?: string; // "לחשוב על…"
+}
+
+// Everything the teacher can override in-place (see lib/content-overrides.ts).
+export interface EditableTaskContent {
+  check: CheckQuestion[];
+  checkOpen?: CheckOpenQuestion;
+  plenary: PlenaryQuestion;
+  opening: OpeningDeck;
+}
+
+export interface TaskContent extends Partial<EditableTaskContent> {
   ref: string; // registry key, e.g. 'lesson-01'
   title: string;
   subtitle?: string;
@@ -119,8 +167,9 @@ export interface TaskContent {
   decode: DecodeConfig;
   // Opening illustration shown in stage 1 (מפגש ראשון) — sets the scene.
   heroArt?: { art: string; caption?: string };
-  // Part A stage 7 (בדיקת הבנה): VERY simple pshat comprehension questions —
-  // answered from the passage alone, no commentators.
+  // LEGACY Part A stage 7: open comprehension questions. Superseded by
+  // `check` — a task that defines `check` ignores this field. Kept until
+  // every lesson carries a check, then removed.
   comprehension: { key: string; prompt: string }[];
   // Part B (העמקה ודיון): the argumentative-writing + deepening worksheet.
   sections: TaskSection[];

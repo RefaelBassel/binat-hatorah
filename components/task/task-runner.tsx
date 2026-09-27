@@ -8,9 +8,14 @@ import type {
   TaskBlock,
   TaskContent,
   QuestionBlock,
+  CheckQuestion,
+  CheckOpenQuestion,
 } from "@/content/tasks/types";
+import type { CheckOutcome, PublicCheckQuestion } from "@/lib/check";
 import { DECODE_STAGES } from "@/content/tasks/registry";
 import TaskArt from "./task-art";
+import ComprehensionCheck from "./comprehension-check";
+import CheckEditor from "./check-editor";
 import {
   NARRATION_CREDIT,
   getVerseAudioContext,
@@ -69,6 +74,14 @@ interface Props {
   dueAt: number;
   totalUnits: number;
   initialFocusExits?: number;
+  // comprehension check (stage 7): questions WITHOUT their answer key, the
+  // student's stored attempt (if any), and — for a teacher outside student
+  // mode — the full editable check for the in-place editor.
+  check?: PublicCheckQuestion[];
+  checkOpen?: CheckOpenQuestion | null;
+  initialCheckResult?: CheckOutcome | null;
+  canEditContent?: boolean;
+  editableCheck?: { check: CheckQuestion[]; open: CheckOpenQuestion | null } | null;
 }
 
 type MarkKind = "leitwort" | "hard" | "question";
@@ -103,8 +116,15 @@ export default function TaskRunner({
   dueAt,
   totalUnits,
   initialFocusExits = 0,
+  check,
+  checkOpen = null,
+  initialCheckResult = null,
+  canEditContent = false,
+  editableCheck = null,
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
+  const [checkResult, setCheckResult] = useState<CheckOutcome | null>(initialCheckResult);
+  const hasCheck = Boolean(check && check.length > 0);
   const [markings, setMarkings] = useState<Marking[]>(initialMarkings);
   // Stages 1-7 = Part A (pshat decoding); stage 8 = Part B (העמקה ודיון).
   const [stage, setStage] = useState(Math.min(Math.max(initialStage, 1), 8));
@@ -380,8 +400,12 @@ export default function TaskRunner({
     let n = 0;
     // decode stages 1-7 completed
     n += Math.min(stage - 1, 7);
-    for (const c of content.comprehension) {
-      if ((answers[`comp:${c.key}`] ?? "").trim().length >= 2) n += 1;
+    if (hasCheck) {
+      if (checkResult) n += 1;
+    } else {
+      for (const c of content.comprehension) {
+        if ((answers[`comp:${c.key}`] ?? "").trim().length >= 2) n += 1;
+      }
     }
     for (const section of content.sections) {
       for (const block of section.blocks) {
@@ -942,6 +966,15 @@ export default function TaskRunner({
           advanceStage={advanceStage}
           onAskQuestion={openPassageQuestion}
           gatesOff={Boolean(canReset)}
+          taskId={taskId}
+          check={check}
+          checkOpen={checkOpen}
+          checkResult={checkResult}
+          setCheckResult={setCheckResult}
+          checkPreview={Boolean(canReset)}
+          canEditContent={canEditContent}
+          editableCheck={editableCheck}
+          onGuardedPaste={onGuardedPaste}
         />
       )}
 
@@ -1430,6 +1463,16 @@ function DecodeStage(props: {
   onAskQuestion: (ref: string) => void;
   // Teachers reviewing the task are never blocked by the stage gates.
   gatesOff?: boolean;
+  // stage 7 comprehension check
+  taskId: number;
+  check?: PublicCheckQuestion[];
+  checkOpen?: CheckOpenQuestion | null;
+  checkResult: CheckOutcome | null;
+  setCheckResult: (o: CheckOutcome) => void;
+  checkPreview: boolean;
+  canEditContent?: boolean;
+  editableCheck?: { check: CheckQuestion[]; open: CheckOpenQuestion | null } | null;
+  onGuardedPaste: (e: React.ClipboardEvent) => void;
 }) {
   const {
     stage,
@@ -1449,7 +1492,18 @@ function DecodeStage(props: {
     advanceStage,
     onAskQuestion,
     gatesOff,
+    taskId,
+    check,
+    checkOpen,
+    checkResult,
+    setCheckResult,
+    checkPreview,
+    canEditContent,
+    editableCheck,
+    onGuardedPaste,
   } = props;
+  const hasCheck = Boolean(check && check.length > 0);
+  const [editingCheck, setEditingCheck] = useState(false);
 
   const leitworts = markings.filter((m) => m.passageKey === passage.key && m.kind === "leitwort");
   const hards = markings.filter((m) => m.passageKey === passage.key && m.kind === "hard");
@@ -1484,12 +1538,15 @@ function DecodeStage(props: {
   const retell = (answers["decode:retell"] ?? "").trim();
   const stage6Blocked = stage === 6 && retell.length < 10;
 
-  // Stage 7: both simple comprehension answers required to enter Part B.
+  // Stage 7: the comprehension check must be submitted (one attempt) to
+  // enter Part B — or, on legacy tasks, both open answers filled.
   const stage7Blocked =
     stage === 7 &&
-    content.comprehension.some(
-      (c) => (answers[`comp:${c.key}`] ?? "").trim().length < 2
-    );
+    (hasCheck
+      ? checkResult == null
+      : content.comprehension.some(
+          (c) => (answers[`comp:${c.key}`] ?? "").trim().length < 2
+        ));
 
   const wouldBlock =
     stage2Blocked || stage4Blocked || stage5Blocked || stage6Blocked || stage7Blocked;
@@ -1506,7 +1563,9 @@ function DecodeStage(props: {
           : stage6Blocked
             ? "כדי להמשיך: ספרו את הקטע במילים שלכם — קלוד ייתן משוב 🌱"
             : stage7Blocked
-              ? "כדי לעבור לחלק ב: ענו על שתי שאלות ההבנה"
+              ? hasCheck
+                ? "כדי לעבור לחלק ב: ענו על כל השאלות ולחצו ״לבדוק״"
+                : "כדי לעבור לחלק ב: ענו על שתי שאלות ההבנה"
               : "";
 
   const finishStage = () => {
@@ -1776,7 +1835,47 @@ function DecodeStage(props: {
         />
       </StageCard>
     ),
-    7: (
+    7: hasCheck ? (
+      <StageCard emoji="✅" title="בדיקת הבנה — כמה שאלות מהירות על הפשט">
+        <p className="mb-4 text-sm leading-7 text-[color:var(--foreground)]/75">
+          לפני שמעמיקים — שאלות קצרות עם תשובה אחת נכונה, רק כדי לוודא שהסיפור
+          עצמו ברור. עונים מתוך הקטע בלבד. יש ניסיון אחד, אז שווה לבדוק
+          בפסוקים שלמטה לפני שלוחצים ״לבדוק״. המספר שתקבלו הוא רק מדד הבנה —
+          לא ציון המשימה.
+        </p>
+        {canEditContent && editableCheck && (
+          <div className="mb-4">
+            {editingCheck ? (
+              <CheckEditor
+                contentRef={content.ref}
+                initialCheck={editableCheck.check}
+                initialOpen={editableCheck.open}
+                onClose={() => setEditingCheck(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingCheck(true)}
+                className="rounded-full border border-dashed border-[color:var(--primary)]/40 px-4 py-1.5 text-xs font-bold text-[color:var(--primary)]/75 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+              >
+                ✏️ עריכת השאלות (למורה בלבד)
+              </button>
+            )}
+          </div>
+        )}
+        <ComprehensionCheck
+          key={JSON.stringify(check!.map((q) => q.key))}
+          taskId={taskId}
+          questions={check!}
+          open={checkOpen ?? undefined}
+          initial={checkResult}
+          readOnly={readOnly}
+          preview={checkPreview}
+          onResult={setCheckResult}
+          onGuardedPaste={onGuardedPaste}
+        />
+      </StageCard>
+    ) : (
       <StageCard emoji="✅" title="בדיקת הבנה — שאלות פשוטות על הפשט">
         <p className="mb-4 text-sm leading-7 text-[color:var(--foreground)]/75">
           שתי שאלות קצרות, רק כדי לוודא שהסיפור עצמו ברור. עונים מתוך הקטע

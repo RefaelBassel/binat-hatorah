@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireTeacher } from "@/lib/api-auth";
 import { getTask, now, focusStatsFor } from "@/lib/tasks";
+import { classCheckPicture } from "@/lib/check";
+import { effectiveContent } from "@/lib/content-overrides";
 import {
   getTaskContent,
   countTaskUnits,
@@ -26,18 +28,24 @@ export async function GET(
   if (!task) {
     return NextResponse.json({ error: "המשימה לא נמצאה." }, { status: 404 });
   }
-  const reg = getTaskContent(task.content_ref);
-  if (!reg) {
+  const baseReg = getTaskContent(task.content_ref);
+  if (!baseReg) {
     return NextResponse.json({ error: "תוכן המשימה לא נמצא." }, { status: 404 });
   }
+  const reg = { ...baseReg, content: await effectiveContent(baseReg.content) };
+  const hasCheck = Boolean(reg.content.check?.length);
 
   // the equal-weight unit list, in reading order
   const units: { key: string; label: string; part: "a" | "b" }[] = [];
   for (const s of DECODE_STAGES) {
     units.push({ key: `stage:${s.n}`, label: s.title, part: "a" });
   }
-  for (const c of reg.content.comprehension) {
-    units.push({ key: `comp:${c.key}`, label: "בדיקת הבנה", part: "a" });
+  if (hasCheck) {
+    units.push({ key: "check", label: "בדיקת הבנה", part: "a" });
+  } else {
+    for (const c of reg.content.comprehension) {
+      units.push({ key: `comp:${c.key}`, label: "בדיקת הבנה", part: "a" });
+    }
   }
   for (const sec of reg.content.sections) {
     for (const b of sec.blocks) {
@@ -83,6 +91,10 @@ export async function GET(
   const t = now();
   // focus picture for the current lesson: the last 90 minutes
   const focus = await focusStatsFor(task.id, t - 90 * 60);
+  // comprehension check: per-student 1-10 + where the class struggles
+  const checkPic = hasCheck
+    ? await classCheckPicture(task.id)
+    : { scores: new Map<number, number>(), average: null, weakSpots: [] };
   const students = roster.rows.map((r) => {
     const uid = Number(r.id);
     const stage = r.stage != null ? Number(r.stage) : 0;
@@ -91,6 +103,8 @@ export async function GET(
     const opened = r.opened_at != null;
     const stagesDone = Math.min(Math.max(stage - 1, 0), 7);
     const done = answeredBy.get(uid) ?? new Set<string>();
+    const checkScore = checkPic.scores.get(uid) ?? null;
+    if (checkScore != null) done.add("check");
     const unitsDone = stagesDone + done.size;
     const status = submitted
       ? "submitted"
@@ -112,6 +126,7 @@ export async function GET(
       focusExits: f.exits,
       focusAwaySec: Math.round(f.awayMs / 1000),
       pasteBlocked: f.pasteBlocked,
+      checkScore,
     };
   });
 
@@ -133,6 +148,12 @@ export async function GET(
     ok: true,
     now: t,
     classFocusPct,
+    // understanding pulse: class average (0-10, one decimal) and the chapter
+    // parts sorted hardest-first with the share of wrong answers
+    hasCheck,
+    classCheckAvg: checkPic.average,
+    checkCount: checkPic.scores.size,
+    weakSpots: checkPic.weakSpots,
     task: {
       id: task.id,
       title: reg.content.title,

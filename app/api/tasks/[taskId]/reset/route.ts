@@ -37,5 +37,7 @@ export async function POST(
     sql: "DELETE FROM task_progress WHERE task_id = ? AND user_id = ?",
     args: [taskId, userId],
   });
+  const { clearCheckResult } = await import("@/lib/check");
+  await clearCheckResult(taskId, userId);
   return NextResponse.json({ ok: true });
 }

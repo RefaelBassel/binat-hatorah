@@ -39,8 +39,32 @@ export default async function TaskPage({
     redirect("/tasks");
   }
 
-  const reg = getTaskContent(task.content_ref);
-  if (!reg) notFound();
+  const baseReg = getTaskContent(task.content_ref);
+  if (!baseReg) notFound();
+  // file defaults + the teacher's in-place edits
+  const { effectiveContent } = await import("@/lib/content-overrides");
+  const reg = { ...baseReg, content: await effectiveContent(baseReg.content) };
+
+  // comprehension check: the browser gets the questions without their
+  // answer key (order options pre-shuffled per student); the editor — only
+  // for a teacher outside student mode — gets the full thing
+  const { publicCheck, getCheckResult } = await import("@/lib/check");
+  const studentMode = isTeacher ? await isStudentMode() : false;
+  const canEditContent = isTeacher && !studentMode;
+  const check = reg.content.check?.length
+    ? publicCheck(reg.content.check, taskId * 1000 + userId)
+    : undefined;
+  const storedCheck = guest || !check ? null : await getCheckResult(taskId, userId);
+  const initialCheckResult = storedCheck
+    ? {
+        score: storedCheck.score,
+        correct: storedCheck.correct,
+        total: storedCheck.total,
+        results: Object.fromEntries(
+          Object.entries(storedCheck.results).map(([k, v]) => [k, v.correct])
+        ),
+      }
+    : null;
 
   // First open starts the work stopwatch (students only, not guests).
   if (!isTeacher && !guest) {
@@ -79,7 +103,7 @@ export default async function TaskPage({
       <TopNav />
       {/* teacher tooling stays hidden in student mode — the whole point of
           that mode is experiencing the site exactly as a student does */}
-      {isTeacher && !(await isStudentMode()) && <ClassPulseDrawer taskId={taskId} />}
+      {canEditContent && <ClassPulseDrawer taskId={taskId} />}
       {!guest && (
         <ReflectionDrawer
           taskId={taskId}
@@ -117,6 +141,15 @@ export default async function TaskPage({
           initialFocusExits={initialFocusExits}
           dueAt={task.due_at}
           totalUnits={countTaskUnits(reg)}
+          check={check}
+          checkOpen={reg.content.checkOpen ?? null}
+          initialCheckResult={initialCheckResult}
+          canEditContent={canEditContent}
+          editableCheck={
+            canEditContent
+              ? { check: reg.content.check ?? [], open: reg.content.checkOpen ?? null }
+              : null
+          }
         />
       </main>
     </>

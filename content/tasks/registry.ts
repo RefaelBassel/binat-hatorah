@@ -65,8 +65,10 @@ export function countTaskUnits(reg: RegisteredTask): number {
       }
     }
   }
-  // 7 decode-stage completions (Part A) + comprehension answers + Part B questions.
-  return 7 + reg.content.comprehension.length + questions;
+  // 7 decode-stage completions (Part A) + the comprehension check (one unit
+  // when the task has a closed check, else the legacy open questions) + Part B.
+  const checkUnits = reg.content.check?.length ? 1 : reg.content.comprehension.length;
+  return 7 + checkUnits + questions;
 }
 
 // The fixed 7 pshat-decode stages — the iron rule of every task.

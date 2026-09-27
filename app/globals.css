@@ -80,6 +80,48 @@ body {
   }
 }
 
+/* SaveButton (components/save-button.tsx): the armed state breathes so the
+   teacher notices there is something to save; the check mark draws itself
+   on success; the confirmation text fades in. */
+@keyframes save-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+.save-armed {
+  animation: save-breathe 1.8s ease-out infinite;
+}
+@keyframes save-draw {
+  from { stroke-dashoffset: 30; }
+  to { stroke-dashoffset: 0; }
+}
+.save-check {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: save-draw 0.45s ease-out forwards;
+}
+@keyframes save-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+.save-fade {
+  animation: save-fade-in 0.3s ease-out both;
+}
+/* comprehension-check result reveal */
+@keyframes check-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.check-pop {
+  animation: check-pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-armed, .save-check, .save-fade, .check-pop {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Print-friendly: hide app chrome when printing. */
 @media print {
   [data-noexport],
