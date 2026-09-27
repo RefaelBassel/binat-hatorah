@@ -11,14 +11,6 @@ export default async function LoginPage() {
     "use server";
     await signIn("google", { redirectTo: "/" });
   }
-  async function enterAsStudentGuest() {
-    "use server";
-    await signIn("guest", { mode: "student", redirectTo: "/me" });
-  }
-  async function enterAsFullGuest() {
-    "use server";
-    await signIn("guest", { mode: "full", redirectTo: "/dashboard" });
-  }
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
@@ -41,35 +33,8 @@ export default async function LoginPage() {
             </button>
           </form>
           <p className="text-center text-[11px] text-[color:var(--primary)]/55">
-            חשבון גוגל פרטי או של משרד החינוך
+            חשבון גוגל פרטי או של משרד החינוך · הכניסה נפתחת לאחר אישור המורה
           </p>
-
-          <div className="flex items-center gap-3 py-2" aria-hidden>
-            <div className="h-px flex-1 bg-[color:var(--border)]" />
-            <span className="text-[11px] text-[color:var(--primary)]/45">
-              או צפייה בלבד
-            </span>
-            <div className="h-px flex-1 bg-[color:var(--border)]" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <form action={enterAsStudentGuest}>
-              <button
-                type="submit"
-                className="w-full rounded-xl border border-[color:var(--border)] px-4 py-2.5 text-xs font-semibold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
-              >
-                אורח/ת — תצוגת תלמיד/ה
-              </button>
-            </form>
-            <form action={enterAsFullGuest}>
-              <button
-                type="submit"
-                className="w-full rounded-xl border border-[color:var(--border)] px-4 py-2.5 text-xs font-semibold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
-              >
-                אורח/ת — גישה מלאה
-              </button>
-            </form>
-          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-[color:var(--primary)]/60">

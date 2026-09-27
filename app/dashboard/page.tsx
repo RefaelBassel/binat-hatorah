@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { listAccounts } from "@/lib/approval";
 import ClassReflections from "@/components/class-reflections";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
@@ -20,6 +21,7 @@ export default async function DashboardPage() {
   const isGuest = Boolean(user.guest);
 
   let students: Awaited<ReturnType<typeof allStudents>> = [];
+  let pendingCount = 0;
   let tasks: Awaited<ReturnType<typeof allTasksWithStats>> = [];
   let reflections: {
     name: string;
@@ -34,6 +36,9 @@ export default async function DashboardPage() {
   try {
     await sweepOverdue();
     students = await allStudents();
+    pendingCount = (await listAccounts()).filter(
+      (a) => a.state === "pending" && a.role !== "teacher"
+    ).length;
     tasks = await allTasksWithStats();
     const refRes = await db().execute({
       sql: `SELECT u.full_name, u.email, r.context_ref, r.difficulty, r.pshat_progress,
@@ -91,7 +96,8 @@ export default async function DashboardPage() {
 
     // Assign to all onboarded students.
     const studentRows = await db().execute({
-      sql: "SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL",
+      sql: `SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL
+              AND approved_at IS NOT NULL AND blocked_at IS NULL`,
       args: [],
     });
     for (const r of studentRows.rows) {
@@ -115,6 +121,21 @@ export default async function DashboardPage() {
       title="דשבורד מורה"
       subtitle="כלל המשימות, ההגשות והכיתה — במקום אחד"
     >
+      {/* roster + approvals */}
+      <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
+        <Link
+          href="/dashboard/students"
+          className={`rounded-full px-5 py-2 text-sm font-bold shadow transition hover:scale-[1.02] ${
+            pendingCount > 0
+              ? "bg-[color:var(--warning)] text-white"
+              : "bg-[color:var(--primary)] text-white"
+          }`}
+        >
+          👥 רשימת התלמידים ואישורי כניסה
+          {pendingCount > 0 && ` · ${pendingCount} ממתינים לאישור`}
+        </Link>
+      </div>
+
       {/* stats */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="תלמידים ותלמידות" value={students.length} emoji="👩‍🎓" />

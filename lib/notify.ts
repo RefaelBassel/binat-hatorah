@@ -27,8 +27,9 @@ export async function teacherIds(): Promise<{ id: number; email: string }[]> {
   return res.rows.map((r) => ({ id: Number(r.id), email: String(r.email) }));
 }
 
-// Bell to every teacher; email too unless email: false (Reut asked to stop
-// per-submission emails — the bell is enough for the routine flow).
+// Bell to every teacher — NEVER email. Rafael and Reut (2026-09-27): the
+// in-site notifications are enough; no email to teachers for anything.
+// The `email` option is accepted for old call sites and ignored.
 export async function notifyTeachers(opts: {
   kind: string;
   title: string;
@@ -36,17 +37,11 @@ export async function notifyTeachers(opts: {
   link?: string;
   email?: boolean;
 }) {
-  const { email = true, ...notice } = opts;
+  const { email: _ignored, ...notice } = opts;
+  void _ignored;
   const teachers = await teacherIds();
   for (const t of teachers) {
     await createNotification({ userId: t.id, ...notice });
-    if (email) {
-      await sendEmail({
-        to: t.email,
-        subject: `בינת התורה · ${notice.title}`,
-        html: `<div dir="rtl"><p>${notice.title}</p><p>${notice.body ?? ""}</p></div>`,
-      });
-    }
   }
 }
 

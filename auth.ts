@@ -50,8 +50,6 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user, account }) {
-      // Guest sign-in (credentials) — no DB user, read-only.
-      if (user?.guest || account?.provider === "guest") return true;
       // Dev sign-in already synced the user row in authorize().
       if (account?.provider === "dev") return true;
       if (!user.email) return false;
@@ -61,18 +59,25 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
       const now = Math.floor(Date.now() / 1000);
 
       try {
+        const { ensureApprovalColumns, announcePendingAccount } = await import("@/lib/approval");
+        await ensureApprovalColumns();
         const existing = await db().execute({
           sql: "SELECT id, onboarded_at FROM users WHERE email = ?",
           args: [email],
         });
 
         if (existing.rows.length === 0) {
+          // a brand-new Google account: created PENDING (teachers approved
+          // on the spot) — the proxy keeps it on /pending until approved
           await db().execute({
             sql:
-              "INSERT INTO users (email, google_id, role, created_at, last_seen_at)" +
-              " VALUES (?, ?, ?, ?, ?)",
-            args: [email, googleId, role, now, now],
+              "INSERT INTO users (email, google_id, role, created_at, last_seen_at, approved_at)" +
+              " VALUES (?, ?, ?, ?, ?, ?)",
+            args: [email, googleId, role, now, now, role === "teacher" ? now : null],
           });
+          if (role !== "teacher") {
+            await announcePendingAccount(email, user.name ?? null);
+          }
         } else {
           await db().execute({
             sql: "UPDATE users SET google_id = ?, role = ?, last_seen_at = ? WHERE email = ?",
@@ -86,21 +91,22 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
       return true;
     },
     async jwt({ token, user, trigger, session }) {
-      // Guest sign-in — synthetic token, no DB.
-      if (user?.guest) {
-        token.guest = true;
-        token.guestMode = user.guestMode ?? "student";
-        token.role = user.role ?? "student";
-        token.userId = 0;
-        token.fullName = user.name ?? "אורח/ת";
-        token.onboarded = true;
+      // a leftover guest cookie from before guest sign-in was removed: it
+      // stays out — no role, no approval, only /pending and sign-out
+      if (token.guest) {
+        token.role = "student";
+        token.approved = false;
+        token.blocked = true;
         return token;
       }
       // On first sign-in (user present), load our internal row.
       if (user?.email) {
+        token.email = user.email.toLowerCase();
         try {
+          const { ensureApprovalColumns } = await import("@/lib/approval");
+          await ensureApprovalColumns();
           const row = await db().execute({
-            sql: "SELECT id, role, full_name, address_form, onboarded_at FROM users WHERE email = ?",
+            sql: "SELECT id, role, full_name, address_form, onboarded_at, approved_at, blocked_at FROM users WHERE email = ?",
             args: [user.email.toLowerCase()],
           });
           const r = row.rows[0];
@@ -110,9 +116,41 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
             token.fullName = (r.full_name as string | null) ?? null;
             token.addressForm = (r.address_form as string | null) ?? null;
             token.onboarded = r.onboarded_at != null;
+            token.blocked = r.blocked_at != null;
+            token.approved =
+              !token.blocked && (r.role === "teacher" || r.approved_at != null);
           }
         } catch (err) {
           console.error("[auth.jwt] DB load failed:", err);
+        }
+      } else if (token.approved !== true && token.email) {
+        // a pending (or blocked) account: re-check on every request so the
+        // moment a teacher approves, the next click lets the student in —
+        // no sign-out needed. Approved tokens never pay this query.
+        try {
+          const { accountStateFor } = await import("@/lib/approval");
+          const state = await accountStateFor(String(token.email));
+          token.approved = state === "approved";
+          token.blocked = state === "blocked";
+          if (state === null) token.approved = false; // removed by a teacher
+        } catch (err) {
+          console.error("[auth.jwt] approval re-check failed:", err);
+        }
+      } else if (token.approved === true && token.email && token.role !== "teacher") {
+        // approved students: cheap periodic re-check so a block takes effect
+        // within a minute, not at the next sign-in
+        const last = Number(token.checkedAt ?? 0);
+        const nowSec = Math.floor(Date.now() / 1000);
+        if (nowSec - last > 60) {
+          try {
+            const { accountStateFor } = await import("@/lib/approval");
+            const state = await accountStateFor(String(token.email));
+            token.approved = state === "approved";
+            token.blocked = state === "blocked";
+            token.checkedAt = nowSec;
+          } catch {
+            /* keep the current token on a transient DB error */
+          }
         }
       }
       // On explicit unstable_update call from a server action — merge the
@@ -142,8 +180,12 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         session.user.fullName = token.fullName ?? null;
         session.user.addressForm = token.addressForm ?? null;
         session.user.onboarded = Boolean(token.onboarded);
-        session.user.guest = Boolean(token.guest);
-        session.user.guestMode = token.guestMode ?? undefined;
+        const stale = Boolean(token.guest) || !token.userId;
+        if (stale) session.user.role = "student";
+        session.user.approved = stale ? false : Boolean(token.approved);
+        session.user.blocked = stale ? true : Boolean(token.blocked);
+        session.user.guest = false;
+        session.user.guestMode = undefined;
       }
       return session;
     },

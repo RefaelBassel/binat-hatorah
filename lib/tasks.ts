@@ -204,10 +204,16 @@ export async function getMarkings(taskId: number, userId: number) {
 
 // ---------- teacher side ----------
 
+// The class = approved, onboarded, not-blocked students only. Accounts that
+// wandered in with a Google account and were never approved are invisible
+// here (they are managed in /dashboard/students).
 export async function allStudents() {
+  const { ensureApprovalColumns } = await import("./approval");
+  await ensureApprovalColumns();
   const res = await db().execute({
     sql: `SELECT id, email, full_name FROM users
           WHERE role = 'student' AND onboarded_at IS NOT NULL
+            AND approved_at IS NOT NULL AND blocked_at IS NULL
           ORDER BY full_name`,
     args: [],
   });
@@ -267,7 +273,8 @@ export async function republishTask(taskId: number) {
     args: [taskId],
   });
   const students = await db().execute({
-    sql: "SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL",
+    sql: `SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL
+            AND approved_at IS NOT NULL AND blocked_at IS NULL`,
     args: [],
   });
   const t = now();

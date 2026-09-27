@@ -27,6 +27,14 @@ export async function sendEmail(opts: {
   subject: string;
   html: string;
 }): Promise<boolean> {
+  // Hard rule (Rafael, 2026-09-27): the site never emails the teachers —
+  // the in-site bell is enough. Enforced here so no future call site can
+  // slip one through.
+  const { roleForEmail } = await import("./roles");
+  if (roleForEmail(opts.to.toLowerCase()) === "teacher") {
+    console.log(`[email suppressed — teacher recipient] subject=${opts.subject}`);
+    return false;
+  }
   const key = readEnvVar("RESEND_API_KEY");
   const from = readEnvVar("EMAIL_FROM") ?? "בינת התורה <noreply@binat-hatorah.local>";
   if (!key) {

@@ -9,8 +9,12 @@ declare module "next-auth" {
     fullName?: string | null;
     addressForm?: string | null;
     onboarded?: boolean;
+    // account approval gate (lib/approval.ts)
+    approved?: boolean;
+    blocked?: boolean;
+    // legacy guest fields — guest sign-in was removed; always false/undefined
     guest?: boolean;
-    guestMode?: string; // "student" | "full"
+    guestMode?: string;
   }
 }
 
@@ -21,6 +25,9 @@ declare module "next-auth/jwt" {
     fullName?: string | null;
     addressForm?: string | null;
     onboarded?: boolean;
+    approved?: boolean;
+    blocked?: boolean;
+    checkedAt?: number;
     guest?: boolean;
     guestMode?: string;
   }
