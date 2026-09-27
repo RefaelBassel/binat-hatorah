@@ -35,6 +35,13 @@ export async function sendEmail(opts: {
     console.log(`[email suppressed — teacher recipient] subject=${opts.subject}`);
     return false;
   }
+  // Local development never sends real email, even with a real key in
+  // .env.local — on 2026-09-27 a dev-server overdue sweep emailed the
+  // teacher about local TEST students. Production only.
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[email skipped — not production] to=${opts.to} subject=${opts.subject}`);
+    return false;
+  }
   const key = readEnvVar("RESEND_API_KEY");
   const from = readEnvVar("EMAIL_FROM") ?? "בינת התורה <noreply@binat-hatorah.local>";
   if (!key) {
