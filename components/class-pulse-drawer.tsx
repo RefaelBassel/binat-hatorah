@@ -11,6 +11,7 @@
 // the two handles never collide.
 
 import { useEffect, useRef, useState } from "react";
+import { ScoreBadge, UnderstandingHeat, type WeakSpot } from "./understanding-heat";
 
 interface StudentRow {
   id: number;
@@ -24,6 +25,7 @@ interface StudentRow {
   focusExits: number;
   focusAwaySec: number;
   pasteBlocked: number;
+  checkScore: number | null;
 }
 
 interface ClassStatus {
@@ -31,6 +33,10 @@ interface ClassStatus {
   totalUnits: number;
   units: { key: string; label: string; part: "a" | "b" }[];
   students: StudentRow[];
+  hasCheck?: boolean;
+  classCheckAvg?: number | null;
+  checkCount?: number;
+  weakSpots?: WeakSpot[];
 }
 
 const HANDLE_W = 30;
@@ -199,6 +205,17 @@ export default function ClassPulseDrawer({ taskId }: { taskId: number }) {
                 </span>
               </div>
 
+              {/* understanding pulse — from the comprehension check */}
+              {data.hasCheck && (
+                <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] p-3">
+                  <UnderstandingHeat
+                    weakSpots={data.weakSpots ?? []}
+                    average={data.classCheckAvg ?? null}
+                    count={data.checkCount ?? 0}
+                  />
+                </div>
+              )}
+
               {groups.active.length > 0 && (
                 <StudentGroup title="עובדים עכשיו" students={groups.active} data={data} live />
               )}
@@ -265,8 +282,11 @@ function StudentGroup({
                   )}
                   {s.name}
                 </span>
-                <span className="text-[10px] font-bold text-[color:var(--primary)]/60">
-                  {s.unitsDone}/{data.totalUnits} · {pct}%
+                <span className="flex items-center gap-2 text-[10px] font-bold text-[color:var(--primary)]/60">
+                  {s.checkScore != null && <ScoreBadge score={s.checkScore} />}
+                  <span>
+                    {s.unitsDone}/{data.totalUnits} · {pct}%
+                  </span>
                 </span>
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[color:var(--border)]">

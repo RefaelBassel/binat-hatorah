@@ -6,6 +6,7 @@
 // Polls every 4 seconds; the clock ticks every second.
 
 import { useEffect, useState } from "react";
+import { UnderstandingHeat, type WeakSpot } from "./understanding-heat";
 
 interface StudentRow {
   id: number;
@@ -24,6 +25,12 @@ interface ClassStatus {
   units: { key: string; label: string; part: "a" | "b" }[];
   students: StudentRow[];
   classFocusPct?: number | null;
+  // understanding pulse — CLASS aggregate only; per-student scores are
+  // never projected
+  hasCheck?: boolean;
+  classCheckAvg?: number | null;
+  checkCount?: number;
+  weakSpots?: WeakSpot[];
 }
 
 export default function ClassBoard({ taskId }: { taskId: number }) {
@@ -178,6 +185,17 @@ export default function ClassBoard({ taskId }: { taskId: number }) {
             {classPct}%
           </div>
         </div>
+        {data.hasCheck && (data.checkCount ?? 0) > 0 && (
+          <div className="mt-4 border-t border-[color:var(--border)] pt-4">
+            <UnderstandingHeat
+              weakSpots={(data.weakSpots ?? []).slice(0, 4)}
+              average={data.classCheckAvg ?? null}
+              count={data.checkCount ?? 0}
+              big
+              title="מידת ההבנה של הכיתה — איפה קשה"
+            />
+          </div>
+        )}
       </div>
 
       {/* student cards */}
