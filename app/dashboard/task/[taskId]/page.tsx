@@ -120,6 +120,13 @@ export default async function DashboardTaskPage({
         >
           🧭 מסך הסגירה
         </Link>
+        <Link
+          href={`/dashboard/opening/${taskId}`}
+          target="_blank"
+          className="rounded-full border-2 border-[color:var(--primary)]/60 px-4 py-1.5 text-sm font-bold text-[color:var(--primary)] transition hover:bg-[color:var(--primary)]/10"
+        >
+          ✨ אור פותח
+        </Link>
       </p>
 
       {/* ===== task management: due date + cancellation ===== */}

@@ -122,6 +122,40 @@ body {
   }
 }
 
+/* אור פותח — the opening deck (components/opening-deck.tsx). Same motion
+   language as the מוסר / סיור בגן החיות decks: staggered fade-up entrances,
+   springy pops, slow floating decor and a drifting gradient. */
+@keyframes deck-fade {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.deck-fade { animation: deck-fade 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes deck-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-16px) rotate(3deg); }
+}
+.deck-float { animation: deck-float 7s ease-in-out infinite; }
+@keyframes deck-pop {
+  0%   { opacity: 0; transform: scale(0.45); }
+  70%  { opacity: 1; transform: scale(1.07); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.deck-pop { animation: deck-pop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes deck-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+.deck-bounce { display: inline-block; animation: deck-bounce 2.2s ease-in-out infinite; }
+@keyframes deck-pan {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.deck-pan { background-size: 180% 180%; animation: deck-pan 18s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .deck-fade, .deck-float, .deck-pop, .deck-bounce, .deck-pan { animation: none; }
+}
+
 /* Print-friendly: hide app chrome when printing. */
 @media print {
   [data-noexport],
