@@ -16,6 +16,8 @@ import { DECODE_STAGES } from "@/content/tasks/registry";
 import TaskArt from "./task-art";
 import ComprehensionCheck from "./comprehension-check";
 import CheckEditor from "./check-editor";
+import ThinkingCard from "./thinking-card";
+import type { PlenaryQuestion } from "@/content/tasks/types";
 import {
   NARRATION_CREDIT,
   getVerseAudioContext,
@@ -82,6 +84,8 @@ interface Props {
   initialCheckResult?: CheckOutcome | null;
   canEditContent?: boolean;
   editableCheck?: { check: CheckQuestion[]; open: CheckOpenQuestion | null } | null;
+  // the plenary question, shown after Part B as "שאלה למחשבה" (inert)
+  plenary?: PlenaryQuestion | null;
 }
 
 type MarkKind = "leitwort" | "hard" | "question";
@@ -121,6 +125,7 @@ export default function TaskRunner({
   initialCheckResult = null,
   canEditContent = false,
   editableCheck = null,
+  plenary = null,
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
   const [checkResult, setCheckResult] = useState<CheckOutcome | null>(initialCheckResult);
@@ -1097,6 +1102,16 @@ export default function TaskRunner({
               </section>
             );
           })()}
+
+          {/* the plenary question as an inert "שאלה למחשבה" — only once the
+              student has reached the last sub-task (or already submitted) */}
+          {(activeSection >= content.sections.length - 1 || submitted) && (
+            <ThinkingCard
+              plenary={plenary}
+              contentRef={content.ref}
+              canEdit={Boolean(canEditContent)}
+            />
+          )}
 
           {/* submit */}
           {!submitted && (

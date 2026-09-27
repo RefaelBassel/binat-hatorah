@@ -182,6 +182,14 @@ export default function ClassPulseDrawer({ taskId }: { taskId: number }) {
                 🖥️ הקרנה על הלוח
               </a>
             </div>
+            <a
+              href={`/dashboard/close/${taskId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block rounded-full border border-[color:var(--accent)]/70 px-3 py-1 text-[11px] font-bold text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/10"
+            >
+              🧭 מסך הסגירה — לחזור על החומר או שאלת המליאה
+            </a>
             {data && (
               <p className="mt-1 text-[10px] text-[color:var(--primary)]/55">
                 {data.task.bookRef} · {data.task.title}

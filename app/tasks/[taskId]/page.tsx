@@ -144,6 +144,7 @@ export default async function TaskPage({
           check={check}
           checkOpen={reg.content.checkOpen ?? null}
           initialCheckResult={initialCheckResult}
+          plenary={reg.content.plenary ?? null}
           canEditContent={canEditContent}
           editableCheck={
             canEditContent

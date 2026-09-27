@@ -113,6 +113,13 @@ export default async function DashboardTaskPage({
         >
           🖥️ לוח כיתה להקרנה
         </Link>
+        <Link
+          href={`/dashboard/close/${taskId}`}
+          target="_blank"
+          className="rounded-full border-2 border-[color:var(--accent)] px-4 py-1.5 text-sm font-bold text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/10"
+        >
+          🧭 מסך הסגירה
+        </Link>
       </p>
 
       {/* ===== task management: due date + cancellation ===== */}
