@@ -27,6 +27,12 @@ export default function SaveButton({
   const [phase, setPhase] = useState<Phase>(dirty ? "armed" : "idle");
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
+  // the reset timers must read the CURRENT dirty flag, not the one captured
+  // when the click happened (after a successful save it is usually false)
+  const dirtyRef = useRef(dirty);
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
 
   // follow the dirty flag unless we are mid-save / mid-celebration
   useEffect(() => {
@@ -60,12 +66,15 @@ export default function SaveButton({
       await onSave();
       setPhase("saved");
       timer.current = window.setTimeout(() => {
-        setPhase(dirty ? "armed" : "idle");
+        setPhase(dirtyRef.current ? "armed" : "idle");
       }, 2000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "לא נשמר — נסו שוב");
       setPhase("error");
-      timer.current = window.setTimeout(() => setPhase("armed"), 3200);
+      timer.current = window.setTimeout(
+        () => setPhase(dirtyRef.current ? "armed" : "idle"),
+        3200
+      );
     }
   };
 

@@ -7,6 +7,12 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "kedoshim-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/User/Documents/leviticus", "run", "dev", "--", "--port", "3100"],
+      "port": 3100
     }
   ]
 }
