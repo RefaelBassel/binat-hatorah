@@ -77,6 +77,86 @@ export const lesson14: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "daily-count",
+      kind: "choice",
+      prompt: "כמה כבשים מקריבים בכל יום לעולת התמיד? (פסוק ג׳)",
+      part: "פסוקים ג׳–ד׳ — עולת התמיד: כמה ומתי",
+      options: ["שניים", "אחד", "שבעה", "ארבעה עשר"],
+      answer: 0,
+    },
+    {
+      key: "daily-when",
+      kind: "choice",
+      prompt: "מתי מקריבים את שני הכבשים של עולת התמיד? (פסוק ד׳)",
+      part: "פסוקים ג׳–ד׳ — עולת התמיד: כמה ומתי",
+      options: [
+        "שניהם בבוקר",
+        "שניהם בין הערביים",
+        "אחד בבוקר ואחד בין הערביים",
+        "אחד ביום חול ואחד בשבת",
+      ],
+      answer: 2,
+    },
+    {
+      key: "shabbat-relation",
+      kind: "choice",
+      prompt: "מה היחס בין עולת השבת לעולת התמיד? (פסוק י׳)",
+      part: "פסוקים ט׳–י׳ — עולת השבת ״עַל עֹלַת הַתָּמִיד״",
+      options: [
+        "עולת השבת באה במקום עולת התמיד",
+        "עולת השבת נוספת על עולת התמיד",
+        "בשבת אין מקריבים כלל",
+        "בשבת מקריבים את עולת התמיד פעמיים",
+      ],
+      answer: 1,
+    },
+    {
+      key: "sinai-before",
+      kind: "truefalse",
+      prompt: "לפי הפסוק, עולת התמיד כבר נעשתה בהר סיני. (פסוק ו׳)",
+      part: "פסוק ו׳ — ״הָעֲשֻׂיָה בְּהַר סִינַי״",
+      options: ["נכון", "לא נכון"],
+      answer: 0,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את פרטי הרשימה לפי סדרם בפסוקים (פסוקים ב׳–י׳):",
+      part: "סדר הרשימה (פסוקים ב׳–י׳)",
+      options: [
+        "ה׳ מצווה: ״אֶת קָרְבָּנִי לַחְמִי... תִּשְׁמְרוּ לְהַקְרִיב לִי בְּמוֹעֲדוֹ״",
+        "שני כבשים ליום — אחד בבוקר ואחד בין הערביים",
+        "המנחה: עשירית האיפה סולת בלולה בשמן, והנסך: רביעית ההין",
+        "ביום השבת: שני כבשים נוספים על עולת התמיד",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה מעוררת בכם רשימה שחוזרת על עצמה יום אחרי יום — ״עֹלָה תָמִיד״?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the "power of routine" question in Part B.
+  plenary: {
+    question:
+      "מה באמת מחזיק קבוצה לאורך זמן — הדבר הקבוע שחוזר כל יום גם כשאין חשק (כמו עולת התמיד), או הרגעים הגדולים והמיוחדים (כמו החגים)? אם הייתם חייבים לוותר על אחד מהשניים בכיתה שלכם — על מה הייתם מוותרים?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "יש לכם משהו שאתם עושים כל יום, בלי קשר למצב הרוח? מה זה עושה לכם — משעמם, או דווקא מחזיק?",
+    hook: "רגע לפני הכניסה לארץ, במקום סיפור, התורה פורשת רשימה: כבש בבוקר, כבש בין הערביים, כל יום, ובשבת עוד. אין פה עלילה — רק קביעות. למה דווקא עכשיו, ולמה דווקא ככה?",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "daily-count",

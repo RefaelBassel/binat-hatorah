@@ -113,6 +113,94 @@ export const lesson10: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "why-quarrel",
+      kind: "choice",
+      prompt: "על מה רב העם עם משה? (פסוקים ב׳–ה׳)",
+      part: "פסוקים ב׳–ה׳ — תלונת העם: ״וְלֹא הָיָה מַיִם לָעֵדָה״",
+      options: [
+        "לא היה להם בשר לאכול",
+        "לא היה מים לעדה",
+        "רצו לחזור למצרים לעבוד שם",
+        "משה איחר לרדת מההר",
+      ],
+      answer: 1,
+    },
+    {
+      key: "the-command",
+      kind: "choice",
+      prompt: "מה ציווה ה׳ את משה לעשות מול הסלע? (פסוק ח׳)",
+      part: "פסוק ח׳ — הציווי: ״וְדִבַּרְתֶּם אֶל הַסֶּלַע״",
+      options: [
+        "להכות בסלע במטה פעמיים",
+        "לדבר אל הסלע לעיני העדה",
+        "להתפלל ליד הסלע",
+        "לשבור את הסלע לשניים",
+      ],
+      answer: 1,
+    },
+    {
+      key: "the-deed",
+      kind: "choice",
+      prompt: "מה עשה משה בפועל מול הסלע? (פסוקים י׳–י״א)",
+      part: "פסוקים י׳–י״א — הביצוע: ״וַיַּךְ אֶת הַסֶּלַע בְּמַטֵּהוּ פַּעֲמָיִם״",
+      options: [
+        "דיבר אל הסלע בדיוק כפי שנצטווה",
+        "אמר ״שִׁמְעוּ נָא הַמֹּרִים״ והכה בסלע במטהו פעמיים",
+        "הכה בסלע פעם אחת, בלי לומר דבר",
+        "שלח את אהרן לדבר אל הסלע במקומו",
+      ],
+      answer: 1,
+    },
+    {
+      key: "water-came",
+      kind: "truefalse",
+      prompt: "למרות מה שקרה, יצאו מן הסלע מים רבים והעדה שתתה. (פסוק י״א)",
+      part: "פסוק י״א — הנס הצליח: ״וַיֵּצְאוּ מַיִם רַבִּים״",
+      options: ["נכון", "לא נכון"],
+      answer: 0,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים ב׳–י״ב):",
+      part: "סדר האירועים בקטע (פסוקים ב׳–י״ב)",
+      options: [
+        "העם רב עם משה: ״וְלָמָה הֲבֵאתֶם אֶת קְהַל ה׳ אֶל הַמִּדְבָּר הַזֶּה״",
+        "ה׳ מצווה: ״וְדִבַּרְתֶּם אֶל הַסֶּלַע לְעֵינֵיהֶם״",
+        "משה מכה בסלע פעמיים ויוצאים מים רבים",
+        "ה׳ אומר למשה ולאהרן: ״לֹא תָבִיאוּ אֶת הַקָּהָל הַזֶּה אֶל הָאָרֶץ״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: מה מרגיש משה ברגע שהוא שומע ״לָכֵן לֹא תָבִיאוּ אֶת הַקָּהָל הַזֶּה אֶל הָאָרֶץ״?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the command-vs-deed dilemma in Part B: the task
+  // fully succeeded, and the leader was still punished.
+  plenary: {
+    question:
+      "ראש ועד הכיתה ארגן טיול מושלם — אבל בדרך צעק וזלזל בחברי הוועד. האם שופטים מנהיג לפי התוצאה שהביא, או לפי הדרך שבה הגיע אליה — גם כשהתוצאה מצוינת?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "קרה לכם שעשיתם את מה שביקשו, התוצאה הייתה מצוינת — ובכל זאת כעסו עליכם? מה בעצם השתבש?",
+    hook: "בפרק שלנו מרים מתה, המים נגמרים, והעם צמא ורב. ה׳ אומר למשה מה לעשות מול הסלע — והמים אכן יוצאים. ובאותו רגע בדיוק נגזר על משה שלא ייכנס לארץ.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "the-command",

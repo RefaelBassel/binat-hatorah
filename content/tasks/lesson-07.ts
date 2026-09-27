@@ -80,6 +80,94 @@ export const lesson07: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "korach-claim",
+      kind: "choice",
+      prompt: "מה טוענים קרח ועדתו כלפי משה ואהרן? (פסוק ג׳)",
+      part: "פסוק ג׳ — טענת קרח: ״כָּל הָעֵדָה כֻּלָּם קְדֹשִׁים״",
+      options: [
+        "״כָּל הָעֵדָה כֻּלָּם קְדֹשִׁים״ — ולכן למה אתם מתנשאים עליהם",
+        "אין מספיק מים ולחם במדבר",
+        "משה לא הביא אותם אל הארץ המובטחת",
+        "אהרן לקח מהם כסף שלא כדין",
+      ],
+      answer: 0,
+    },
+    {
+      key: "moshe-falls",
+      kind: "choice",
+      prompt: "מה עשה משה מיד כששמע את דברי קרח ועדתו? (פסוק ד׳)",
+      part: "פסוק ד׳ — תגובת משה: ״וַיִּפֹּל עַל פָּנָיו״",
+      options: [
+        "כעס וצעק עליהם",
+        "נפל על פניו",
+        "ביקש מה׳ להעניש אותם",
+        "שלח אותם לביתם",
+      ],
+      answer: 1,
+    },
+    {
+      key: "firepan-test",
+      kind: "choice",
+      prompt: "איזה מבחן מציע משה כדי להכריע מי הקדוש? (פסוקים ו׳–ז׳)",
+      part: "פסוקים ו׳–ז׳ — מבחן המחתות",
+      options: [
+        "כל אחד יביא קורבן בהמה למשכן",
+        "יטילו גורל בין השבטים",
+        "ייקחו מחתות, יתנו בהן אש וישימו עליהן קטורת לפני ה׳",
+        "יניחו מטות באוהל מועד ויראו איזה פורח",
+      ],
+      answer: 2,
+    },
+    {
+      key: "rav-lachem-twice",
+      kind: "truefalse",
+      prompt:
+        "המילים ״רַב לָכֶם״ מופיעות בקטע פעמיים: פעם בפי קרח ועדתו ופעם בפי משה. (פסוקים ג׳, ז׳)",
+      part: "פסוקים ג׳, ז׳ — ״רַב לָכֶם״ מוחזר אל אומריו",
+      options: ["נכון", "לא נכון"],
+      answer: 0,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ז׳):",
+      part: "סדר האירועים בקטע (פסוקים א׳–ז׳)",
+      options: [
+        "קרח, דתן, אבירם ואון קמים לפני משה עם מאתיים וחמישים אנשי שם",
+        "הם אומרים למשה ולאהרן: ״רַב לָכֶם... וּמַדּוּעַ תִּתְנַשְּׂאוּ״",
+        "משה שומע ונופל על פניו",
+        "משה מציע את מבחן המחתות: ״בֹּקֶר וְיֹדַע ה׳ אֶת אֲשֶׁר לוֹ״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: מה מרגיש משה כשהוא נופל על פניו מול מאתיים וחמישים אנשי שם?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the stated-claim vs. hidden-motive dilemma in Part B.
+  plenary: {
+    question:
+      "תלמידה יוצאת נגד ועד הכיתה: ״כולנו שווים — למה שדווקא הם יחליטו?״ ואז מתברר שהיא עצמה רצתה להיות בוועד. האם עדיין צריך לדון ברצינות בטענה שלה — או שברגע שהמניע הסמוי נחשף, הטענה נפלה?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "היה לכם פעם ויכוח שבו הצד השני אמר דברים נכונים — אבל הרגשתם שהוא בעצם רוצה משהו אחר לגמרי? איך ידעתם?",
+    hook: "בפרק שלנו מאתיים וחמישים אנשי שם קמים מול משה עם טענה שנשמעת צודקת לגמרי: כולם קדושים. משה לא עונה — הוא נופל על פניו, ומציע מבחן שיוכרע רק מחר בבוקר.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "three-groups",

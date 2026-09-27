@@ -90,6 +90,91 @@ export const lesson15: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "why-gilad",
+      kind: "choice",
+      prompt: "מדוע משכה ארץ יעזר וגלעד את בני ראובן ובני גד? (פסוק א׳)",
+      part: "פסוק א׳ — ״וּמִקְנֶה רַב״: למה דווקא הגלעד",
+      options: [
+        "כי היה להם מקנה רב, והמקום היה מקום מקנה",
+        "כי הייתה קרובה לירושלים",
+        "כי לא רצו להילחם ביושבי כנען",
+        "כי משה הבטיח להם אותה מראש",
+      ],
+      answer: 0,
+    },
+    {
+      key: "the-request",
+      kind: "choice",
+      prompt: "מה בדיוק ביקשו השבטים ממשה? (פסוק ה׳)",
+      part: "פסוק ה׳ — הבקשה: ״אַל תַּעֲבִרֵנוּ אֶת הַיַּרְדֵּן״",
+      options: [
+        "לעבור ראשונים את הירדן",
+        "לקבל נחלה כפולה בארץ כנען",
+        "שתינתן להם הארץ הזאת לאחוזה ושלא יעבירו אותם את הירדן",
+        "לחזור למצרים עם מקניהם",
+      ],
+      answer: 2,
+    },
+    {
+      key: "moshe-opens",
+      kind: "choice",
+      prompt: "במה פותח משה את תשובתו לשבטים? (פסוק ו׳)",
+      part: "פסוק ו׳ — פתיחת תשובת משה: ״הַאַחֵיכֶם יָבֹאוּ לַמִּלְחָמָה״",
+      options: [
+        "בברכה על המקנה הרב שלהם",
+        "בשאלה: ״הַאַחֵיכֶם יָבֹאוּ לַמִּלְחָמָה וְאַתֶּם תֵּשְׁבוּ פֹה?״",
+        "בהסכמה מיידית לבקשה",
+        "בהצעה לחלק את הגלעד בין כל השבטים",
+      ],
+      answer: 1,
+    },
+    {
+      key: "to-whom",
+      kind: "truefalse",
+      prompt: "השבטים פנו עם בקשתם אל משה בלבד. (פסוק ב׳)",
+      part: "פסוק ב׳ — אל מי פנו השבטים",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ז׳):",
+      part: "סדר האירועים בפרק (פסוקים א׳–ז׳)",
+      options: [
+        "בני ראובן ובני גד רואים שהגלעד הוא מקום מקנה",
+        "השבטים מונים את שמות הערים ומבקשים: ״אַל תַּעֲבִרֵנוּ אֶת הַיַּרְדֵּן״",
+        "משה שואל: ״הַאַחֵיכֶם יָבֹאוּ לַמִּלְחָמָה וְאַתֶּם תֵּשְׁבוּ פֹה?״",
+        "משה מוסיף: ״וְלָמָּה תְנִיאוּן אֶת לֵב בְּנֵי יִשְׂרָאֵל״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה מרגיש משה כשהוא שומע ״אַל תַּעֲבִרֵנוּ אֶת הַיַּרְדֵּן״?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the "special arrangement" question in Part B.
+  plenary: {
+    question:
+      "חבר לכיתה מבקש פטור מהמאמץ המשותף של כולם — טיול, טקס או פרויקט — כי יש לו סיבה טובה משלו. האם לאשר לו, בתנאי שיתרום למאמץ בדרך אחרת, כמו התנאי שהציב משה — או שהסדר מיוחד לאחד תמיד מחליש את הקבוצה, גם כשהוא מקיים את חלקו עד הסוף?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "הייתם פעם בקבוצה שכולם צריכים לעשות משהו קשה יחד, ומישהו ביקש להישאר בצד? מה הרגשתם כלפיו?",
+    hook: "שני שבטים מבקשים לעצור לפני הירדן, בארץ שטובה לעדרים שלהם. הבקשה נשמעת תמימה — אבל משה שומע בה משהו אחר לגמרי, ועונה בשאלה אחת קשה.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "why-wanted",

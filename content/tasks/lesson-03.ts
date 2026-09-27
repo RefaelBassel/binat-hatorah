@@ -109,6 +109,93 @@ export const lesson03: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "fire-edge",
+      kind: "choice",
+      prompt: "מה קרה כשהעם התאונן ״רַע בְּאָזְנֵי ה׳״? (פסוק א׳)",
+      part: "פסוק א׳ — המתאוננים ואש ה׳ בקצה המחנה",
+      options: [
+        "ירד מן מהשמיים",
+        "בערה אש ה׳ בקצה המחנה",
+        "משה עלה להר",
+        "נפתחה האדמה",
+      ],
+      answer: 1,
+    },
+    {
+      key: "who-craved",
+      kind: "choice",
+      prompt: "מי התחיל את התאווה לבשר, ומי הצטרף אחריו? (פסוק ד׳)",
+      part: "פסוק ד׳ — ״הָאסַפְסֻף אֲשֶׁר בְּקִרְבּוֹ״ ובני ישראל בעקבותיו",
+      options: [
+        "זקני ישראל — ואחריהם משה",
+        "משה ואהרן — ואחריהם העם",
+        "האספסוף שבקרב העם — ואחריו גם בני ישראל",
+        "בני לוי — ואחריהם שאר השבטים",
+      ],
+      answer: 2,
+    },
+    {
+      key: "egypt-menu",
+      kind: "choice",
+      prompt: "מה זכרו המתאווים שאכלו במצרים ״חִנָּם״? (פסוק ה׳)",
+      part: "פסוק ה׳ — הגעגוע למאכלי מצרים",
+      options: [
+        "דגים, קישואים, אבטיחים, חציר, בצלים ושומים",
+        "בשר צלוי ויין",
+        "לחם ומים",
+        "תמרים ותאנים",
+      ],
+      answer: 0,
+    },
+    {
+      key: "manna-when",
+      kind: "truefalse",
+      prompt: "המן ירד על המחנה ביום, בשעות השמש. (פסוק ט׳)",
+      part: "פסוק ט׳ — המן יורד בלילה עם הטל",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ט׳):",
+      part: "סדר האירועים בפרק (פסוקים א׳–ט׳)",
+      options: [
+        "העם מתאונן, ואש ה׳ בוערת בקצה המחנה",
+        "העם צועק אל משה, משה מתפלל והאש שוקעת",
+        "המקום נקרא ״תַּבְעֵרָה״",
+        "האספסוף מתאווה, והעם בוכה: ״מִי יַאֲכִלֵנוּ בָּשָׂר״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: איך נשמע לכם הטון של ״מִי יַאֲכִלֵנוּ בָּשָׂר״?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of Yehoshua's ״כְּלָאֵם״ vs Moshe's answer in Part B.
+  plenary: {
+    question:
+      "ראש ועדת המסיבה של הכיתה מגלה ששתי תלמידות מארגנות לבד חלק מהערב, בלי לתאם איתו. האם הוא צריך לעצור אותן — ״כְּלָאֵם״ — כדי שיהיה סדר ומנהיג אחד, או לשמוח כמו משה: ״וּמִי יִתֵּן כָּל עַם ה׳ נְבִיאִים״?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "היה לכם פעם רגע שבו הכול בעצם היה בסדר — ובכל זאת בא לכם להתלונן? על מה זה היה באמת?",
+    hook: "שבוע אחרי היציאה מהר סיני, כשהמן יורד כל בוקר — פתאום בכי בכל המחנה: ״מִי יַאֲכִלֵנוּ בָּשָׂר״. והתורה עוצרת באמצע התלונה כדי לתאר כמה המן טעים.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "what-they-missed",

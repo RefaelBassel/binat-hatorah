@@ -3,6 +3,8 @@ import { requireStudentTask } from "@/lib/api-auth";
 import { getTaskContent } from "@/content/tasks/registry";
 import { effectiveContent } from "@/lib/content-overrides";
 import {
+  checkSeed,
+  choicePermutation,
   getCheckResult,
   saveCheckResult,
   scoreCheck,
@@ -31,13 +33,20 @@ export async function POST(
 
   const body = await req.json().catch(() => null);
   const rawAnswers = (body?.answers ?? {}) as Record<string, unknown>;
+  // the browser saw this student's shuffled view — translate back
+  const seed = checkSeed(guard.task.id, guard.userId);
   const given: CheckSubmission = {};
   for (const q of questions) {
     const v = rawAnswers[q.key];
     if (q.kind === "order") {
       if (Array.isArray(v)) given[q.key] = v.map((x) => String(x));
     } else if (typeof v === "number" && Number.isInteger(v)) {
-      given[q.key] = v;
+      if (q.kind === "choice") {
+        const perm = choicePermutation(q, seed);
+        if (v >= 0 && v < perm.length) given[q.key] = perm[v];
+      } else {
+        given[q.key] = v;
+      }
     }
   }
   // every closed question must be answered — the number is only "certain"

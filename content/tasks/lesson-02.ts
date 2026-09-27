@@ -111,7 +111,90 @@ export const lesson02: TaskContent = {
     minQuestions: 2,
   },
 
-  // Part A stage 7 — two very simple pshat comprehension questions.
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "night-sign",
+      kind: "choice",
+      prompt: "איך נראה מה שמעל המשכן בלילה? (פסוקים ט״ו–ט״ז)",
+      part: "פסוקים ט״ו–ט״ז — ענן ביום, ״כְּמַרְאֵה אֵשׁ״ בלילה",
+      options: ["כענן לבן", "כמראה אש", "כעמוד עשן", "בלילה לא נראה דבר"],
+      answer: 1,
+    },
+    {
+      key: "travel-signal",
+      kind: "choice",
+      prompt: "לפי מה ידעו בני ישראל מתי לצאת לדרך? (פסוק י״ז)",
+      part: "פסוק י״ז — הענן עולה מעל האוהל: האות למסע",
+      options: [
+        "כשמשה נותן פקודה",
+        "כשעוברים שלושה ימים במקום",
+        "כשהענן עולה מעל האוהל",
+        "כשמגיעים למקור מים",
+      ],
+      answer: 2,
+    },
+    {
+      key: "long-stay",
+      kind: "choice",
+      prompt:
+        "מה עשו בני ישראל כשהענן האריך לשכון על המשכן ימים רבים? (פסוק י״ט)",
+      part: "פסוק י״ט — ״וְשָׁמְרוּ... אֶת מִשְׁמֶרֶת ה׳ וְלֹא יִסָּעוּ״",
+      options: [
+        "נשארו במקום ולא נסעו",
+        "יצאו לדרך גם בלי הענן",
+        "שלחו אנשים לבדוק את הדרך",
+        "ביקשו ממשה רשות לנסוע",
+      ],
+      answer: 0,
+    },
+    {
+      key: "one-night",
+      kind: "truefalse",
+      prompt:
+        "לפעמים הענן נשאר על המשכן רק מערב עד בוקר, ובני ישראל נסעו כבר בבוקר. (פסוק כ״א)",
+      part: "פסוק כ״א — חניה של לילה אחד בלבד",
+      options: ["נכון", "לא נכון"],
+      answer: 0,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את המשפטים לפי סדר הפסוקים (פסוקים ט״ו–כ״ג):",
+      part: "סדר הקטע (פסוקים ט״ו–כ״ג)",
+      options: [
+        "ביום שהוקם המשכן — הענן מכסה אותו",
+        "הענן עולה, ובני ישראל נוסעים אחריו וחונים במקום שבו הוא שוכן",
+        "כשהענן מאריך לשכון — בני ישראל שומרים משמרת ה׳ ולא נוסעים",
+        "סיכום: ״עַל פִּי ה׳ יַחֲנוּ וְעַל פִּי ה׳ יִסָּעוּ... בְּיַד מֹשֶׁה״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: איך מרגישים, לדעתכם, כשקמים בבוקר ולא יודעים אם היום נוסעים או נשארים?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the Hovav crossroads in Part B.
+  plenary: {
+    question:
+      "תלמידה שהצטרפה לכיתה באמצע השנה מודיעה אחרי חודש שהיא חוזרת לבית הספר הקודם שלה. האם זו החלטה פרטית שלה שצריך פשוט לכבד — או שהכיתה חייבת, כמו משה לחובב, להגיד לה ״אַל נָא תַּעֲזֹב אֹתָנוּ״ ולעשות הכול כדי שתישאר, כי גם היא נחוצה לה?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "דמיינו שאתם אורזים כל ערב כי אולי מחר זזים — ואולי לא. הייתם מסתדרים עם חיים כאלה, או משתגעים?",
+    hook: "בפרק שלנו מחנה שלם — אלפי משפחות — קם ונוסע או נשאר במקום לפי סימן אחד שמעל המשכן. אף אחד לא יודע מראש: לילה אחד, חודש, או שנה.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "cloud-signal",

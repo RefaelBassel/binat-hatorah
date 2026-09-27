@@ -91,6 +91,91 @@ export const lesson12: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "invited-where",
+      kind: "choice",
+      prompt: "לאן קראו בנות מואב לעם, ומה עשה העם שם? (פסוק ב׳)",
+      part: "פסוקים א׳–ב׳ — תחילת החטא בשיטים",
+      options: [
+        "למלחמה נגד מדין — והעם יצא לקרב",
+        "לסעודת שלום — והעם כרת ברית",
+        "לזבחי אלוהיהן — והעם אכל והשתחווה לאלוהיהן",
+        "לאוהליהן — והעם קנה מהן מקנה",
+      ],
+      answer: 2,
+    },
+    {
+      key: "command-moshe",
+      kind: "choice",
+      prompt: "מה ציווה ה׳ את משה לעשות כדי שישוב חרון אפו מישראל? (פסוק ד׳)",
+      part: "פסוק ד׳ — ציווי ה׳ אל משה: ״וְהוֹקַע אוֹתָם״",
+      options: [
+        "לצום שלושה ימים עם כל העם",
+        "לקחת את כל ראשי העם ולהוקיע אותם לה׳ נגד השמש",
+        "להקריב קרבן חטאת על המזבח",
+        "לגרש את בנות מואב מהמחנה",
+      ],
+      answer: 1,
+    },
+    {
+      key: "after-spear",
+      kind: "choice",
+      prompt: "מה קרה מיד אחרי שפנחס דקר את שניהם? (פסוק ח׳)",
+      part: "פסוק ח׳ — ״וַתֵּעָצַר הַמַּגֵּפָה״",
+      options: [
+        "פרצה מלחמה במדין",
+        "משה כעס על פנחס",
+        "העם ברח מהשיטים",
+        "נעצרה המגפה מעל בני ישראל",
+      ],
+      answer: 3,
+    },
+    {
+      key: "who-rose",
+      kind: "truefalse",
+      prompt: "האיש שקם מתוך העדה ולקח רומח בידו היה משה. (פסוק ז׳)",
+      part: "פסוק ז׳ — מי קם מתוך העדה",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ט׳):",
+      part: "סדר האירועים בפרק (פסוקים א׳–ט׳)",
+      options: [
+        "ישראל נצמד לבעל פעור וחרה אף ה׳",
+        "ה׳ מצווה את משה להוקיע את ראשי העם",
+        "איש מבני ישראל מביא את המדיינית לעיני כל העדה",
+        "פנחס דוקר את שניהם והמגפה נעצרת",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה מרגישה העדה שעומדת ובוכה פתח אוהל מועד? (פסוק ו׳)",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the "limits of zeal" dilemma in Part B.
+  plenary: {
+    question:
+      "תלמידה רואה במסדרון משהו חמור שכולם רואים ואף אחד לא זז. האם נכון שתקום ותפעל מיד, בעצמה ובלי לשאול אף אחד — או שחובתה לעצור, ללכת למבוגר אחראי ולחכות, גם אם בינתיים הדבר יימשך?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "היה לכם פעם רגע שראיתם משהו לא בסדר וכולם סביבכם שתקו? מה עשיתם — קפצתם, או חיכיתם שמישהו אחר יזוז?",
+    hook: "בפרק שלנו העם מידרדר צעד אחרי צעד, ובשיא — כל העדה עומדת ובוכה מול חטא פומבי. איש אחד קם מתוכה, ולמעשה שלו ה׳ נותן שם מפתיע: ״בְּרִיתִי שָׁלוֹם״.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "where-started",

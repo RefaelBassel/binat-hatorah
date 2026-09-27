@@ -114,6 +114,92 @@ export const lesson16: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "where-how",
+      kind: "choice",
+      prompt: "היכן ובאיזו דרך נגלה ה׳ אל שלמה? (פסוק ה׳)",
+      part: "פסוק ה׳ — ההתגלות בגבעון: ״שְׁאַל מָה אֶתֶּן לָךְ״",
+      options: [
+        "בירושלים, לפני ארון הברית",
+        "בגבעון, בחלום הלילה",
+        "בהר סיני, מתוך הענן",
+        "בבית המקדש, באור היום",
+      ],
+      answer: 1,
+    },
+    {
+      key: "what-asked",
+      kind: "choice",
+      prompt: "מה ביקש שלמה מה׳? (פסוק ט׳)",
+      part: "פסוק ט׳ — הבקשה: ״לֵב שֹׁמֵעַ״",
+      options: [
+        "עושר וכבוד",
+        "ימים רבים",
+        "לב שומע לשפוט את העם",
+        "ניצחון על אויביו",
+      ],
+      answer: 2,
+    },
+    {
+      key: "not-asked",
+      kind: "choice",
+      prompt: "אילו שלושה דברים, לפי דברי ה׳, שלמה לא ביקש? (פסוק י״א)",
+      part: "פסוק י״א — מה שלמה לא ביקש",
+      options: [
+        "ימים רבים, עושר ונפש אויביו",
+        "חוכמה, כבוד ושלום",
+        "ארמון, צבא ואישה",
+        "בנים, ארץ ומלכות",
+      ],
+      answer: 0,
+    },
+    {
+      key: "long-life-condition",
+      kind: "truefalse",
+      prompt: "אריכות הימים הובטחה לשלמה ללא שום תנאי. (פסוק י״ד)",
+      part: "פסוק י״ד — ״וְאִם תֵּלֵךְ בִּדְרָכַי״: המתנה שבתנאי",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים ה׳–ט״ו):",
+      part: "סדר האירועים בפרק (פסוקים ה׳–ט״ו)",
+      options: [
+        "ה׳ נגלה לשלמה בגבעון בחלום: ״שְׁאַל מָה אֶתֶּן לָךְ״",
+        "שלמה מציג את עצמו ״נַעַר קָטֹן״ ומבקש לב שומע",
+        "ה׳ נותן לב חכם ונבון — וגם עושר וכבוד שלא ביקש",
+        "שלמה מקיץ, בא לירושלים, מעלה עולות ועושה משתה",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה מרגיש שלמה כשהוא מתעורר ומבין — ״וְהִנֵּה חֲלוֹם״? (פסוק ט״ו)",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the "what a leader needs" position question in
+  // Part B and the ״נַעַר קָטֹן״ admission.
+  plenary: {
+    question:
+      "כשבוחרים ראש מועצת תלמידים — מי עדיף: מי שמודה שאינו יודע הכול ומקשיב לכולם לפני שמחליט, או מי שמקרין ביטחון ומחליט מהר? על מה מהשניים הייתם מוכנים לוותר?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "אם היו אומרים לכם הלילה ״בקשו מה שתרצו, ותקבלו״ — מה הייתם מבקשים? ומה הייתם מתביישים לבקש בקול?",
+    hook: "מלך צעיר, שרק ירש את כיסא אביו, מקבל בחלום הצעה בלי גבולות. מה שהוא בוחר לבקש — ומה שהוא לא מבקש — מפתיע אפילו את מי שהציע.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "where-how",

@@ -98,6 +98,92 @@ export const lesson20: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "status-before",
+      kind: "choice",
+      prompt: "מה היה מעמדו של הושע מול מלך אשור בהתחלה? (פסוק ג׳)",
+      part: "פסוק ג׳ — הושע ״עֶבֶד״ למלך אשור ומשלם מנחה",
+      options: [
+        "עבד למלך אשור שמשלם לו מנחה",
+        "בן ברית שווה לו במעמד",
+        "אויב שנלחם בו ומנצח",
+        "מלך שאשור משלמת לו מס",
+      ],
+      answer: 0,
+    },
+    {
+      key: "the-kesher",
+      kind: "choice",
+      prompt: "מה ה״קֶשֶׁר״ שמצא מלך אשור בהושע? (פסוק ד׳)",
+      part: "פסוק ד׳ — ה״קֶשֶׁר״: שליחים למצרים והמנחה שנפסקה",
+      options: [
+        "שלח מלאכים אל מלך מצרים ולא העלה את המנחה השנתית",
+        "בנה חומה חדשה סביב שומרון",
+        "הרג את השליחים שאשור שלחה אליו",
+        "כרת ברית עם אחז מלך יהודה",
+      ],
+      answer: 0,
+    },
+    {
+      key: "exile-where",
+      kind: "choice",
+      prompt: "לאן הגלה מלך אשור את ישראל? (פסוק ו׳)",
+      part: "פסוק ו׳ — יעד הגלות: ״בַּחְלַח וּבְחָבוֹר נְהַר גּוֹזָן וְעָרֵי מָדָי״",
+      options: [
+        "לבבל",
+        "למצרים",
+        "לחלח ולחבור נהר גוזן ולערי מדי",
+        "לשכם ולירושלים",
+      ],
+      answer: 2,
+    },
+    {
+      key: "hoshea-worst",
+      kind: "truefalse",
+      prompt: "על הושע נאמר שהיה רשע יותר מכל מלכי ישראל שהיו לפניו. (פסוק ב׳)",
+      part: "פסוק ב׳ — ״רַק לֹא כְּמַלְכֵי יִשְׂרָאֵל אֲשֶׁר הָיוּ לְפָנָיו״",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים ג׳–ו׳):",
+      part: "סדר האירועים בפרק (פסוקים ג׳–ו׳)",
+      options: [
+        "הושע נעשה עבד לשלמנאסר ומשלם לו מנחה",
+        "מלך אשור מוצא בהושע קשר ואוסר אותו בבית כלא",
+        "מלך אשור צר על שומרון שלוש שנים",
+        "שומרון נלכדת וישראל מוגלים אשורה",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה מרגישים כשקוראים ״וַיֶּגֶל אֶת יִשְׂרָאֵל אַשּׁוּרָה״ אחרי כל הדרך שעשינו בספר?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of Part B's argument exercise: judge the decision,
+  // not the outcome (Hoshea's gamble on Egypt).
+  plenary: {
+    question:
+      "קפטנית של נבחרת בית הספר הימרה בדקה האחרונה על מהלך מסוכן — והקבוצה הפסידה. האם שופטים אותה לפי מה שידעה ברגע שהחליטה, או לפי התוצאה בלבד?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "יש לכם הרגל שכולם מזהירים אתכם ממנו כבר שנים — ואתם דוחים את זה, כי בינתיים כלום לא קרה?",
+    hook: "בשישה פסוקים יבשים נגמרת ממלכה של מאתיים שנה: מלך שהימר, מצור של שלוש שנים, ושיירה שיוצאת מזרחה. ואז הפרק עוצר ושואל בעצמו — למה באמת?",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "why-arrested",

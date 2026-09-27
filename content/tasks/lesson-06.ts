@@ -78,6 +78,89 @@ export const lesson06: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "thread",
+      kind: "choice",
+      prompt: "מה נותנים על ציצית הכנף? (פסוק ל״ח)",
+      part: "פסוק ל״ח — ״פְּתִיל תְּכֵלֶת״",
+      options: ["פתיל זהב", "פתיל תכלת", "חוט ארגמן", "פעמון כסף"],
+      answer: 1,
+    },
+    {
+      key: "chain",
+      kind: "choice",
+      prompt: "מה אמור לקרות אחרי שרואים את הציצית? (פסוק ל״ט)",
+      part: "פסוק ל״ט — השרשרת: ״וּרְאִיתֶם... וּזְכַרְתֶּם... וַעֲשִׂיתֶם״",
+      options: [
+        "מתפללים שלוש תפילות",
+        "זוכרים את כל מצוות ה׳ ועושים אותן",
+        "יוצאים לדרך אל הארץ",
+        "מקריבים קורבן",
+      ],
+      answer: 1,
+    },
+    {
+      key: "closing-reason",
+      kind: "choice",
+      prompt: "במה חותם ה׳ את המצווה — מה הוא מזכיר לבני ישראל? (פסוק מ״א)",
+      part: "פסוק מ״א — החתימה: ״אֲשֶׁר הוֹצֵאתִי אֶתְכֶם מֵאֶרֶץ מִצְרַיִם״",
+      options: [
+        "שנתן להם את הארץ",
+        "שברא את השמיים והארץ",
+        "שהוציא אותם מארץ מצרים להיות להם לאלוהים",
+        "שהציל אותם מהמרגלים",
+      ],
+      answer: 2,
+    },
+    {
+      key: "generations",
+      kind: "truefalse",
+      prompt: "מצוות ציצית נאמרה רק לדור המדבר. (פסוק ל״ח)",
+      part: "פסוק ל״ח — ״לְדֹרֹתָם״: מצווה לכל הדורות",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את חלקי המצווה לפי סדר הפסוקים (פסוקים ל״ז–מ״א):",
+      part: "מבנה פרשת ציצית (פסוקים ל״ז–מ״א)",
+      options: [
+        "ה׳ מדבר אל משה",
+        "הציווי: לעשות ציצית על כנפי הבגדים ולתת עליה פתיל תכלת",
+        "התכלית: לראות, לזכור ולעשות — ״וְלֹא תָתֻרוּ אַחֲרֵי לְבַבְכֶם וְאַחֲרֵי עֵינֵיכֶם״",
+        "החתימה: ״אֲנִי ה׳ אֱלֹהֵיכֶם אֲשֶׁר הוֹצֵאתִי אֶתְכֶם מֵאֶרֶץ מִצְרַיִם״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: מה, לדעתכם, אמור להרגיש מי שמסתכל על פתיל התכלת?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the "reminder a community carries" question in
+  // Part B.
+  plenary: {
+    question:
+      "בית הספר שוקל לחייב את כולם בסמל אחיד — חולצה עם סמל בית הספר — כדי שיזכרו ״מי אנחנו״. האם תזכורת חיצונית שמישהו מחייב באמת עוזרת לזכור ולהתנהג אחרת, כמו ״וּרְאִיתֶם... וּזְכַרְתֶּם... וַעֲשִׂיתֶם״ — או שמה שלא בא מבפנים נשאר סתם בד?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "יש לכם משהו קטן שאתם נושאים עליכם — צמיד, שרשרת, תמונה בטלפון — כדי לא לשכוח משהו או מישהו? זה עובד?",
+    hook: "אחרי הגזרה הכי קשה של דור המדבר, הפרק לא נפתח בנחמה גדולה אלא במצוות: חלה מהעיסה, וחוט תכלת על כנף הבגד. ומילה אחת בו — ״תָתֻרוּ״ — כבר פגשנו אצל המרגלים.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "two-parts",

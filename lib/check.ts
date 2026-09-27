@@ -34,13 +34,34 @@ export type CheckSubmission = Record<string, number | string[]>;
 // pre-shuffled on the server (a fixed shuffle so a re-render is stable).
 export type PublicCheckQuestion = Omit<CheckQuestion, "answer">;
 
+// Choice options are shuffled per student too, so the correct answer never
+// sits in a predictable slot (authors tend to put it first) and neighbours
+// cannot copy an option number. The permutation is recomputed from the same
+// seed when scoring (see choicePermutation).
 export function publicCheck(questions: CheckQuestion[], seed: number): PublicCheckQuestion[] {
   return questions.map((q) => {
     const { answer: _answer, ...rest } = q;
     void _answer;
-    if (q.kind !== "order") return rest;
-    return { ...rest, options: seededShuffle(q.options, seed + hashKey(q.key)) };
+    if (q.kind === "order") {
+      return { ...rest, options: seededShuffle(q.options, seed + hashKey(q.key)) };
+    }
+    if (q.kind === "choice") {
+      const perm = choicePermutation(q, seed);
+      return { ...rest, options: perm.map((i) => q.options[i]) };
+    }
+    return rest;
   });
+}
+
+// perm[displayIndex] = original option index
+export function choicePermutation(q: CheckQuestion, seed: number): number[] {
+  const idx = q.options.map((_, i) => i);
+  return seededShuffle(idx, seed + hashKey(q.key) + 7);
+}
+
+// the seed used for one student's view of one task's check
+export function checkSeed(taskId: number, userId: number): number {
+  return taskId * 1000 + userId;
 }
 
 function hashKey(s: string): number {

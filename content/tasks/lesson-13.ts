@@ -74,6 +74,91 @@ export const lesson13: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "before-whom",
+      kind: "choice",
+      prompt: "לפני מי עמדו בנות צלפחד כשהציגו את בקשתן? (פסוק ב׳)",
+      part: "פסוק ב׳ — לפני מי עמדו הבנות",
+      options: [
+        "לפני משה בלבד",
+        "לפני משה, אלעזר הכהן, הנשיאים וכל העדה",
+        "לפני אלעזר הכהן והנשיאים בלבד",
+        "לפני זקני שבט מנשה",
+      ],
+      answer: 1,
+    },
+    {
+      key: "about-father",
+      kind: "choice",
+      prompt: "מה מדגישות הבנות על אביהן? (פסוק ג׳)",
+      part: "פסוק ג׳ — מה אומרות הבנות על אביהן",
+      options: [
+        "שהוא היה מראשי עדת קרח",
+        "שהוא נפל במלחמה על הארץ",
+        "שהוא לא היה בעדת קרח אלא מת בחטאו, ולא היו לו בנים",
+        "שהוא היה נשיא שבט מנשה",
+      ],
+      answer: 2,
+    },
+    {
+      key: "the-request",
+      kind: "choice",
+      prompt: "מה בדיוק מבקשות הבנות? (פסוק ד׳)",
+      part: "פסוק ד׳ — הבקשה: ״תְּנָה לָּנוּ אֲחֻזָּה״",
+      options: [
+        "אחוזה בתוך אחי אביהן",
+        "כסף מירושת המשפחה",
+        "רשות להינשא לבני שבט אחר",
+        "שייכתב שם אביהן בספר הזיכרון",
+      ],
+      answer: 0,
+    },
+    {
+      key: "moshe-decides",
+      kind: "truefalse",
+      prompt: "משה הכריע בעצמו במשפטן של הבנות. (פסוק ה׳)",
+      part: "פסוק ה׳ — ״וַיַּקְרֵב מֹשֶׁה אֶת מִשְׁפָּטָן לִפְנֵי ה׳״",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ח׳):",
+      part: "סדר האירועים בפרק (פסוקים א׳–ח׳)",
+      options: [
+        "בנות צלפחד קרבות ועומדות לפני משה וכל העדה",
+        "הבנות טוענות: ״לָמָּה יִגָּרַע שֵׁם אָבִינוּ״",
+        "משה מקריב את משפטן לפני ה׳",
+        "ה׳ עונה ״כֵּן בְּנוֹת צְלָפְחָד דֹּבְרֹת״ וקובע חוק לכל ישראל",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה מרגישות חמש האחיות כשהן עומדות פתח אוהל מועד מול כל העדה?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the chapter-36 position exercise in Part B.
+  plenary: {
+    question:
+      "בנות צלפחד קיבלו את הנחלה — אבל השבט דרש שיינשאו רק בתוכו, כדי שהאדמה לא תעבור לשבט אחר. האם נכון להגביל את החופש של מי שזכה בצדק, כדי שהקבוצה לא תפסיד — או שצדק שמגיע עם תנאי כבר אינו צדק שלם?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "קרה לכם שהרגשתם שמגיע לכם משהו, ואמרו לכם ״ככה זה, אלו הכללים״? הלכתם לדרוש אותו — או ויתרתם?",
+    hook: "חמש אחיות בלי אב ובלי אח עומדות מול משה, הנשיאים וכל העדה — ובידיהן רק טיעון אחד. הן לא בוכות ולא מתחננות, הן טוענות. ומשה עצמו לא יודע מה לענות.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "five-names",

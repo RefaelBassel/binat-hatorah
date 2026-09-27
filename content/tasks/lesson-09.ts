@@ -80,6 +80,93 @@ export const lesson09: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "cow-conditions",
+      kind: "choice",
+      prompt: "אילו תנאים צריכה הפרה לקיים? (פסוק ב׳)",
+      part: "פסוק ב׳ — תנאי הפרה: אֲדֻמָּה, תְּמִימָה, לֹא עָלָה עָלֶיהָ עֹל",
+      options: [
+        "אדומה, בת שנתיים לפחות",
+        "אדומה, תמימה בלי מום, ושלא עלה עליה עול",
+        "לבנה ותמימה, בלי מום",
+        "אדומה, שכבר חרשה בשדה",
+      ],
+      answer: 1,
+    },
+    {
+      key: "where-burned",
+      kind: "choice",
+      prompt: "היכן שוחטים ושורפים את הפרה? (פסוקים ג׳, ה׳)",
+      part: "פסוקים ג׳, ה׳ — ״מִחוּץ לַמַּחֲנֶה״",
+      options: [
+        "על המזבח באוהל מועד",
+        "בפתח אוהל מועד",
+        "מחוץ למחנה",
+        "במקום טהור בתוך המחנה",
+      ],
+      answer: 2,
+    },
+    {
+      key: "priest-impure",
+      kind: "choice",
+      prompt: "מה קורה לכהן שעסק בפרה? (פסוק ז׳)",
+      part: "פסוק ז׳ — הכהן העוסק בפרה נטמא",
+      options: [
+        "נשאר טהור, כי עשה מצווה",
+        "מכבס בגדיו, רוחץ במים וטמא עד הערב",
+        "טמא שבעת ימים",
+        "אסור לו לשוב אל המחנה לעולם",
+      ],
+      answer: 1,
+    },
+    {
+      key: "ashes-kept",
+      kind: "truefalse",
+      prompt: "את אפר הפרה אוסף איש טהור, ומניח אותו מחוץ למחנה במקום טהור. (פסוק ט׳)",
+      part: "פסוק ט׳ — אפר הפרה: מי אוסף והיכן מניחים",
+      options: ["נכון", "לא נכון"],
+      answer: 0,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את הפעולות לפי סדר החוק (פסוקים ג׳–ט׳):",
+      part: "סדר הפעולות בחוק (פסוקים ג׳–ט׳)",
+      options: [
+        "אלעזר הכהן מוציא את הפרה אל מחוץ למחנה ושוחטים אותה לפניו",
+        "אלעזר מזה מדמה שבע פעמים אל נוכח פני אוהל מועד",
+        "שורפים את הפרה ומשליכים לתוכה עץ ארז, אזוב ושני תולעת",
+        "איש טהור אוסף את האפר ומניח אותו במקום טהור",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: איך מרגישים כשקוראים חוק ארוך ומפורט כל כך — בלי שום הסבר למה?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the community-rules dilemma in Part B.
+  plenary: {
+    question:
+      "בתקנון בית הספר יש כלל שאף אחד — גם המורים — לא יודע להסביר. האם מקיימים אותו כי זה הכלל, או שכלל שאין לו הסבר איבד את הזכות שיצייתו לו?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "יש אצלכם בבית כלל שאף פעם לא הבנתם למה הוא קיים — ובכל זאת אתם שומרים עליו? למה בעצם?",
+    hook: "בפרק שלנו התורה נותנת חוק ארוך ומדויק על פרה אדומה — ומכריזה מראש: זו חֻקָּה. גם שלמה, החכם מכל אדם, אמר עליו: היא רחוקה ממני.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "cow-conditions",

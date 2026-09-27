@@ -131,6 +131,92 @@ export const lesson18: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "opening-question",
+      kind: "choice",
+      prompt: "מה שאל אליהו את העם בפתיחת המעמד — ומה הייתה תגובתם? (פסוק כ״א)",
+      part: "פסוק כ״א — ״עַד מָתַי אַתֶּם פֹּסְחִים״ ושתיקת העם",
+      options: [
+        "״עַד מָתַי אַתֶּם פֹּסְחִים עַל שְׁתֵּי הַסְּעִפִּים״ — והעם לא ענה דבר",
+        "למה עזבתם את ה׳ — והעם ביקש סליחה",
+        "מי מכם רוצה גשם — וכולם הרימו יד",
+        "מי מכם יעלה איתי להר — ואיש לא בא",
+      ],
+      answer: 0,
+    },
+    {
+      key: "the-criterion",
+      kind: "choice",
+      prompt: "לפי הצעת אליהו, מה יקבע מיהו האלוקים האמיתי? (פסוק כ״ד)",
+      part: "פסוק כ״ד — קריטריון ההכרעה: ״אֲשֶׁר יַעֲנֶה בָאֵשׁ״",
+      options: [
+        "האלוקים שיענה באש — הוא האלוקים",
+        "האלוקים שיוריד גשם ראשון",
+        "האלוקים שיש לו יותר נביאים",
+        "האלוקים שהפר שלו גדול יותר",
+      ],
+      answer: 0,
+    },
+    {
+      key: "noon-frenzy",
+      kind: "choice",
+      prompt: "מה עשו נביאי הבעל בצהריים, כשלא נענו? (פסוק כ״ח)",
+      part: "פסוקים כ״ו–כ״ט — מאמצי נביאי הבעל והשתיקה שממול",
+      options: [
+        "קראו בקול גדול והתגודדו בחרבות וברמחים עד שפך דם",
+        "ירדו מההר והלכו הביתה",
+        "שפכו מים על המזבח שלהם",
+        "ביקשו מאליהו שיתפלל במקומם",
+      ],
+      answer: 0,
+    },
+    {
+      key: "why-first",
+      kind: "truefalse",
+      prompt: "אליהו נתן לנביאי הבעל לגשת ראשונים מפני שהם הרבים. (פסוק כ״ה)",
+      part: "פסוק כ״ה — ״כִּי אַתֶּם הָרַבִּים״: מי ניגש ראשון ולמה",
+      options: ["נכון", "לא נכון"],
+      answer: 0,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים כ״א–כ״ט):",
+      part: "סדר האירועים בפרק (פסוקים כ״א–כ״ט)",
+      options: [
+        "אליהו שואל ״עַד מָתַי אַתֶּם פֹּסְחִים״ — והעם שותק",
+        "אליהו מציע את מבחן שני הפרים — והעם עונה ״טוֹב הַדָּבָר״",
+        "נביאי הבעל קוראים מהבוקר עד הצהריים — ״וְאֵין קוֹל וְאֵין עֹנֶה״",
+        "אליהו מהתל בהם: ״אוּלַי יָשֵׁן הוּא וְיִקָץ״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה הייתם מרגישים אילו עמדתם בתוך העם ושמעתם ״עַד מָתַי אַתֶּם פֹּסְחִים״?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the booklet's closing question in Part B: does
+  // one dramatic moment change people for good?
+  plenary: {
+    question:
+      "אחרי סמינר או מסע מרגש שכולם בוכים בסופו ומבטיחים להשתנות — האם רגע כזה באמת משנה אנשים, או שאחרי שבוע חוזרים לאותו מקום, ומה שמשנה באמת הוא רק ההרגלים הקטנים של כל יום?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "יש ויכוח בכיתה שכולם כבר בחרו בו צד — ואתם עדיין לא. מה מחזיק אתכם באמצע: שאתם באמת לא בטוחים, או שפשוט נוח שם?",
+    hook: "שלוש שנים בלי גשם, עם שלם על הר אחד, נביא אחד מול ארבע מאות וחמישים. אליהו לא מתחיל בנס — הוא מתחיל בשאלה, ומציע מבחן שכולם מסכימים לו.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "the-test",

@@ -77,6 +77,94 @@ export const lesson04: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "about-what",
+      kind: "choice",
+      prompt: "על מה דיברו מרים ואהרן במשה? (פסוק א׳)",
+      part: "פסוק א׳ — הדיבור במשה ״עַל אֹדוֹת הָאִשָּׁה הַכֻּשִׁית״",
+      options: [
+        "על האישה הכושית שלקח",
+        "על העונש שנתן לעם",
+        "על הבשר שביקש העם",
+        "על שבעים הזקנים שבחר",
+      ],
+      answer: 0,
+    },
+    {
+      key: "their-claim",
+      kind: "choice",
+      prompt: "מה טוענים מרים ואהרן במילים ״הֲרַק אַךְ בְּמֹשֶׁה דִּבֶּר ה׳״? (פסוק ב׳)",
+      part: "פסוק ב׳ — הטענה: ״הֲלֹא גַּם בָּנוּ דִבֵּר״",
+      options: [
+        "משה לא שמע בקול ה׳",
+        "ה׳ לא דיבר עם משה בכלל",
+        "ה׳ דיבר גם איתם, לא רק עם משה",
+        "משה לא ראוי להנהיג את העם",
+      ],
+      answer: 2,
+    },
+    {
+      key: "moshe-different",
+      kind: "choice",
+      prompt:
+        "לפי דברי ה׳, במה שונה נבואת משה מנבואת שאר הנביאים? (פסוקים ו׳–ח׳)",
+      part: "פסוקים ו׳–ח׳ — ״פֶּה אֶל פֶּה אֲדַבֶּר בּוֹ״",
+      options: [
+        "משה מתנבא רק בחלום",
+        "ה׳ מדבר איתו פה אל פה, ולא בחידות",
+        "משה שומע את ה׳ רק דרך אהרן",
+        "משה מתנבא רק פעם בשנה",
+      ],
+      answer: 1,
+    },
+    {
+      key: "moshe-silent",
+      kind: "truefalse",
+      prompt: "בפסוקים האלה משה עונה למרים ולאהרן ומתווכח איתם. (פסוקים א׳–ט׳)",
+      part: "פסוק ג׳ — משה שותק: ״עָנָו מְאֹד״",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ט׳):",
+      part: "סדר האירועים בפרק (פסוקים א׳–ט׳)",
+      options: [
+        "מרים ואהרן מדברים במשה",
+        "ה׳ קורא פתאום לשלושתם לצאת אל אוהל מועד",
+        "ה׳ יורד בעמוד ענן ואומר: ״לֹא כֵן עַבְדִּי מֹשֶׁה״",
+        "חרון אף ה׳ בם — והוא הולך",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: מה מרגישים כשקוראים ״וַיִּשְׁמַע ה׳״ מיד אחרי דברי מרים ואהרן?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the camp that waited for Miriam in Part B.
+  plenary: {
+    question:
+      "תלמידה שקיבלה הרחקה של שבוע לא תוכל לצאת לטיול השנתי במועד שנקבע. האם הכיתה צריכה לדחות את הטיול עד שתחזור — כמו המחנה ש״לֹא נָסַע עַד הֵאָסֵף מִרְיָם״ — או שמי שנענשה צריכה לשאת בתוצאה, ואי אפשר לעצור עשרות אנשים בשביל אחת?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "אמרתם פעם משהו על מישהו כשהוא לא היה בחדר — ואז גיליתם שהוא שמע? מה עשיתם עם זה?",
+    hook: "בפרק שלנו אח ואחות מדברים ביניהם על אחיהם הקטן, משה. הוא לא עונה מילה — אבל מישהו אחר שומע, ופתאום שלושתם נקראים החוצה.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "moshe-response",

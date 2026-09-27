@@ -105,6 +105,88 @@ export const lesson05: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "how-long",
+      kind: "choice",
+      prompt: "כמה זמן נמשך תיור הארץ? (פסוק כ״ה)",
+      part: "פסוק כ״ה — ״מִקֵּץ אַרְבָּעִים יוֹם״",
+      options: ["שלושה ימים", "שבעה ימים", "ארבעים יום", "ארבעים שנה"],
+      answer: 2,
+    },
+    {
+      key: "showed-fruit",
+      kind: "choice",
+      prompt: "מה הראו המרגלים לכל העדה כשחזרו? (פסוק כ״ו)",
+      part: "פסוק כ״ו — ״וַיַּרְאוּם אֶת פְּרִי הָאָרֶץ״",
+      options: [
+        "מפה של הארץ",
+        "את פרי הארץ",
+        "שבויים מהארץ",
+        "מים מהירדן",
+      ],
+      answer: 1,
+    },
+    {
+      key: "kalev-says",
+      kind: "choice",
+      prompt: "מה אומר כלב לעם אחרי הדיווח? (פסוק ל׳)",
+      part: "פסוק ל׳ — כלב משתיק את העם: ״עָלֹה נַעֲלֶה״",
+      options: [
+        "״לֹא נוּכַל לַעֲלוֹת אֶל הָעָם״",
+        "״עָלֹה נַעֲלֶה וְיָרַשְׁנוּ אֹתָהּ כִּי יָכוֹל נוּכַל לָהּ״",
+        "״אֶרֶץ אֹכֶלֶת יוֹשְׁבֶיהָ הִוא״",
+        "״וַנְּהִי בְעֵינֵינוּ כַּחֲגָבִים״",
+      ],
+      answer: 1,
+    },
+    {
+      key: "milk-honey",
+      kind: "truefalse",
+      prompt: "המרגלים אמרו שהארץ אינה זבת חלב ודבש. (פסוק כ״ז)",
+      part: "פסוק כ״ז — הדיווח פותח בשבח: ״זָבַת חָלָב וּדְבַשׁ הִוא״",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים כ״ה–ל״ג):",
+      part: "סדר האירועים בפרק (פסוקים כ״ה–ל״ג)",
+      options: [
+        "המרגלים חוזרים אחרי ארבעים יום ומראים את פרי הארץ",
+        "הדיווח: ״זָבַת חָלָב וּדְבַשׁ הִוא... אֶפֶס כִּי עַז הָעָם״",
+        "כלב משתיק את העם: ״עָלֹה נַעֲלֶה״",
+        "המרגלים מוציאים דיבת הארץ: ״אֶרֶץ אֹכֶלֶת יוֹשְׁבֶיהָ הִוא״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: מה מרגישים המרגלים כשהם אומרים ״וַנְּהִי בְעֵינֵינוּ כַּחֲגָבִים״?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the "group spirit" question in Part B.
+  plenary: {
+    question:
+      "בקבוצת הכיתה כולם כבר החליטו שהטיול השנתי המוצע ״מסוכן ולא שווה״, ואתם חושבים אחרת. האם לכתוב את זה מול כולם, כמו כלב שעמד לבד מול העם — או לשתוק, כי אחד מול ארבעים ממילא לא ישנה כלום?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "קרה לכם שהייתם בטוחים במשהו — עד שכל החברים אמרו הפוך, ופתאום גם אתם כבר לא הייתם בטוחים? מה קרה לכם שם?",
+    hook: "בפרק שלנו שנים-עשר אנשים חוזרים מאותה ארץ, עם אותו אשכול ענבים ביד. עשרה אומרים ״לֹא נוּכַל״, שניים אומרים ״עָלֹה נַעֲלֶה״ — וכולם ראו בדיוק את אותו הדבר.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "how-long",

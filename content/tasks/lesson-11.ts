@@ -98,6 +98,93 @@ export const lesson11: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "the-vow",
+      kind: "choice",
+      prompt: "מה נדר ישראל לפני המלחמה במלך ערד? (פסוק ב׳)",
+      part: "פסוק ב׳ — הנדר: ״וְהַחֲרַמְתִּי אֶת עָרֵיהֶם״",
+      options: [
+        "אם ה׳ ייתן את העם בידם — יחרימו את עריהם",
+        "אם ינצחו — יבנו מזבח במקום הקרב",
+        "אם ינצחו — יחלקו את השלל בין השבטים",
+        "אם ינצחו — יצומו שלושה ימים",
+      ],
+      answer: 0,
+    },
+    {
+      key: "the-complaint",
+      kind: "choice",
+      prompt: "על מה התלונן העם בדרך סביב ארץ אדום? (פסוק ה׳)",
+      part: "פסוק ה׳ — התלונה: ״וְנַפְשֵׁנוּ קָצָה בַּלֶּחֶם הַקְּלֹקֵל״",
+      options: [
+        "על שאין להם בשר לאכול",
+        "על שאין לחם ואין מים, ונפשם קצה ב״לֶּחֶם הַקְּלֹקֵל״",
+        "על שמשה זקן מדי להנהיג",
+        "על שאדום לא נתן להם לעבור בארצו",
+      ],
+      answer: 1,
+    },
+    {
+      key: "the-cure",
+      kind: "choice",
+      prompt: "מה ציווה ה׳ את משה לעשות כדי שהנשוכים יחיו? (פסוק ח׳)",
+      part: "פסוק ח׳ — הציווי: ״עֲשֵׂה לְךָ שָׂרָף וְשִׂים אֹתוֹ עַל נֵס״",
+      options: [
+        "להסיר את הנחשים מן המחנה מיד",
+        "להרוג את הנחשים במטה",
+        "לעשות שרף ולשים אותו על נס — וכל הנשוך שיראה אותו יחיה",
+        "להעביר את המחנה למקום אחר",
+      ],
+      answer: 2,
+    },
+    {
+      key: "moshe-refused",
+      kind: "truefalse",
+      prompt: "העם ביקש ממשה להתפלל בעדו, ומשה סירב מפני שדיברו נגדו. (פסוק ז׳)",
+      part: "פסוק ז׳ — ״חָטָאנוּ״ ותפילת משה בעד העם",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ט׳):",
+      part: "סדר האירועים בקטע (פסוקים א׳–ט׳)",
+      options: [
+        "מלך ערד נלחם בישראל ושובה ממנו שבי",
+        "העם מתלונן על הלחם והמים, וה׳ שולח את הנחשים השרפים",
+        "העם אומר ״חָטָאנוּ״ ומשה מתפלל בעדו",
+        "משה עושה נחש נחושת ושם אותו על הנס",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: מה מרגיש אדם נשוך שצריך להרים את העיניים דווקא אל נחש כדי להירפא?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the fast-confession / quick-forgiveness dilemma in Part B.
+  plenary: {
+    question:
+      "חבר שדיבר עליכם רע מאחורי הגב מגיע אחרי שעה ואומר: ״טעיתי — ותעזור לי עכשיו״. האם למחול מיד זו גדלות — או שמחילה מהירה מדי מלמדת אותו שאפשר לפגוע בלי מחיר?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "מישהו שפגע בכם בא אחרי רגע ואמר ״טעיתי״ — כמה מהר סלחתם? ואם באותה נשימה הוא גם ביקש מכם טובה?",
+    hook: "בפרק שלנו דור חדש נכנס למבחן: ניצחון ראשון, ואז שוב תלונה ישנה — ונחשים. אבל הפעם ההודאה מגיעה מהר, והתרופה נראית בדיוק כמו המכה.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "the-vow",

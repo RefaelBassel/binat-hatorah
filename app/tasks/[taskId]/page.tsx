@@ -48,11 +48,11 @@ export default async function TaskPage({
   // comprehension check: the browser gets the questions without their
   // answer key (order options pre-shuffled per student); the editor — only
   // for a teacher outside student mode — gets the full thing
-  const { publicCheck, getCheckResult } = await import("@/lib/check");
+  const { publicCheck, getCheckResult, checkSeed } = await import("@/lib/check");
   const studentMode = isTeacher ? await isStudentMode() : false;
   const canEditContent = isTeacher && !studentMode;
   const check = reg.content.check?.length
-    ? publicCheck(reg.content.check, taskId * 1000 + userId)
+    ? publicCheck(reg.content.check, checkSeed(taskId, userId))
     : undefined;
   const storedCheck = guest || !check ? null : await getCheckResult(taskId, userId);
   const initialCheckResult = storedCheck

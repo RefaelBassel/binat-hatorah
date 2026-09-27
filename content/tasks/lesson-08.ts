@@ -87,6 +87,93 @@ export const lesson08: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "how-many-staffs",
+      kind: "choice",
+      prompt: "כמה מטות ציווה ה׳ לקחת מבני ישראל, ומה לכתוב על כל אחד מהם? (פסוק י״ז)",
+      part: "פסוק י״ז — שנים עשר מטות ושם על כל אחד",
+      options: [
+        "שנים עשר מטות, ועל כל אחד שם הנשיא של בית האב",
+        "שני מטות בלבד — של משה ושל אהרן",
+        "שבעים מטות, בלי שום כתובת",
+        "מטה אחד לכל משפחה, ועליו שם המשפחה",
+      ],
+      answer: 0,
+    },
+    {
+      key: "where-placed",
+      kind: "choice",
+      prompt: "היכן ציווה ה׳ להניח את המטות? (פסוק י״ט)",
+      part: "פסוק י״ט — מקום המבחן: ״לִפְנֵי הָעֵדוּת״",
+      options: [
+        "על המזבח",
+        "מחוץ למחנה",
+        "בְּאֹהֶל מוֹעֵד לִפְנֵי הָעֵדוּת",
+        "באוהלו של אהרן",
+      ],
+      answer: 2,
+    },
+    {
+      key: "test-purpose",
+      kind: "choice",
+      prompt: "מה הייתה המטרה המפורשת של מבחן המטות? (פסוק כ׳)",
+      part: "פסוק כ׳ — מטרת המבחן: ״וַהֲשִׁכֹּתִי... אֶת תְּלֻנּוֹת בְּנֵי יִשְׂרָאֵל״",
+      options: [
+        "לבחור נשיא חדש לשבט לוי",
+        "להשקיט את תלונות בני ישראל על משה ואהרן",
+        "להעניש את מי שנותר מעדת קרח",
+        "לבדוק איזה שבט הוא הגדול ביותר",
+      ],
+      answer: 1,
+    },
+    {
+      key: "flower-only",
+      kind: "truefalse",
+      prompt: "מטה אהרן הוציא פרח בלבד, ולא פרי. (פסוק כ״ג)",
+      part: "פסוק כ״ג — שלושת שלבי הצמיחה: פֶרַח, צִיץ, שְׁקֵדִים",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים ט״ז–כ״ד):",
+      part: "סדר האירועים בקטע (פסוקים ט״ז–כ״ד)",
+      options: [
+        "ה׳ מצווה לקחת מטה מכל נשיא ולכתוב עליו את שמו",
+        "משה מניח את המטות לפני ה׳ באוהל העדות",
+        "למחרת משה מוצא את מטה אהרן פורח ומוציא שקדים",
+        "משה מוציא את כל המטות, וכל נשיא לוקח את מטהו",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt:
+      "במילה או שתיים: מה מרגישים הנשיאים כשכל אחד לוקח בחזרה את המטה היבש שלו?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the memory-objects dilemma (altar plates) in Part B.
+  plenary: {
+    question:
+      "קבוצה בכיתה עשתה משהו שפגע בכולם, והעניין כבר נסגר. האם נכון להשאיר תזכורת קבועה על הקיר, שכולם רואים כל יום, כדי שזה לא יחזור — או שתזכורת כזו רק משמרת את הפצע, ועדיף למחוק ולהתחיל נקי?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener:
+      "אחרי ריב גדול שכבר נגמר — אתם מעדיפים שידברו עליו עוד, או שיסגרו את זה ולא יזכירו יותר?",
+    hook: "בפרק שלנו האדמה כבר נבקעה והאש כבר יצאה — ובכל זאת העם עוד מתלונן. אז ה׳ מציע מבחן אחר לגמרי: שנים עשר מקלות יבשים באוהל, ולילה אחד.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "how-many",

@@ -121,6 +121,92 @@ export const lesson19: TaskContent = {
     minQuestions: 2,
   },
 
+  // Part A stage 7 — the comprehension check: closed pshat questions the
+  // server scores instantly (1-10, separate from the grade). `part` feeds the
+  // teacher's "where the class struggles" heat-map. Defaults only — the
+  // teacher edits everything in place (lib/content-overrides.ts).
+  check: [
+    {
+      key: "the-offer",
+      kind: "choice",
+      prompt: "מה הציע אחאב לנבות תמורת הכרם? (פסוק ב׳)",
+      part: "פסוק ב׳ — הצעת אחאב ותמורתה",
+      options: [
+        "כרם טוב ממנו — או כסף, אם ירצה",
+        "משרה מכובדת בארמון המלך",
+        "כלום — הוא דרש את הכרם בחינם",
+        "כרם אחר, אבל קטן יותר",
+      ],
+      answer: 0,
+    },
+    {
+      key: "the-refusal",
+      kind: "choice",
+      prompt: "במה נימק נבות את סירובו? (פסוק ג׳)",
+      part: "פסוק ג׳ — נימוק הסירוב: ״חָלִילָה לִּי מֵה׳... נַחֲלַת אֲבֹתַי״",
+      options: [
+        "חלילה לו מה׳ לתת את נחלת אבותיו",
+        "הכרם שווה הרבה יותר ממה שהוצע לו",
+        "הוא לא סומך על אחאב שישלם",
+        "הוא כבר הבטיח את הכרם לבנו",
+      ],
+      answer: 0,
+    },
+    {
+      key: "what-vanished",
+      kind: "choice",
+      prompt: "השוו את דברי נבות (פסוק ג׳) לדיווח של אחאב לאיזבל. מה חסר בגרסה של אחאב? (פסוק ו׳)",
+      part: "פסוקים ג׳, ו׳ — מה נעלם מסירוב נבות בדיווח לאיזבל",
+      options: [
+        "הנימוק — ה׳ ונחלת האבות; נשאר רק ״לֹא אֶתֵּן לְךָ אֶת כַּרְמִי״",
+        "העובדה שנבות בכלל סירב",
+        "ההצעה לשלם בכסף",
+        "שמו של נבות",
+      ],
+      answer: 0,
+    },
+    {
+      key: "ahab-reaction",
+      kind: "truefalse",
+      prompt: "אחרי הסירוב כעס אחאב על נבות והעניש אותו מיד. (פסוק ד׳)",
+      part: "פסוק ד׳ — תגובת אחאב: ״סַר וְזָעֵף... וְלֹא אָכַל לָחֶם״",
+      options: ["נכון", "לא נכון"],
+      answer: 1,
+    },
+    {
+      key: "order",
+      kind: "order",
+      prompt: "סדרו את האירועים לפי סדר הפרק (פסוקים א׳–ז׳):",
+      part: "סדר האירועים בפרק (פסוקים א׳–ז׳)",
+      options: [
+        "אחאב מבקש מנבות את הכרם ומציע תמורה",
+        "נבות מסרב: ״חָלִילָה לִּי מֵה׳״",
+        "אחאב שוכב על מיטתו, מסב את פניו ואינו אוכל",
+        "איזבל מבטיחה: ״אֲנִי אֶתֵּן לְךָ אֶת כֶּרֶם נָבוֹת״",
+      ],
+      answer: 0,
+    },
+  ],
+  checkOpen: {
+    key: "feeling",
+    prompt: "במילה או שתיים: מה אתם מרגישים כלפי אחאב כשהוא שוכב במיטה ולא אוכל?",
+  },
+
+  // The plenary question — live discussion only (no answer field, no Claude,
+  // no grade). Grows out of the chain-of-responsibility argument in Part B:
+  // is the one who merely allowed and benefited guilty?
+  plenary: {
+    question:
+      "חבורה בכיתה מציקה לתלמיד עד שהוא עוזב את הנבחרת. תלמידה אחת לא הצטרפה ולא אמרה מילה — ואחר כך קיבלה את המקום שלו. האם היא אשמה כמו המציקים, או שאשמה שייכת רק למי שפעל בפועל?",
+  },
+
+  // אור פותח — the teacher's opening deck.
+  opening: {
+    opener: "קרה לכם שרציתם משהו מאוד, ומישהו פשוט אמר לכם ״לא״ — ולא יכולתם לעשות כלום? מה עשיתם עם ה״לא״ הזה?",
+    hook: "מלך מציע מחיר הוגן על כרם קטן ליד הארמון, ובעל הכרם מסרב. עד כאן סיפור פשוט — אבל מה שקורה כשה״לא״ מגיע הביתה, ומי מתערבת, הופך אותו לאחד הסיפורים הקשים בתנ״ך.",
+  },
+
+  // LEGACY (superseded by `check` above; kept until every lesson has one).
   comprehension: [
     {
       key: "the-offer",
