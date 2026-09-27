@@ -108,6 +108,7 @@ export default async function TaskPage({
         <ReflectionDrawer
           taskId={taskId}
           contextRef={`${reg.content.bookRef} · ${reg.content.title}`}
+          mode={canEditContent ? "teacher" : "student"}
         />
       )}
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">

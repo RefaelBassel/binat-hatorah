@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import TeacherReflectionPanel from "./teacher-reflection-panel";
 
 // The reflection drawer — styled and behaving like a REAL drawer:
 // a small handle sticks out of the side of the screen at mid-height;
@@ -12,12 +13,18 @@ import { useEffect, useRef, useState } from "react";
 
 const HANDLE_W = 30; // px
 
+// mode "teacher" (a teacher outside student mode) turns the same drawer
+// into the CLASS view — who reflected on this context and what they wrote —
+// instead of a form the teacher has no use for. Student mode keeps the form
+// so she can experience exactly what the students see.
 export default function ReflectionDrawer({
   taskId,
   contextRef,
+  mode = "student",
 }: {
   taskId?: number;
   contextRef: string;
+  mode?: "student" | "teacher";
 }) {
   const [open, setOpen] = useState(false);
   const [panelW, setPanelW] = useState(340);
@@ -194,14 +201,16 @@ export default function ReflectionDrawer({
         >
           <div className="border-b border-[color:var(--border)] px-4 py-3">
             <p className="font-display text-base font-bold text-[color:var(--primary)]">
-              🪞 רגע של רפלקציה
+              {mode === "teacher" ? "🪞 רפלקציות הכיתה" : "🪞 רגע של רפלקציה"}
             </p>
             <p className="text-[10px] text-[color:var(--primary)]/55">
               {nowLabel} · {contextRef}
             </p>
           </div>
 
-          {state === "done" ? (
+          {mode === "teacher" ? (
+            <TeacherReflectionPanel taskId={taskId} contextRef={contextRef} active={open} />
+          ) : state === "done" ? (
             <div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
               <span className="text-4xl">🌱</span>
               <p className="font-display text-base font-bold text-[color:var(--success)]">

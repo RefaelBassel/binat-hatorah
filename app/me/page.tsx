@@ -99,7 +99,9 @@ export default async function MePage() {
   return (
     <>
       <TopNav />
-      {!user.guest && <ReflectionDrawer contextRef="העמוד האישי" />}
+      {!user.guest && (
+        <ReflectionDrawer contextRef="העמוד האישי" mode={isTeacher ? "teacher" : "student"} />
+      )}
       <ContinueFab />
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-6">
         {/* hero */}

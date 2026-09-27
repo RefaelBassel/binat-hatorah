@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     }
     const res = await db().execute({
       sql: `SELECT u.id, u.full_name, u.email, r.difficulty, r.pshat_progress,
-                   r.argument_progress, r.note, r.context_ref, r.created_at
+                   r.argument_progress, r.note, r.context_ref, r.task_id, r.created_at
             FROM reflections r JOIN users u ON u.id = r.user_id
             WHERE u.role = 'student'
             ORDER BY r.created_at ASC`,
@@ -45,6 +45,7 @@ export async function GET(req: Request) {
         argument: Number(r.argument_progress),
         note: (r.note as string | null) ?? null,
         contextRef: (r.context_ref as string | null) ?? null,
+        taskId: r.task_id != null ? Number(r.task_id) : null,
       });
     }
     return NextResponse.json({ ok: true, students: [...byStudent.values()] });

@@ -24,10 +24,17 @@ export default async function PageShell({
     redirect("/onboarding");
   }
   const showDrawer = Boolean(session?.user) && !session?.user?.guest;
+  // teachers get the class view of the drawer — unless they switched to
+  // student mode to experience the site as a student
+  let drawerMode: "student" | "teacher" = "student";
+  if (showDrawer && session?.user?.role === "teacher") {
+    const { isStudentMode } = await import("@/lib/student-mode");
+    drawerMode = (await isStudentMode()) ? "student" : "teacher";
+  }
   return (
     <>
       <TopNav />
-      {showDrawer && <ReflectionDrawer contextRef={title} />}
+      {showDrawer && <ReflectionDrawer contextRef={title} mode={drawerMode} />}
       {showDrawer && <ContinueFab />}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-8 flex flex-col items-center text-center">
