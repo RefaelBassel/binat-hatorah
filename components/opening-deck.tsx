@@ -280,10 +280,10 @@ export default function OpeningDeckPlayer({
                 e.stopPropagation();
                 go(idx - 1);
               }}
-              className="absolute end-3 top-1/2 -translate-y-1/2 rounded-full border bg-white/90 px-3 py-2 text-lg shadow-sm transition hover:scale-110"
+              className="absolute start-3 top-1/2 -translate-y-1/2 rounded-full border bg-white/90 px-3 py-2 text-lg shadow-sm transition hover:scale-110"
               style={{ borderColor: "#e9ddd2", color: GRAPE }}
             >
-              ‹
+              ›
             </button>
           )}
           {idx < count - 1 && (
@@ -294,10 +294,10 @@ export default function OpeningDeckPlayer({
                 e.stopPropagation();
                 go(idx + 1);
               }}
-              className="absolute start-3 top-1/2 -translate-y-1/2 rounded-full border bg-white/90 px-3 py-2 text-lg shadow-sm transition hover:scale-110"
+              className="absolute end-3 top-1/2 -translate-y-1/2 rounded-full border bg-white/90 px-3 py-2 text-lg shadow-sm transition hover:scale-110"
               style={{ borderColor: "#e9ddd2", color: GRAPE }}
             >
-              ›
+              ‹
             </button>
           )}
         </div>
