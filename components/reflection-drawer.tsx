@@ -115,11 +115,14 @@ export default function ReflectionDrawer({
     }
   };
 
-  const nowLabel = new Intl.DateTimeFormat("he-IL", {
-    weekday: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date());
+  // the clock is rendered on the client only — the server's minute and the
+  // client's minute can differ, which tripped a hydration warning
+  const [nowLabel, setNowLabel] = useState("");
+  useEffect(() => {
+    setNowLabel(
+      new Intl.DateTimeFormat("he-IL", { weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date())
+    );
+  }, [open]);
 
   return (
     <>
