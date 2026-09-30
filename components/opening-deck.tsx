@@ -1,5 +1,6 @@
 "use client";
 
+import { PlenaryEditor } from "./task/thinking-card";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { OpeningDeck, PlenaryQuestion } from "@/content/tasks/types";
@@ -235,7 +236,7 @@ export default function OpeningDeckPlayer({
             className="rounded-full border border-dashed px-3 py-1 text-xs font-bold"
             style={{ borderColor: `${GRAPE}66`, color: GRAPE }}
           >
-            ✏️ {editing ? "סגירת העריכה" : "עריכת הטקסטים"}
+            ✏️ {editing ? "סגירת העריכה" : "עריכת המצגת"}
           </button>
           <span className="text-xs tabular-nums" style={{ color: `${GRAPE}99` }}>
             {idx + 1} / {count}
@@ -248,11 +249,19 @@ export default function OpeningDeckPlayer({
 
       {editing ? (
         <div className="flex-1 overflow-y-auto p-6">
-          <OpeningEditor
-            contentRef={contentRef}
-            initial={opening}
-            onClose={() => setEditing(false)}
-          />
+          <div className="mx-auto max-w-2xl space-y-5">
+            <DeckTitleEditor contentRef={contentRef} title={title} subtitle={subtitle ?? ""} bookRef={bookRef} />
+            <OpeningEditor contentRef={contentRef} initial={opening} onClose={() => setEditing(false)} />
+            <div className="rounded-2xl border-2 bg-white p-6" style={{ borderColor: `${GRAPE}4d` }}>
+              <p className="font-display text-lg font-extrabold" style={{ color: GRAPE }}>
+                💭 השקף האחרון — שאלת המליאה
+              </p>
+              <p className="mb-2 text-xs" style={{ color: `${GRAPE}99` }}>
+                אותה שאלה מופיעה לתלמידות ככרטיס ״שאלה למחשבה״ אחרי חלק ב, ובמסך הסגירה שלך.
+              </p>
+              <PlenaryEditor contentRef={contentRef} initial={plenary} />
+            </div>
+          </div>
         </div>
       ) : (
         <div
@@ -319,6 +328,53 @@ export default function OpeningDeckPlayer({
   );
 }
 
+// The title slide: the task's title line. Saved into the unit's edits
+// (merged — the rest of the unit's edits stay untouched).
+export function DeckTitleEditor({ contentRef, title, subtitle, bookRef }: { contentRef: string; title: string; subtitle: string; bookRef: string }) {
+  const router = useRouter();
+  const [v, setV] = useState({ title, subtitle, bookRef });
+  const [saved, setSaved] = useState(JSON.stringify({ title, subtitle, bookRef }));
+  const dirty = JSON.stringify(v) !== saved && v.title.trim().length > 0;
+  const save = async () => {
+    const res = await fetch("/api/content-overrides", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contentRef, field: "unit", merge: true, value: { title: v.title, subtitle: v.subtitle, bookRef: v.bookRef } }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? "השמירה נכשלה");
+    setSaved(JSON.stringify(v));
+    router.refresh();
+  };
+  const field = (label: string, key: "title" | "subtitle" | "bookRef") => (
+    <>
+      <label className="block text-[11px] font-semibold" style={{ color: `${GRAPE}99` }}>
+        {label}
+      </label>
+      <input
+        value={v[key]}
+        onChange={(e) => setV((o) => ({ ...o, [key]: e.target.value }))}
+        className="mb-3 mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+        style={{ borderColor: "#e9ddd2" }}
+      />
+    </>
+  );
+  return (
+    <div className="rounded-2xl border-2 bg-white p-6" style={{ borderColor: `${GRAPE}4d` }}>
+      <p className="font-display text-lg font-extrabold" style={{ color: GRAPE }}>
+        🏷️ השקף הראשון — כותרת ופרק
+      </p>
+      <p className="mb-3 text-xs" style={{ color: `${GRAPE}99` }}>
+        זו גם כותרת המשימה שהתלמידות רואות.
+      </p>
+      {field("כותרת", "title")}
+      {field("תת-כותרת (לא חובה)", "subtitle")}
+      {field("ספר, פרק ופסוקים", "bookRef")}
+      <SaveButton dirty={dirty} onSave={save} />
+    </div>
+  );
+}
+
 // In-place editor for the opener / hook (the plenary slide is edited where
 // the plenary question lives — the thinking card or the closing screen).
 export function OpeningEditor({
@@ -356,8 +412,7 @@ export function OpeningEditor({
         ✏️ עריכת אור פותח
       </p>
       <p className="mb-4 text-xs" style={{ color: `${GRAPE}99` }}>
-        השקף הראשון (כותרת ופרק) והאחרון (שאלת המליאה) נלקחים מהמשימה. כאן עורכים את שני השקפים
-        שבאמצע.
+        שני השקפים שבאמצע: השאלה לפתיחה, ו״לחשוב על…״.
       </p>
       <label className="block text-[11px] font-semibold" style={{ color: `${GRAPE}99` }}>
         שאלה לפתיחה

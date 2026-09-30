@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import PageShell from "@/components/page-shell";
 import { getTaskContent } from "@/content/tasks/registry";
-import { getOverrides, applyOverrides } from "@/lib/content-overrides";
+import { getOverrides, applyOverrides, EMPTY_EDITS, EMPTY_UNIT } from "@/lib/content-overrides";
+import WorksheetEditor from "@/components/task/worksheet-editor";
 import { db } from "@/lib/db";
 import CheckEditor from "@/components/task/check-editor";
 import { PlenaryEditor } from "@/components/task/thinking-card";
@@ -87,6 +88,28 @@ export default async function ContentEditPage({
             {ov.opening && <EditedTag />}
           </h2>
           <OpeningEditor contentRef={ref} initial={content.opening ?? null} />
+        </section>
+
+        <section>
+          <h2 className="mb-2 font-display text-lg font-extrabold text-[color:var(--primary)]">
+            📝 כל הטקסטים והשאלות
+            {(ov.worksheet || ov.unit) && <EditedTag />}
+          </h2>
+          <WorksheetEditor
+            contentRef={ref}
+            sections={reg.content.sections}
+            edits={{ ...EMPTY_EDITS, ...(ov.worksheet ?? {}) }}
+            unitEdits={{ ...EMPTY_UNIT, ...(ov.unit ?? {}) }}
+            unitMeta={{
+              title: reg.content.title,
+              subtitle: reg.content.subtitle,
+              skill: reg.content.skill,
+              bookRef: reg.content.bookRef,
+              heroCaption: reg.content.heroArt ? (reg.content.heroArt.caption ?? "") : undefined,
+              genreOptions: reg.content.decode.genreOptions,
+              minQuestions: reg.content.decode.minQuestions,
+            }}
+          />
         </section>
       </div>
     </PageShell>

@@ -3,7 +3,9 @@ import { requireTeacher } from "@/lib/api-auth";
 import { getTaskContent } from "@/content/tasks/registry";
 import {
   EDITABLE_FIELDS,
+  EMPTY_UNIT,
   clearOverride,
+  getOverrides,
   sanitizeField,
   setOverride,
   type EditableField,
@@ -27,9 +29,16 @@ export async function PUT(req: Request) {
   }
   if (body?.reset === true) {
     await clearOverride(contentRef, field);
-    return NextResponse.json({ ok: true, value: reg.content[field] ?? null, reset: true });
+    return NextResponse.json({ ok: true, value: (reg.content as unknown as Record<string, unknown>)[field] ?? null, reset: true });
   }
-  const value = sanitizeField(field, body?.value);
+  // the deck's title slide edits only the unit's title line: merge it into
+  // whatever unit edits already exist instead of replacing them
+  let rawValue = body?.value;
+  if (field === "unit" && body?.merge === true) {
+    const existing = (await getOverrides(contentRef)).unit ?? EMPTY_UNIT;
+    rawValue = { ...existing, ...(rawValue && typeof rawValue === "object" ? rawValue : {}), sections: existing.sections, blocks: existing.blocks };
+  }
+  const value = sanitizeField(field, rawValue);
   if (value == null) {
     return NextResponse.json(
       {

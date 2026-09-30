@@ -4,6 +4,7 @@ import TopNav from "@/components/top-nav";
 import ClassPulseDrawer from "@/components/class-pulse-drawer";
 import ReflectionDrawer from "@/components/reflection-drawer";
 import TaskRunner from "@/components/task/task-runner";
+import TeacherEditPanel from "@/components/task/teacher-edit-panel";
 import {
   getTask,
   isAssigned,
@@ -42,8 +43,9 @@ export default async function TaskPage({
   const baseReg = getTaskContent(task.content_ref);
   if (!baseReg) notFound();
   // file defaults + the teacher's in-place edits
-  const { effectiveContent } = await import("@/lib/content-overrides");
-  const reg = { ...baseReg, content: await effectiveContent(baseReg.content) };
+  const { applyOverrides, getOverrides, EMPTY_EDITS, EMPTY_UNIT } = await import("@/lib/content-overrides");
+  const overrides = await getOverrides(baseReg.content.ref);
+  const reg = { ...baseReg, content: applyOverrides(baseReg.content, overrides) };
 
   // comprehension check: the browser gets the questions without their
   // answer key (order options pre-shuffled per student); the editor — only
@@ -107,7 +109,8 @@ export default async function TaskPage({
       {!guest && (
         <ReflectionDrawer
           taskId={taskId}
-          contextRef={`${reg.content.bookRef} · ${reg.content.title}`}
+          // the FILE's title — so renaming a task never splits its reflections
+          contextRef={`${baseReg.content.bookRef} · ${baseReg.content.title}`}
           mode={canEditContent ? "teacher" : "student"}
         />
       )}
@@ -126,6 +129,37 @@ export default async function TaskPage({
             📅 להגשה עד: {formatFullDate(task.due_at)} בשעה {formatHebTime(task.due_at)}
           </p>
         </div>
+
+        {/* everything on this task is the teacher's to edit, right here —
+            never rendered for students or in student mode */}
+        {canEditContent && (
+          <TeacherEditPanel
+            contentRef={baseReg.content.ref}
+            taskId={taskId}
+            originalSections={baseReg.content.sections}
+            unitMeta={{
+              title: baseReg.content.title,
+              subtitle: baseReg.content.subtitle,
+              skill: baseReg.content.skill,
+              bookRef: baseReg.content.bookRef,
+              heroCaption: baseReg.content.heroArt ? (baseReg.content.heroArt.caption ?? "") : undefined,
+              genreOptions: baseReg.content.decode.genreOptions,
+              minQuestions: baseReg.content.decode.minQuestions,
+            }}
+            edits={{ ...EMPTY_EDITS, ...(overrides.worksheet ?? {}) }}
+            unitEdits={{ ...EMPTY_UNIT, ...(overrides.unit ?? {}) }}
+            check={reg.content.check ?? []}
+            checkOpen={reg.content.checkOpen ?? null}
+            plenary={reg.content.plenary ?? null}
+            opening={reg.content.opening ?? null}
+            edited={{
+              texts: Boolean(overrides.worksheet || overrides.unit),
+              check: Boolean(overrides.check || overrides.checkOpen),
+              plenary: Boolean(overrides.plenary),
+              opening: Boolean(overrides.opening),
+            }}
+          />
+        )}
 
         <TaskRunner
           taskId={taskId}
