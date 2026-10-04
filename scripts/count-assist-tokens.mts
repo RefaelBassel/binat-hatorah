@@ -34,7 +34,7 @@ const passage = (x: typeof shortest) => x.r.mainPassage.verses.map((v) => v.text
 
 await count("system prompt + history, no passage (plain question)", sys, head + "שאלה: מה המילה המנחה בקטע? מה שכתבתי: (ריק)", [{ role: "user", content: "לא הבנתי מה השאלה רוצה" }]);
 for (const x of [shortest, median, longest]) {
-  await count(`decode-stage help with passage · ${x.ref} (${x.n} verses)`, sys, head + `בדיקת מילה מנחה בקטע ${x.r.mainPassage.ref}.\nהקטע המלא: ${passage(x)}\nמועמדות: - קר״ב\n- עש״ה\nהמילה שסומנה: ״וַיִּקְרְבוּ״`, [{ role: "user", content: "" }].filter((m) => m.content));
+  await count(`decode-stage help with passage · ${x.ref} (${x.n} verses)`, sys, head + `בדיקת מילה מנחה בקטע ${x.r.mainPassage.ref}.\nהקטע המלא: ${passage(x)}\nמועמדות: - קר״ב\n- עש״ה\nהמילה שסומנה: ״וַיִּקְרְבוּ״`);
 }
 const qa = Array.from({ length: 24 }, (_, i) => `שאלה [קריאה והבנה — שדה ${i + 1}]: קראו את הפסוקים וענו מה כתוב, מי אומר למי, ולמה.\nתשובה: ${"משה אומר לעם שישמרו את המצוות כי זה מה שה׳ ציווה והם צריכים להקשיב ".repeat(2)}`).join("\n\n");
 await count(`grading proposal · ${longest.ref}`, `את/ה עוזר/ת הערכה למורה... הקטע הנלמד: ${longest.r.mainPassage.ref}: ${longest.r.mainPassage.verses.map((v) => `(${v.num}) ${v.text}`).join(" ")}\nהחזר/י JSON בלבד.`, `שם התלמיד/ה: נועה כהן\n\nשאלות ותשובות:\n${qa}`);
