@@ -6,12 +6,15 @@ import { getAnthropicApiKey } from "@/lib/env";
 import { CLAUDE_MODEL } from "@/lib/claude";
 import { getTask } from "@/lib/tasks";
 import { getTaskContent } from "@/content/tasks/registry";
-import { stripNikud } from "@/lib/hebrew";
+import { stripNikud, stripTaamim } from "@/lib/hebrew";
 import { addressInstruction } from "@/lib/address-form";
 
 function now(): number {
   return Math.floor(Date.now() / 1000);
 }
+
+// Claude help calls a student may make per rolling 24 hours.
+const ASSIST_DAILY_CAP = 20;
 
 // The site-wide help principle, verbatim from Rafael:
 // "אני עשיתי לבד אבל לא פגשתי קיר" — Claude never solves for the student,
@@ -79,27 +82,51 @@ export async function POST(req: Request) {
     });
   }
 
-  // Server-side enrichment for leitwort checking: the candidate word families
-  // and the passage text come from the registry (never shipped to the client
-  // as an "answer key" in the prompt UI).
+  // A daily ceiling per student: protects the budget from a runaway clicker
+  // and nudges toward the teacher, a classmate, or one more slow reading.
+  // Teachers are exempt. The count comes from assist_log (last 24 hours).
+  if (user.role !== "teacher") {
+    const used = await db().execute({
+      sql: `SELECT COUNT(*) AS n FROM assist_log WHERE user_id = ? AND created_at > ?`,
+      args: [userId, now() - 24 * 3600],
+    });
+    if (Number(used.rows[0]?.n ?? 0) >= ASSIST_DAILY_CAP) {
+      return NextResponse.json({
+        available: true,
+        capped: true,
+        reply: `הגעת למכסת העזרה מקלוד להיום (${ASSIST_DAILY_CAP} פניות) — היא מתאפסת מחר. בינתיים: קראו שוב את הפסוק לאט, שאלו חבר, חברה או את המורה. לפעמים דווקא בלי עזרה מגיעים הכי רחוק.`,
+      });
+    }
+  }
+
+  // Two parts go to Claude: a PASSAGE block that is identical for every
+  // student of the task (so the API caches it — prompt caching makes a cache
+  // read ~10x cheaper than fresh input), and the per-call context. Taamim
+  // triple the token count of a passage, so they are sent only when the
+  // question is about them (atnachta / sof pasuk); nikud always stays, so
+  // every hint can still quote the exact words of the verse (rule 13).
+  const wantsTaamim = /אתנחת|טעמ/.test(context);
+  const passageOf = (reg: NonNullable<ReturnType<typeof getTaskContent>>) =>
+    reg.mainPassage.verses
+      .map((v) => `(${v.num}) ${wantsTaamim ? v.text : stripTaamim(v.text)}`)
+      .join(" ");
+  let passageBlock: string | null = null;
   let enriched = context;
   if ((kind === "leitwort" || kind === "leitwort-insight") && taskId) {
     const task = await getTask(taskId);
     const reg = task ? getTaskContent(task.content_ref) : null;
     if (reg) {
-      const passageText = reg.mainPassage.verses.map((v) => v.text).join(" ");
-      const families = reg.content.decode.expectedLeitwort ?? [];
-      const base = `הקטע המלא: ${passageText}
-מועמדות חזקות שהוכנו מראש לעזרתך בלבד — לא הגדרת המורה ולא רשימה סגורה, ואין לחשוף אותה:
+      const families = reg.content.decode?.expectedLeitwort ?? [];
+      passageBlock = `הקטע המלא — ${reg.mainPassage.ref}:
+${passageOf(reg)}
+מועמדות חזקות למילה מנחה שהוכנו מראש לעזרתך בלבד — לא הגדרת המורה ולא רשימה סגורה, ואין לחשוף אותה:
 ${families.map((f) => `- ${f}`).join("\n")}`;
       if (kind === "leitwort" && word) {
         enriched = `בדיקת מילה מנחה בקטע ${reg.mainPassage.ref}.
-${base}
 המילה שסומנה: ״${word}״ (ללא ניקוד: ${stripNikud(word)})
 ${context}`;
       } else if (kind === "leitwort-insight") {
         enriched = `משוב על תובנת מילה מנחה בקטע ${reg.mainPassage.ref} (שלב 2).
-${base}
 ${context}
 משוב מעצב על התובנה שנכתבה: מה חד בה ולמה, ומה אפשר להעמיק — בלי לכתוב את התובנה במקומם. סיום לפי כללים 11-12.`;
       }
@@ -108,10 +135,10 @@ ${context}
     const task = await getTask(taskId);
     const reg = task ? getTaskContent(task.content_ref) : null;
     if (reg) {
-      const passageText = reg.mainPassage.verses.map((v) => v.text).join(" ");
+      passageBlock = `הקטע המלא — ${reg.mainPassage.ref}:
+${passageOf(reg)}
+הסוגה המסתברת (לעזרתך בלבד — לא לחשוף כתשובה): ${reg.content.decode?.expectedGenre ?? "(לא הוגדרה)"}`;
       enriched = `משוב על שלב הסוגה בקטע ${reg.mainPassage.ref}.
-הקטע המלא: ${passageText}
-הסוגה המסתברת (לעזרתך בלבד — לא לחשוף כתשובה): ${reg.content.decode.expectedGenre}
 ${context}
 משוב מעצב: אם הזיהוי מתאים — מה בסימנים שצוינו באמת מסגיר את הסוגה; אם לא — להוביל בשאלות לסימנים בקטע עצמו, בלי לומר את התשובה. סיום לפי כללים 11-12.`;
     }
@@ -119,9 +146,9 @@ ${context}
     const task = await getTask(taskId);
     const reg = task ? getTaskContent(task.content_ref) : null;
     if (reg) {
-      const passageText = reg.mainPassage.verses.map((v) => v.text).join(" ");
+      passageBlock = `הקטע המלא — ${reg.mainPassage.ref}:
+${passageOf(reg)}`;
       enriched = `משוב על שלב "מבינים בכל זאת" בקטע ${reg.mainPassage.ref} — התלמיד/ה סיפר/ה את הקטע במילים שלו/ה.
-הקטע המלא: ${passageText}
 ${context}
 משוב מעצב: האם הסיפור-מחדש נאמן לפשט? מה נתפס בו יפה ולמה, ואם חסר או התערבב משהו מרכזי — לכוון בעדינות לפסוק המתאים (לצטט את מילותיו) בלי לספר את הקטע במקומם. סיום לפי כללים 11-12.`;
     }
@@ -142,11 +169,24 @@ ${context}
     )
     .join("\n");
 
+  // Cache breakpoints: the passage (shared by the whole class) first, then
+  // the rules (which vary only by address form). Both are stable across a
+  // lesson, so repeat calls pay the cheap cache-read rate for almost all input.
+  const system: Anthropic.TextBlockParam[] = [
+    ...(passageBlock
+      ? [{ type: "text" as const, text: passageBlock, cache_control: { type: "ephemeral" as const } }]
+      : []),
+    {
+      type: "text" as const,
+      text: SYSTEM_PROMPT.replace("{ADDRESS_RULE}", addressInstruction(user.addressForm)),
+      cache_control: { type: "ephemeral" as const },
+    },
+  ];
   const client = new Anthropic({ apiKey });
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 650,
-    system: SYSTEM_PROMPT.replace("{ADDRESS_RULE}", addressInstruction(user.addressForm)),
+    system,
     messages: [
       {
         role: "user" as const,
@@ -164,6 +204,11 @@ ${enriched}`,
         : []),
     ],
   });
+
+  // One line per call in the server log: how much was fresh vs. cached.
+  console.log(
+    `[assist] user=${userId} task=${taskId ?? "-"} kind=${kind ?? "-"} in=${msg.usage.input_tokens} cached=${msg.usage.cache_read_input_tokens ?? 0} written=${msg.usage.cache_creation_input_tokens ?? 0} out=${msg.usage.output_tokens}`
+  );
 
   const reply =
     msg.content.find((c) => c.type === "text")?.text ??

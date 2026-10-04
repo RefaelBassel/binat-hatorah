@@ -105,6 +105,12 @@ export function formatWorkTime(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Strip taamim (cantillation) but keep nikud — for prompts, where taamim
+// triple a passage's token count. Sof pasuk and maqaf stay.
+export function stripTaamim(text: string): string {
+  return text.replace(/[\u0591-\u05AF\u05BD\u05BF\u05C0\u05C4\u05C5]/g, "");
+}
+
 // Strip nikud + taamim for word comparison (leitwort matching).
 export function stripNikud(text: string): string {
   return text.replace(/[֑-ׇ]/g, "");
