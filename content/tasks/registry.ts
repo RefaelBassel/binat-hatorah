@@ -19,6 +19,7 @@ import { lesson17, lesson17MainPassage } from "./lesson-17";
 import { lesson18, lesson18MainPassage } from "./lesson-18";
 import { lesson19, lesson19MainPassage } from "./lesson-19";
 import { lesson20, lesson20MainPassage } from "./lesson-20";
+import { WRITING_TASKS } from "./writing";
 
 // Registry of task content, keyed by content_ref stored on the tasks table.
 // The teacher publishes a task by picking a ref from here.
@@ -48,7 +49,13 @@ export const TASK_REGISTRY: Record<string, RegisteredTask> = {
   "lesson-18": { content: lesson18, mainPassage: lesson18MainPassage },
   "lesson-19": { content: lesson19, mainPassage: lesson19MainPassage },
   "lesson-20": { content: lesson20, mainPassage: lesson20MainPassage },
+  // argumentative-writing practices (40 min each, independent of the chapters)
+  ...WRITING_TASKS,
 };
+
+export function isWritingTask(content: TaskContent): boolean {
+  return content.writing != null;
+}
 
 export function getTaskContent(ref: string): RegisteredTask | null {
   return TASK_REGISTRY[ref] ?? null;
@@ -67,6 +74,7 @@ export function countTaskUnits(reg: RegisteredTask): number {
   }
   // 7 decode-stage completions (Part A) + the comprehension check (one unit
   // when the task has a closed check, else the legacy open questions) + Part B.
+  if (isWritingTask(reg.content)) return questions;
   const checkUnits = reg.content.check?.length ? 1 : reg.content.comprehension.length;
   return 7 + checkUnits + questions;
 }

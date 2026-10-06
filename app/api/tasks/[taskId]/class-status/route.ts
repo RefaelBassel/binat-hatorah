@@ -8,6 +8,7 @@ import {
   getTaskContent,
   countTaskUnits,
   DECODE_STAGES,
+  isWritingTask,
 } from "@/content/tasks/registry";
 import type { QuestionBlock } from "@/content/tasks/types";
 
@@ -33,18 +34,22 @@ export async function GET(
     return NextResponse.json({ error: "תוכן המשימה לא נמצא." }, { status: 404 });
   }
   const reg = { ...baseReg, content: await effectiveContent(baseReg.content) };
-  const hasCheck = Boolean(reg.content.check?.length);
+  const writing = isWritingTask(reg.content);
+  const hasCheck = !writing && Boolean(reg.content.check?.length);
 
-  // the equal-weight unit list, in reading order
+  // the equal-weight unit list, in reading order (a writing practice has
+  // no decode stages and no check — only its five steps)
   const units: { key: string; label: string; part: "a" | "b" }[] = [];
-  for (const s of DECODE_STAGES) {
-    units.push({ key: `stage:${s.n}`, label: s.title, part: "a" });
-  }
-  if (hasCheck) {
-    units.push({ key: "check", label: "בדיקת הבנה", part: "a" });
-  } else {
-    for (const c of reg.content.comprehension) {
-      units.push({ key: `comp:${c.key}`, label: "בדיקת הבנה", part: "a" });
+  if (!writing) {
+    for (const s of DECODE_STAGES) {
+      units.push({ key: `stage:${s.n}`, label: s.title, part: "a" });
+    }
+    if (hasCheck) {
+      units.push({ key: "check", label: "בדיקת הבנה", part: "a" });
+    } else {
+      for (const c of reg.content.comprehension) {
+        units.push({ key: `comp:${c.key}`, label: "בדיקת הבנה", part: "a" });
+      }
     }
   }
   for (const sec of reg.content.sections) {
@@ -101,7 +106,7 @@ export async function GET(
     const submitted = r.submitted_at != null;
     const lastBeat = r.updated_at != null ? Number(r.updated_at) : null;
     const opened = r.opened_at != null;
-    const stagesDone = Math.min(Math.max(stage - 1, 0), 7);
+    const stagesDone = writing ? 0 : Math.min(Math.max(stage - 1, 0), 7);
     const done = answeredBy.get(uid) ?? new Set<string>();
     const checkScore = checkPic.scores.get(uid) ?? null;
     if (checkScore != null) done.add("check");

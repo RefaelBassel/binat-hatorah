@@ -4,6 +4,7 @@ import TopNav from "@/components/top-nav";
 import ClassPulseDrawer from "@/components/class-pulse-drawer";
 import ReflectionDrawer from "@/components/reflection-drawer";
 import TaskRunner from "@/components/task/task-runner";
+import EssayRunner from "@/components/writing/essay-runner";
 import TeacherEditPanel from "@/components/task/teacher-edit-panel";
 import {
   getTask,
@@ -130,6 +131,19 @@ export default async function TaskPage({
           </p>
         </div>
 
+        {reg.content.writing ? (
+          <EssayRunner
+            taskId={taskId}
+            exercise={reg.content.writing}
+            sections={reg.content.sections}
+            initialAnswers={answers}
+            submitted={Boolean(progress?.submitted_at)}
+            dueAt={task.due_at}
+            studentName={user.fullName ?? null}
+            readOnly={guest || canEditContent}
+          />
+        ) : (
+          <>
         {/* everything on this task is the teacher's to edit, right here —
             never rendered for students or in student mode */}
         {canEditContent && (
@@ -187,6 +201,8 @@ export default async function TaskPage({
               : null
           }
         />
+          </>
+        )}
       </main>
     </>
   );

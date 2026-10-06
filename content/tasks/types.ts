@@ -1,3 +1,5 @@
+import type { EssayExercise } from "../writing/essays";
+
 // Content model for learning tasks. Content is static TypeScript (like
 // gemara10's /content) — the DB stores only assignments and student work.
 
@@ -173,4 +175,7 @@ export interface TaskContent extends Partial<EditableTaskContent> {
   comprehension: { key: string; prompt: string }[];
   // Part B (העמקה ודיון): the argumentative-writing + deepening worksheet.
   sections: TaskSection[];
+  // An argumentative-writing practice (~40 min, independent of the chapters):
+  // no decode stages — the essay runner shows the text and the five steps.
+  writing?: EssayExercise;
 }
