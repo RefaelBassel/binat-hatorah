@@ -1,4 +1,6 @@
 import { db } from "./db";
+import type { EssayExercise } from "@/content/writing/essays";
+import { writingSections } from "@/content/tasks/writing";
 import type {
   TaskContent,
   TaskSection,
@@ -46,9 +48,47 @@ export interface UnitEdits {
 export const EMPTY_EDITS: WorksheetEdits = { hidden: [], prompts: {}, labels: {}, helpers: {}, extra: [] };
 export const EMPTY_UNIT: UnitEdits = { sections: {}, blocks: {} };
 
-export type Overrides = Partial<EditableTaskContent> & { worksheet?: WorksheetEdits; unit?: UnitEdits };
+// A writing practice (content.writing): every text of it is the teacher's
+// to change — the question, the article, the stands, the hints.
+export interface WritingEdits {
+  title?: string;
+  question?: string;
+  sourceTitle?: string;
+  byline?: string;
+  paragraphs?: string[];
+  analysisHints?: { claim?: string; reasons?: string; assumption?: string };
+  stands?: string[];
+  lifeHint?: string;
+  counterHint?: string;
+  minWords?: number;
+}
+
+export type Overrides = Partial<EditableTaskContent> & { worksheet?: WorksheetEdits; unit?: UnitEdits; writing?: WritingEdits };
 export type EditableField = keyof Overrides;
-export const EDITABLE_FIELDS: EditableField[] = ["check", "checkOpen", "plenary", "opening", "worksheet", "unit"];
+export const EDITABLE_FIELDS: EditableField[] = ["check", "checkOpen", "plenary", "opening", "worksheet", "unit", "writing"];
+
+export function applyWritingEdits(ex: EssayExercise, w: WritingEdits | undefined): EssayExercise {
+  if (!w) return ex;
+  return {
+    ...ex,
+    title: w.title || ex.title,
+    question: w.question || ex.question,
+    source: {
+      title: w.sourceTitle || ex.source.title,
+      byline: w.byline ?? ex.source.byline,
+      paragraphs: w.paragraphs?.length ? w.paragraphs : ex.source.paragraphs,
+    },
+    analysisHints: {
+      claim: w.analysisHints?.claim || ex.analysisHints.claim,
+      reasons: w.analysisHints?.reasons || ex.analysisHints.reasons,
+      assumption: w.analysisHints?.assumption || ex.analysisHints.assumption,
+    },
+    stands: w.stands?.length ? w.stands : ex.stands,
+    lifeHint: w.lifeHint || ex.lifeHint,
+    counterHint: w.counterHint || ex.counterHint,
+    minWords: w.minWords && w.minWords > 0 ? w.minWords : ex.minWords,
+  };
+}
 
 let ready = false;
 export async function ensureOverridesTable() {
@@ -168,14 +208,19 @@ export function applyUnitEdits(sections: TaskSection[], u: UnitEdits | undefined
 
 export function applyOverrides(content: TaskContent, ov: Overrides): TaskContent {
   const u = ov.unit;
+  // a writing practice: its texts first, then its steps follow the edited
+  // question — and the usual worksheet / unit edits apply on top
+  const writing = content.writing ? applyWritingEdits(content.writing, ov.writing) : undefined;
+  const baseSections = writing ? writingSections(writing) : content.sections;
   return {
     ...content,
+    ...(writing ? { writing, title: ov.writing?.title ? `${content.title.split(" · ")[0]} · ${writing.title}` : content.title, subtitle: writing.question } : {}),
     ...(ov.check ? { check: ov.check } : {}),
     ...(ov.checkOpen ? { checkOpen: ov.checkOpen } : {}),
     ...(ov.plenary ? { plenary: ov.plenary } : {}),
     ...(ov.opening ? { opening: ov.opening } : {}),
-    title: u?.title || content.title,
-    subtitle: u?.subtitle ?? content.subtitle,
+    ...(u?.title ? { title: u.title } : writing ? {} : { title: content.title }),
+    ...(u?.subtitle != null ? { subtitle: u.subtitle } : writing ? {} : { subtitle: content.subtitle }),
     skill: u?.skill || content.skill,
     bookRef: u?.bookRef || content.bookRef,
     heroArt: content.heroArt && u?.heroCaption ? { ...content.heroArt, caption: u.heroCaption } : content.heroArt,
@@ -184,7 +229,7 @@ export function applyOverrides(content: TaskContent, ov: Overrides): TaskContent
       genreOptions: u?.genreOptions?.length ? u.genreOptions : content.decode.genreOptions,
       minQuestions: u?.minQuestions ?? content.decode.minQuestions,
     },
-    sections: applyUnitEdits(applyWorksheetEdits(content.sections, ov.worksheet), u),
+    sections: applyUnitEdits(applyWorksheetEdits(baseSections, ov.worksheet), u),
   };
 }
 
@@ -240,6 +285,27 @@ export function sanitizeCheck(raw: unknown): CheckQuestion[] | null {
 
 export function sanitizeField(field: EditableField, raw: unknown): unknown | null {
   switch (field) {
+    case "writing": {
+      const o = (raw ?? {}) as Record<string, unknown>;
+      const strs = (v: unknown, max: number, n: number) =>
+        Array.isArray(v) ? v.map((x) => str(x, max)).filter(Boolean).slice(0, n) : [];
+      const h = (o.analysisHints ?? {}) as Record<string, unknown>;
+      const out: WritingEdits = {
+        title: str(o.title, 120) || undefined,
+        question: str(o.question, 400) || undefined,
+        sourceTitle: str(o.sourceTitle, 160) || undefined,
+        byline: typeof o.byline === "string" ? str(o.byline, 200) : undefined,
+        paragraphs: strs(o.paragraphs, 4000, 20),
+        analysisHints: { claim: str(h.claim, 600) || undefined, reasons: str(h.reasons, 600) || undefined, assumption: str(h.assumption, 600) || undefined },
+        stands: strs(o.stands, 200, 4),
+        lifeHint: str(o.lifeHint, 600) || undefined,
+        counterHint: str(o.counterHint, 600) || undefined,
+        minWords: Number.isInteger(Number(o.minWords)) && Number(o.minWords) > 0 ? Math.min(600, Number(o.minWords)) : undefined,
+      };
+      if (!out.paragraphs?.length) delete out.paragraphs;
+      if (out.stands && out.stands.length < 2) delete out.stands;
+      return out;
+    }
     case "check":
       return sanitizeCheck(raw);
     case "checkOpen": {

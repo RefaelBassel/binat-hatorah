@@ -5,6 +5,7 @@ import ClassPulseDrawer from "@/components/class-pulse-drawer";
 import ReflectionDrawer from "@/components/reflection-drawer";
 import TaskRunner from "@/components/task/task-runner";
 import EssayRunner from "@/components/writing/essay-runner";
+import EssayEditor from "@/components/writing/essay-editor";
 import TeacherEditPanel from "@/components/task/teacher-edit-panel";
 import {
   getTask,
@@ -131,7 +132,11 @@ export default async function TaskPage({
           </p>
         </div>
 
-        {reg.content.writing ? (
+        {reg.content.writing && baseReg.content.writing ? (
+          <>
+          {canEditContent && (
+            <EssayEditor contentRef={baseReg.content.ref} original={baseReg.content.writing} edits={overrides.writing ?? {}} sections={reg.content.sections} />
+          )}
           <EssayRunner
             taskId={taskId}
             exercise={reg.content.writing}
@@ -142,6 +147,7 @@ export default async function TaskPage({
             studentName={user.fullName ?? null}
             readOnly={guest || canEditContent}
           />
+          </>
         ) : (
           <>
         {/* everything on this task is the teacher's to edit, right here —
