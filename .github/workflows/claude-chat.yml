@@ -1,5 +1,6 @@
 # Requests from the teacher's chat arrive here as issues labelled `claude-chat`
-# (the site opens them). Claude Code implements the request on a branch,
+# (the site opens them, already labelled — so only `opened` triggers, never
+# `labeled` too, or the same issue would be built twice). Claude Code implements the request on a branch,
 # verifies the build, and opens a pull request that says "Closes #N".
 # `auto-merge.yml` then builds the PR and merges it when green — no human
 # step; production deploys from main. @claude mentions in comments also work.
@@ -7,7 +8,7 @@ name: Claude — build what the teacher asked
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
   issue_comment:
     types: [created]
 
