@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ActionRow, ChatMessageRow, CodeRequestRow } from "@/lib/teacher-chat";
+import { CHAT_EXAMPLES } from "@/lib/teacher-chat-examples";
 
 // The teacher's chat. One column: messages, and under an assistant message
 // the cards it produced — "זה מה שאשנה" with before/after and a ✓, or a code
@@ -191,10 +192,9 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
             <p className="font-bold text-[color:var(--primary)]">שלום{teacherName ? ` ${teacherName.split(" ")[0]}` : ""} 👋</p>
             <p>אפשר לכתוב למשל:</p>
             <ul className="list-disc space-y-0.5 pe-5">
-              <li>״תקצר את מצגת החזרה של יחידה 3 ותחליף את שאלת הדיון למשהו על נאמנות״</li>
-              <li>״תקצה לכיתה את היחידה הבאה עד יום חמישי בערב״</li>
-              <li>״מי עוד לא הגיש את המשימה האחרונה? תשלח להם תזכורת״</li>
-              <li>״אני רוצה כפתור בעמוד המשימה שמדפיס את דף העבודה״ (זה נבנה באתר ועולה לבד)</li>
+              {CHAT_EXAMPLES.map((x) => (
+                <li key={x}>{x}</li>
+              ))}
             </ul>
           </div>
         )}
