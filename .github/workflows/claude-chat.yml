@@ -1,0 +1,65 @@
+# Requests from the teacher's chat arrive here as issues labelled `claude-chat`
+# (the site opens them). Claude Code implements the request on a branch,
+# verifies the build, and opens a pull request that says "Closes #N".
+# `auto-merge.yml` then builds the PR and merges it when green — no human
+# step; production deploys from main. @claude mentions in comments also work.
+name: Claude — build what the teacher asked
+
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  implement:
+    if: |
+      (github.event_name == 'issues' && (contains(github.event.issue.labels.*.name, 'claude-chat') || contains(github.event.issue.body, '@claude'))) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are working in the repository of the Hebrew learning site described in CLAUDE.md. Read CLAUDE.md and AGENTS.md first and follow them (Hebrew UI, English code and commit messages, Next.js 16 conventions, every save/action button shows its state, students never see teacher-only affordances).
+
+            A teacher asked for the change below through the site's chat (issue #${{ github.event.issue.number }}). Implement it completely and carefully.
+
+            Title: ${{ github.event.issue.title }}
+
+            Request:
+            ${{ github.event.issue.body }}
+
+            ${{ github.event_name == 'issue_comment' && format('Latest comment on the issue: {0}', github.event.comment.body) || '' }}
+
+            Steps:
+            1. Create and switch to a branch named claude/issue-${{ github.event.issue.number }} (append a short suffix if it exists).
+            2. Make the change. Keep it focused; do not refactor unrelated code.
+            3. Run `npm ci` and `npm run build`. Fix every error until the build passes.
+            4. Commit with a clear English message, push the branch, and open a pull request with `gh pr create` whose body starts with "Closes #${{ github.event.issue.number }}" and then explains, in Hebrew, what changed from the teacher's point of view (two or three sentences). Do not merge it.
+            5. Finally comment on the issue, in Hebrew, with one or two sentences for the teacher: what was built and that it goes live automatically once the build passes.
+            If the request is unclear or impossible, do not guess: comment on the issue in Hebrew with one focused question and stop.
+          claude_args: |
+            --model claude-opus-5-5
+            --max-turns 120
+            --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh issue comment:*),Bash(npm ci),Bash(npm install:*),Bash(npm run build),Bash(npm run lint:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(cat:*)"

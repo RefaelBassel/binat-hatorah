@@ -3,6 +3,7 @@ import { Heebo, Assistant } from "next/font/google";
 import "./globals.css";
 import InstallPrompt from "@/components/pwa/install-prompt";
 import RememberLastPath from "@/components/pwa/remember-last-path";
+import ChatFab from "@/components/chat-fab";
 
 const heebo = Heebo({
   variable: "--font-heebo",
@@ -36,7 +37,20 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // the floating chat with Claude follows the TEACHER to every page — never
+  // in student mode, never for students
+  let teacher: { name: string | null } | null = null;
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (session?.user?.role === "teacher" && !session.user.guest) {
+      const { isStudentMode } = await import("@/lib/student-mode");
+      if (!(await isStudentMode())) teacher = { name: session.user.fullName ?? null };
+    }
+  } catch {
+    teacher = null;
+  }
   return (
     <html
       lang="he"
@@ -64,6 +78,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </footer>
         <InstallPrompt />
+        {teacher && <ChatFab teacherName={teacher.name} />}
       </body>
     </html>
   );

@@ -1,0 +1,75 @@
+# Pull requests opened by the Claude Code action (branches claude/**) are
+# built here and merged into main automatically when the build passes.
+# Production deploys from main (Vercel). A failed build leaves the PR open
+# and comments on it; the teacher's chat shows "failed" and Rafael is
+# notified by GitHub as the repository owner.
+name: Auto-merge Claude's pull requests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+jobs:
+  build-and-merge:
+    if: startsWith(github.head_ref, 'claude/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout the PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build (type check included)
+        run: npm run build
+        env:
+          # the build needs no real secrets; placeholders keep env checks quiet
+          TURSO_DATABASE_URL: file:local.db
+          AUTH_SECRET: ci-placeholder-secret
+          AUTH_GOOGLE_ID: ci-placeholder
+          AUTH_GOOGLE_SECRET: ci-placeholder
+
+      - name: Merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch \
+            --subject "${{ github.event.pull_request.title }} (#${{ github.event.pull_request.number }})"
+
+      - name: Tell the issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          body="${{ github.event.pull_request.body }}"
+          issue=$(printf "%s" "$body" | grep -oE 'Closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "✅ השינוי מוזג ועולה לאתר עכשיו (כ-3 דקות לפריסה)."
+          fi
+
+      - name: Report a failed build
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body "❌ הבנייה נכשלה, ולכן השינוי לא מוזג. @RefaelBassel — צריך מבט אנושי. יומן הריצה: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          body="${{ github.event.pull_request.body }}"
+          issue=$(printf "%s" "$body" | grep -oE 'Closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "❌ הבנייה של השינוי נכשלה. רפאל קיבל הודעה ויטפל."
+          fi

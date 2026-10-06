@@ -53,6 +53,7 @@ export default async function TopNav() {
   ];
   if (isTeacher) {
     links.push({ href: "/dashboard", label: "דשבורד מורה" });
+    links.push({ href: "/dashboard/chat", label: "הצ׳אט עם קלוד" });
   }
 
   const userLabel = user

@@ -135,6 +135,13 @@ export default async function DashboardPage() {
           {pendingCount > 0 && ` · ${pendingCount} ממתינים לאישור`}
         </Link>
         <Link
+          href="/dashboard/chat"
+          className="rounded-full px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+          style={{ background: "linear-gradient(135deg, var(--accent), var(--primary))" }}
+        >
+          ✨ הצ׳אט עם קלוד — לשנות כל דבר באתר
+        </Link>
+        <Link
           href="/dashboard/content"
           className="rounded-full border-2 border-[color:var(--primary)]/50 px-5 py-2 text-sm font-bold text-[color:var(--primary)] transition hover:bg-[color:var(--primary)]/10"
         >

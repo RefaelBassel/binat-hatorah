@@ -166,3 +166,11 @@ body {
     background: #ffffff !important;
   }
 }
+
+/* small entrance animations shared with the floating chat */
+@keyframes note-pop { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+.note-pop { animation: note-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+@keyframes dock-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.dock-in { animation: dock-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+@keyframes fab-live { 0%, 100% { box-shadow: 0 10px 30px -10px rgba(185, 106, 59, 0.6); } 50% { box-shadow: 0 10px 34px -6px rgba(185, 106, 59, 0.9); } }
+.fab-live { animation: fab-live 2.4s ease-in-out infinite; }
