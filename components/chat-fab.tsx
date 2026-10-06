@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import TeacherChat from "./dashboard/teacher-chat";
 
 // The floating chat button — teachers only, on every page (mounted from the
-// root layout next to the lesson dock). Tap: a floating window with the same
-// chat as /dashboard/chat; every conversation is saved on the server, so
-// the window and the page always show the same history. The open state is
-// remembered per browser. Hidden on projector screens.
-export default function ChatFab({ teacherName }: { teacherName: string | null }) {
+// root layout behind a server-side teacher gate). Tap: a floating window
+// with the same chat as /dashboard/chat; every conversation is saved on the
+// server. The open state is remembered per browser. Hidden on projector
+// screens. `bottom` lifts the button above a site's own bottom-left dock
+// (e.g. the lesson dock), `hideOn` adds site-specific screens to skip.
+export default function ChatFab({ teacherName, bottom = "1rem", hideOn = [] }: { teacherName: string | null; bottom?: string; hideOn?: string[] }) {
   const pathname = usePathname();
   const hidden =
     !pathname ||
@@ -18,7 +19,9 @@ export default function ChatFab({ teacherName }: { teacherName: string | null })
     pathname === "/dashboard/chat" ||
     pathname === "/login" ||
     pathname === "/onboarding" ||
-    pathname === "/pending";
+    pathname === "/pending" ||
+    pathname.startsWith("/print") ||
+    hideOn.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const [open, setOpen] = useState(false);
   useEffect(() => {
     try {
@@ -42,8 +45,8 @@ export default function ChatFab({ teacherName }: { teacherName: string | null })
     <>
       {open && (
         <div
-          className="dock-in fixed bottom-20 left-3 z-[47] flex flex-col overflow-hidden rounded-3xl border-2 border-[color:var(--accent)]/60 shadow-2xl backdrop-blur sm:left-5"
-          style={{ width: "min(440px, calc(100vw - 1.5rem))", height: "min(72vh, 680px)", background: "color-mix(in srgb, var(--card) 96%, transparent)" }}
+          className="dock-in no-print fixed left-3 z-[47] flex flex-col overflow-hidden rounded-3xl border-2 border-[color:var(--accent)]/60 shadow-2xl backdrop-blur sm:left-5"
+          style={{ bottom: `calc(${bottom} + 4.25rem)`, width: "min(440px, calc(100vw - 1.5rem))", height: `min(calc(100vh - ${bottom} - 6rem), 680px)`, background: "color-mix(in srgb, var(--card) 96%, transparent)" }}
           dir="rtl"
         >
           <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border)] px-4 py-2">
@@ -67,13 +70,13 @@ export default function ChatFab({ teacherName }: { teacherName: string | null })
         onClick={toggle}
         aria-label={open ? "לסגור את הצ׳אט עם קלוד" : "לפתוח את הצ׳אט עם קלוד"}
         aria-expanded={open}
-        className={`fixed bottom-4 left-3 z-[48] flex h-14 items-center gap-2 rounded-full px-4 text-sm font-extrabold text-white shadow-2xl transition hover:scale-[1.04] active:scale-95 sm:left-5 ${open ? "" : "fab-live"}`}
-        style={{ background: "linear-gradient(135deg, var(--accent), var(--primary))" }}
+        className={`no-print fixed left-3 z-[48] flex h-12 items-center gap-2 rounded-full px-4 text-sm font-extrabold text-white shadow-2xl transition hover:scale-[1.04] active:scale-95 sm:left-5 ${open ? "" : "fab-live"}`}
+        style={{ bottom, background: "linear-gradient(135deg, var(--accent), var(--primary))" }}
       >
-        <span className="text-xl" aria-hidden>
+        <span className="text-lg" aria-hidden>
           {open ? "▾" : "✨"}
         </span>
-        <span className="hidden sm:inline">{open ? "לקפל" : "לדבר עם קלוד"}</span>
+        <span className="hidden sm:inline">{open ? "לקפל" : "קלוד"}</span>
       </button>
     </>
   );
