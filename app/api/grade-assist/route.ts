@@ -8,9 +8,16 @@ import { getTaskContent } from "@/content/tasks/registry";
 import { CLAUDE_MODEL } from "@/lib/claude";
 import { addressInstruction } from "@/lib/address-form";
 import { salvageGradeProposal } from "@/lib/grade-utils";
+import { explainClaudeError } from "@/lib/claude-errors";
+
+// Grading a long submission takes Claude well over the platform's default
+// function limit — without this the request was killed mid-call and the
+// teacher only saw a generic connection error.
+export const maxDuration = 300;
 
 // Claude proposes a score + feedback for a submission. The teacher edits and
 // approves — nothing reaches the student without teacher approval.
+// Failures come back as JSON { error, retryable } with a Hebrew explanation.
 export async function POST(req: Request) {
   const guard = await requireTeacher();
   if (!guard.ok) return guard.res;
@@ -80,10 +87,16 @@ export async function POST(req: Request) {
   // object, so the proposal can never leak into the feedback box as a raw
   // JSON string (which is exactly what happened when the old prose-JSON
   // approach met a feedback containing quotes or newlines).
-  const client = new Anthropic({ apiKey });
-  const msg = await client.messages.create({
+  // The SDK timeout stays under maxDuration so a slow call ends as a clear
+  // JSON error instead of the platform cutting the function off.
+  const client = new Anthropic({ apiKey, timeout: 240_000, maxRetries: 1 });
+  let msg: Anthropic.Message;
+  try {
+    msg = await client.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 1200,
+    // Hebrew feedback on the five-criteria writing rubric runs long; a tight
+    // cap cut the tool call off mid-feedback.
+    max_tokens: 4000,
     system: reg?.content.writing
       ? `את/ה עוזר/ת הערכה למורה באתר "בינת התורה" (כיתה י — בנים ובנות, תיכון שחרית). ההגשה היא תרגול כתיבה טיעונית של כ-40 דקות: קריאת טקסט, פירוק הטיעון שבו, עמדה, נימוקים וראיות, הצד השני, ופסקה שלמה.
 הערך/כי בעברית: ציון 0-100 והערכה מילולית חמה, מפורטת ובונה. מחוון: (1) טענה ברורה וחד-משמעית; (2) שני נימוקים שבאמת תומכים בטענה; (3) ראיה מהטקסט מדויקת (ציטוט נכון ושימוש נכון בו) וראיה מהחיים ספציפית; (4) הצד השני מוצג בכנות ובחוזקו, והתשובה לו עניינית; (5) הפסקה השלמה בנויה — פתיחה בטענה, נימוקים, הצד השני, סיום — ובלשון ברורה. ציינ/י לכל קריטריון במשפט מה טוב ומה הצעד הבא, עם ציטוט מדויק ממה שנכתב.
@@ -138,7 +151,11 @@ ${decodeAnswers || "(אין)"}
 ${qa.join("\n\n")}`,
       },
     ],
-  });
+    });
+  } catch (e) {
+    const { message, retryable } = explainClaudeError(e);
+    return NextResponse.json({ available: true, error: message, retryable }, { status: 502 });
+  }
 
   let score: number | null = null;
   let feedback = "";
@@ -158,6 +175,17 @@ ${qa.join("\n\n")}`,
     const rescued = salvageGradeProposal(text, score);
     score = rescued.score;
     feedback = rescued.feedback;
+  }
+  if (!feedback) {
+    console.error("[grade-assist] empty proposal", { taskId, studentId, stop: msg.stop_reason });
+    return NextResponse.json(
+      {
+        available: true,
+        error: "קלוד החזיר תשובה ריקה, ולכן לא נשמרה הצעה. אפשר לנסות שוב.",
+        retryable: true,
+      },
+      { status: 502 }
+    );
   }
 
   const t = now();

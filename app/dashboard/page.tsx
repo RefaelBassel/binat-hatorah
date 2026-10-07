@@ -5,7 +5,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import PageShell from "@/components/page-shell";
 import { db } from "@/lib/db";
-import { allStudents, allTasksWithStats, now } from "@/lib/tasks";
+import { allStudents, allTasksWithStats, now, ungradedSubmissions } from "@/lib/tasks";
+import BatchGradeAssist from "@/components/dashboard/batch-grade-assist";
 import { sweepOverdue } from "@/lib/notify";
 import { TASK_REGISTRY } from "@/content/tasks/registry";
 import { formatHebDate, formatHebTime, israelWallTimeToUnix } from "@/lib/hebrew";
@@ -23,6 +24,7 @@ export default async function DashboardPage() {
   let students: Awaited<ReturnType<typeof allStudents>> = [];
   let pendingCount = 0;
   let tasks: Awaited<ReturnType<typeof allTasksWithStats>> = [];
+  let ungraded: Awaited<ReturnType<typeof ungradedSubmissions>> = [];
   let reflections: {
     name: string;
     contextRef: string | null;
@@ -40,6 +42,7 @@ export default async function DashboardPage() {
       (a) => a.state === "pending" && a.role !== "teacher"
     ).length;
     tasks = await allTasksWithStats();
+    ungraded = await ungradedSubmissions();
     const refRes = await db().execute({
       sql: `SELECT u.full_name, u.email, r.context_ref, r.difficulty, r.pshat_progress,
                    r.argument_progress, r.note, r.created_at
@@ -164,6 +167,9 @@ export default async function DashboardPage() {
           emoji="✅"
         />
       </div>
+
+      {/* Claude proposals for the ungraded backlog (guests are read-only) */}
+      {!isGuest && <BatchGradeAssist items={ungraded} />}
 
       {/* publish new task */}
       <div className="mb-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">

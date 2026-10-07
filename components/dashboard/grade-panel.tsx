@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { requestGradeProposal } from "@/lib/grade-assist-client";
 
 // Grading flow: Claude proposes score + feedback → the teacher edits →
 // final approval sends the grade to the student (bell + email).
@@ -33,29 +34,24 @@ export default function GradePanel({
   const [busy, setBusy] = useState<"assist" | "save" | "approve" | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
+  const [assistError, setAssistError] = useState<{ message: string; retryable: boolean } | null>(
+    null
+  );
+
   const askClaude = async () => {
     setBusy("assist");
     setNote(null);
-    try {
-      const res = await fetch("/api/grade-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, userId: studentId }),
-      });
-      const data = await res.json();
-      if (data.available === false) {
-        setNote(data.error ?? "העזרה האוטומטית עוד לא זמינה.");
-      } else {
-        setClaudeScore(data.score);
-        setClaudeFeedback(data.feedback);
-        if (!score) setScore(data.score != null ? String(data.score) : "");
-        if (!feedback) setFeedback(data.feedback ?? "");
-      }
-    } catch {
-      setNote("שגיאה בחיבור — נסו שוב.");
-    } finally {
-      setBusy(null);
+    setAssistError(null);
+    const result = await requestGradeProposal(taskId, studentId);
+    if (result.ok) {
+      setClaudeScore(result.score);
+      setClaudeFeedback(result.feedback);
+      if (!score) setScore(result.score != null ? String(result.score) : "");
+      if (!feedback) setFeedback(result.feedback);
+    } else {
+      setAssistError({ message: result.error, retryable: result.retryable });
     }
+    setBusy(null);
   };
 
   const save = async (approve: boolean) => {
@@ -104,9 +100,28 @@ export default function GradePanel({
             disabled={busy !== null}
             className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
           >
-            {busy === "assist" ? "קלוד בודק..." : claudeScore != null ? "בדיקה מחדש" : "בקשת הצעת ציון והערכה"}
+            {busy === "assist" ? "קלוד בודק... (עד כמה דקות)" : claudeScore != null ? "בדיקה מחדש" : "בקשת הצעת ציון והערכה"}
           </button>
         </div>
+        {assistError && (
+          <div
+            role="alert"
+            className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--danger)]/40 bg-[color:var(--danger)]/5 p-3"
+          >
+            <p className="flex-1 text-xs leading-6 text-[color:var(--danger)]">
+              ⚠️ {assistError.message}
+            </p>
+            {assistError.retryable && (
+              <button
+                onClick={askClaude}
+                disabled={busy !== null}
+                className="rounded-full border border-[color:var(--danger)]/60 px-4 py-1 text-xs font-bold text-[color:var(--danger)] disabled:opacity-50"
+              >
+                נסי שוב
+              </button>
+            )}
+          </div>
+        )}
         {claudeScore != null || claudeFeedback ? (
           <>
             {claudeScore != null && (

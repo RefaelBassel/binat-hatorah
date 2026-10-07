@@ -400,6 +400,29 @@ export async function allTasksWithStats() {
   }));
 }
 
+// Submitted work with no teacher-approved grade yet — the dashboard's batch
+// run asks Claude for a proposal on each one that still lacks it.
+export async function ungradedSubmissions() {
+  const res = await db().execute({
+    sql: `SELECT p.task_id, p.user_id, t.title, u.full_name, u.email,
+                 (g.claude_feedback IS NOT NULL AND g.claude_feedback != '') AS has_proposal
+          FROM task_progress p
+          JOIN tasks t ON t.id = p.task_id
+          JOIN users u ON u.id = p.user_id
+          LEFT JOIN grades g ON g.task_id = p.task_id AND g.user_id = p.user_id
+          WHERE p.submitted_at IS NOT NULL AND (g.approved_at IS NULL)
+          ORDER BY t.due_at ASC, u.full_name`,
+    args: [],
+  });
+  return res.rows.map((r) => ({
+    taskId: Number(r.task_id),
+    userId: Number(r.user_id),
+    taskTitle: String(r.title),
+    studentName: (r.full_name as string | null) ?? String(r.email),
+    hasProposal: Boolean(Number(r.has_proposal)),
+  }));
+}
+
 export async function taskRoster(taskId: number) {
   const res = await db().execute({
     sql: `SELECT u.id AS user_id, u.full_name, u.email,
