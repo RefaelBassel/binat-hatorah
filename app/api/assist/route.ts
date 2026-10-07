@@ -185,7 +185,7 @@ ${context}
   const client = new Anthropic({ apiKey });
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 650,
+    max_tokens: 2000, // thinking counts against this; the prompt keeps replies short
     system,
     messages: [
       {

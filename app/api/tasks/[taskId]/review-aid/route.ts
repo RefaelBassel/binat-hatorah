@@ -89,7 +89,7 @@ export async function POST(
   const client = new Anthropic({ apiKey });
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 400,
+    max_tokens: 2000,
     system,
     messages: [
       {
