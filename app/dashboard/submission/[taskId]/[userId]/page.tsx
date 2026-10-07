@@ -13,6 +13,7 @@ import {
 import { getTaskContent } from "@/content/tasks/registry";
 import { formatWorkTime } from "@/lib/hebrew";
 import { salvageGradeProposal } from "@/lib/grade-utils";
+import { ensureGradeAssistColumns } from "@/lib/grade-assist";
 import ConfirmButton from "@/components/confirm-button";
 import { DECODE_STAGES } from "@/content/tasks/registry";
 
@@ -86,8 +87,9 @@ export default async function SubmissionPage({
     args: [studentId, taskId],
   });
 
+  await ensureGradeAssistColumns();
   const gradeRes = await db().execute({
-    sql: `SELECT claude_score, claude_feedback, score, feedback, approved_at
+    sql: `SELECT claude_score, claude_feedback, claude_error, score, feedback, approved_at
           FROM grades WHERE task_id = ? AND user_id = ?`,
     args: [taskId, studentId],
   });
@@ -258,6 +260,8 @@ export default async function SubmissionPage({
           initialFeedback={
             salvageIfBlob((grade?.feedback as string | null) ?? null, null)
           }
+          initialClaudeError={(grade?.claude_error as string | null) ?? null}
+          submitted={progress?.submitted_at != null}
           approved={grade?.approved_at != null}
         />
       </div>

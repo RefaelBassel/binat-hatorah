@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import PageShell from "@/components/page-shell";
 import ClassPulseDrawer from "@/components/class-pulse-drawer";
 import ConfirmButton from "@/components/confirm-button";
+import BulkGradeAssist from "@/components/dashboard/bulk-grade-assist";
+import { submissionsMissingProposal } from "@/lib/grade-assist";
 import {
   getTask,
   taskRoster,
@@ -85,6 +87,7 @@ export default async function DashboardTaskPage({
   const dueTimeValue = formatHebTime(task.due_at);
 
   const roster = await taskRoster(taskId);
+  const missingProposals = await submissionsMissingProposal(taskId);
   const groups = {
     submitted: roster.filter((r) => r.status === "submitted"),
     graded: roster.filter((r) => r.status === "graded"),
@@ -203,9 +206,11 @@ export default async function DashboardTaskPage({
         </div>
       )}
 
+      <BulkGradeAssist taskId={taskId} missingUserIds={missingProposals} />
+
       {(
         [
-          ["submitted", "📬 הוגשו — ממתינות לבדיקה"],
+          ["submitted","📬 הוגשו — ממתינות לבדיקה"],
           ["graded", "✅ נבדקו ואושרו"],
           ["overdue", "⏰ עבר זמנן ולא הוגשו"],
           ["in_progress", "✏️ בלימוד"],

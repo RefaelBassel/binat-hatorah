@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "@/lib/db";
 import { requireStudentTask } from "@/lib/api-auth";
 import { now, ensureProgress } from "@/lib/tasks";
 import { notifyTeachers } from "@/lib/notify";
+import { proposeGrade } from "@/lib/grade-assist";
 import { auth } from "@/auth";
+
+// leaves room for the after-response grade proposal (see below)
+export const maxDuration = 120;
 
 // Submit or un-submit. Un-submit ("ביטול הגשה ותיקון") is allowed until the
 // task's final due date.
@@ -63,6 +67,13 @@ export async function POST(
     link: `/dashboard/task/${guard.task.id}`,
     email: false,
   });
+
+  // Claude's grade proposal is prepared right away, after the response, so
+  // it is waiting for the teacher on the submission page. Failures are
+  // recorded on the grades row (the teacher sees them with a retry button).
+  const taskIdNum = guard.task.id;
+  const studentId = guard.userId;
+  after(() => proposeGrade(taskIdNum, studentId).then(() => undefined));
 
   return NextResponse.json({ ok: true, submitted: true });
 }
