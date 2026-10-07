@@ -169,10 +169,10 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
     .map((m) => `${m.kind}: ${m.wordText}${m.note ? ` (${m.note})` : ""}`)
     .join(", ");
 
-  // Structured output via FORCED tool use: the API hands back a parsed
-  // object, so the proposal can never leak into the feedback box as a raw
-  // JSON string (which is exactly what happened when the old prose-JSON
-  // approach met a feedback containing quotes or newlines).
+  // Structured output through the submit_grade tool. Claude Opus 5.5 rejects
+  // a FORCED tool choice (400 — this was the "שגיאה בחיבור" the teacher saw),
+  // so the choice is "auto" with a strict schema and an instruction to use
+  // the tool; the text fallback below covers the rare prose answer.
   const client = new Anthropic({ apiKey, timeout: 100_000, maxRetries: 2 });
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
@@ -202,9 +202,7 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
           properties: {
             score: {
               type: "integer",
-              minimum: 0,
-              maximum: 100,
-              description: "הציון המוצע, 0-100",
+              description: "הציון המוצע, מספר שלם בין 0 ל-100",
             },
             feedback: {
               type: "string",
@@ -213,10 +211,12 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
             },
           },
           required: ["score", "feedback"],
+          additionalProperties: false,
         },
+        strict: true,
       },
     ],
-    tool_choice: { type: "tool", name: "submit_grade" },
+    tool_choice: { type: "auto", disable_parallel_tool_use: true },
     messages: [
       {
         role: "user",

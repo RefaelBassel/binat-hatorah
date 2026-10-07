@@ -743,16 +743,36 @@ export async function createCodeRequest(userId: number, title: string, body: str
   const t = now();
   const ins = await db().execute({ sql: "INSERT INTO code_requests (user_id, title, body, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)", args: [userId, title, body, t, t] });
   const id = Number(ins.lastInsertRowid);
+  // one request at a time per site: parallel branches on the same code
+  // conflicted and the second could not be merged. A request made while
+  // another is still being built waits in the queue and is sent by itself
+  // the moment the previous one is merged or closed (see refreshCodeRequests).
+  const inFlight = await db().execute({ sql: "SELECT COUNT(*) AS n FROM code_requests WHERE status IN ('open','working','preview')", args: [] });
+  if (Number(inFlight.rows[0]?.n ?? 0) > 0) {
+    await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [QUEUE_NOTE, now(), id] });
+    return (await listCodeRequests(userId)).find((c) => c.id === id)!;
+  }
+  await openIssueFor(id);
+  return (await listCodeRequests(userId)).find((c) => c.id === id)!;
+}
+
+const QUEUE_NOTE = "ממתינה בתור — בקשה קודמת עדיין בבנייה; תישלח אוטומטית כשתסתיים";
+
+// open the GitHub issue of a stored request
+async function openIssueFor(id: number) {
+  const row = (await db().execute({ sql: "SELECT title, body FROM code_requests WHERE id = ?", args: [id] })).rows[0];
+  if (!row) return;
+  const title = String(row.title);
+  const body = String(row.body);
   try {
     const issue = (await gh(`/repos/${SITE.repo}/issues`, {
       method: "POST",
       body: JSON.stringify({ title, labels: ["claude-chat"], body: `@claude\n\n${body}\n\n---\nנשלח מהצ׳אט של המורה באתר ${SITE.name} (בקשה #${id}). יש ליישם, להריץ בנייה, ולפתוח Pull Request; המיזוג אוטומטי כשהבנייה עוברת.` }),
     })) as { number: number; html_url: string } | null;
-    if (issue) await db().execute({ sql: "UPDATE code_requests SET issue_number = ?, issue_url = ?, status = 'open', updated_at = ? WHERE id = ?", args: [issue.number, issue.html_url, now(), id] });
+    if (issue) await db().execute({ sql: "UPDATE code_requests SET issue_number = ?, issue_url = ?, status = 'open', note = NULL, updated_at = ? WHERE id = ?", args: [issue.number, issue.html_url, now(), id] });
   } catch (e) {
     await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), id] });
   }
-  return (await listCodeRequests(userId)).find((c) => c.id === id)!;
 }
 
 export async function listCodeRequests(userId: number): Promise<CodeRequestRow[]> {
@@ -782,8 +802,8 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
   await ensureChatTables();
   if (!process.env.GITHUB_TOKEN) return listCodeRequests(userId);
   const open = await db().execute({
-    sql: "SELECT id, issue_number FROM code_requests WHERE user_id = ? AND issue_number IS NOT NULL AND status IN ('open','working','preview') AND updated_at < ?",
-    args: [userId, now() - 60],
+    sql: "SELECT id, issue_number FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview') AND updated_at < ?",
+    args: [now() - 60],
   });
   for (const row of open.rows) {
     const n = Number(row.issue_number);
@@ -799,6 +819,12 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
     } catch (e) {
       await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), Number(row.id)] });
     }
+  }
+  // nothing in flight any more? send the oldest waiting request
+  const still = await db().execute({ sql: "SELECT COUNT(*) AS n FROM code_requests WHERE status IN ('open','working','preview')", args: [] });
+  if (Number(still.rows[0]?.n ?? 0) === 0) {
+    const nextUp = await db().execute({ sql: "SELECT id FROM code_requests WHERE status = 'queued' AND issue_number IS NULL ORDER BY id LIMIT 1", args: [] });
+    if (nextUp.rows[0]) await openIssueFor(Number(nextUp.rows[0].id));
   }
   return listCodeRequests(userId);
 }

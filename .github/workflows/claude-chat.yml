@@ -37,7 +37,24 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Claude Code
+      - name: Claude Code — bring a pull request up to date
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are on the branch of pull request #${{ github.event.issue.number }} in the repository described in CLAUDE.md (read it first). Do exactly what this comment asks, on this branch, and push; do not open another pull request:
+
+            ${{ github.event.comment.body }}
+
+            If it asks you to resolve conflicts: `git fetch origin main && git merge origin/main`, resolve every conflict keeping both main's behaviour and this branch's intent, run `npm ci && npm run build` until green, commit and push.
+          claude_args: |
+            --model claude-opus-5-5
+            --max-turns 80
+            --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(npm ci),Bash(npm install:*),Bash(npm run build),Bash(npm run lint:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(cat:*)"
+
+      - name: Claude Code — build what the issue asks
+        if: github.event_name == 'issues' || !github.event.issue.pull_request
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

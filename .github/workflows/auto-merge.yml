@@ -2,7 +2,8 @@
 # built here and merged into main automatically when the build passes.
 # Production deploys from main (Vercel). A failed build leaves the PR open
 # and comments on it; the teacher's chat shows "failed" and Rafael is
-# notified by GitHub as the repository owner.
+# notified by GitHub as the repository owner. A PR that conflicts with main
+# is handed back to Claude to bring up to date, then this runs again.
 name: Auto-merge Claude's pull requests
 
 on:
@@ -19,6 +20,12 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Checkout the PR branch
         uses: actions/checkout@v6
@@ -26,16 +33,29 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
 
+      - name: Conflicts with main? hand it back to Claude
+        id: conflicts
+        run: |
+          state=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable)
+          echo "mergeable=$state" >> "$GITHUB_OUTPUT"
+          if [ "$state" = "CONFLICTING" ]; then
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "@claude This pull request conflicts with main. Merge origin/main into this branch, resolve every conflict so that BOTH the behaviour already on main and this PR's intent are kept, run npm run build, and push. Do not open a new PR."
+          fi
+
       - name: Node
+        if: steps.conflicts.outputs.mergeable != 'CONFLICTING'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install
+        if: steps.conflicts.outputs.mergeable != 'CONFLICTING'
         run: npm ci
 
       - name: Build (type check included)
+        id: build
+        if: steps.conflicts.outputs.mergeable != 'CONFLICTING'
         run: npm run build
         env:
           # the build needs no real secrets; placeholders keep env checks quiet
@@ -45,31 +65,24 @@ jobs:
           AUTH_GOOGLE_SECRET: ci-placeholder
 
       - name: Merge
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: merge
+        if: steps.conflicts.outputs.mergeable != 'CONFLICTING'
         run: |
-          gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch \
-            --subject "${{ github.event.pull_request.title }} (#${{ github.event.pull_request.number }})"
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --delete-branch --subject "$PR_TITLE (#$PR_NUMBER)"
 
-      - name: Tell the issue
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Close the issue and tell the teacher
+        if: steps.merge.outcome == 'success'
         run: |
-          body="${{ github.event.pull_request.body }}"
-          issue=$(printf "%s" "$body" | grep -oE 'Closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          issue=$(printf "%s" "$PR_BODY" | grep -oE 'Closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
           if [ -n "$issue" ]; then
-            gh issue comment "$issue" --body "✅ השינוי מוזג ועולה לאתר עכשיו (כ-3 דקות לפריסה)."
+            gh issue close "$issue" --repo "$GITHUB_REPOSITORY" --comment "✅ השינוי מוזג ועולה לאתר עכשיו (כ-3 דקות לפריסה)." || true
           fi
 
-      - name: Report a failed build
-        if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Report a failed build or merge
+        if: failure() && (steps.build.outcome == 'failure' || steps.merge.outcome == 'failure')
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" --body "❌ הבנייה נכשלה, ולכן השינוי לא מוזג. @RefaelBassel — צריך מבט אנושי. יומן הריצה: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          body="${{ github.event.pull_request.body }}"
-          issue=$(printf "%s" "$body" | grep -oE 'Closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "❌ הבנייה נכשלה, ולכן השינוי לא מוזג. @RefaelBassel — צריך מבט אנושי. יומן הריצה: $RUN_URL"
+          issue=$(printf "%s" "$PR_BODY" | grep -oE 'Closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
           if [ -n "$issue" ]; then
-            gh issue comment "$issue" --body "❌ הבנייה של השינוי נכשלה. רפאל קיבל הודעה ויטפל."
+            gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "❌ הבנייה של השינוי נכשלה. רפאל קיבל הודעה ויטפל." || true
           fi

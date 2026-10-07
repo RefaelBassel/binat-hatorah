@@ -7,7 +7,7 @@ import TeacherChat from "./dashboard/teacher-chat";
 // The floating chat button — teachers only, on every page (mounted from the
 // root layout behind a server-side teacher gate). Tap: a floating window
 // with the same chat as /dashboard/chat; every conversation is saved on the
-// server. The open state is remembered per browser. Hidden on projector
+// server. It opens only on a tap and closes on navigation. Hidden on projector
 // screens. `bottom` lifts the button above a site's own bottom-left dock
 // (e.g. the lesson dock), `hideOn` adds site-specific screens to skip.
 export default function ChatFab({ teacherName, bottom = "1rem", hideOn = [] }: { teacherName: string | null; bottom?: string; hideOn?: string[] }) {
@@ -22,24 +22,11 @@ export default function ChatFab({ teacherName, bottom = "1rem", hideOn = [] }: {
     pathname === "/pending" ||
     pathname.startsWith("/print") ||
     hideOn.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  // closed on every page load: a window that reopened by itself covered
+  // page content (the teacher could not reach a button under it)
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    try {
-      setOpen(localStorage.getItem("claude-chat-open") === "1");
-    } catch {
-      /* private mode */
-    }
-  }, []);
-  const toggle = () => {
-    setOpen((o) => {
-      try {
-        localStorage.setItem("claude-chat-open", o ? "0" : "1");
-      } catch {
-        /* ignore */
-      }
-      return !o;
-    });
-  };
+  useEffect(() => setOpen(false), [pathname]);
+  const toggle = () => setOpen((o) => !o);
   if (hidden) return null;
   return (
     <>

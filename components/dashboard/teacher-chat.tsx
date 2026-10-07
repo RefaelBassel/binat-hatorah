@@ -26,7 +26,7 @@ function flatten(rows: ChatMessageRow[]): Msg[] {
 }
 
 const STATUS_HE: Record<string, { label: string; tone: string }> = {
-  queued: { label: "ממתין לחיבור ל-GitHub", tone: "var(--warning)" },
+  queued: { label: "בתור — תישלח כשהבקשה הקודמת תסתיים", tone: "var(--warning)" },
   open: { label: "נשלח — קלוד מתחיל", tone: "var(--accent)" },
   working: { label: "קלוד עובד על זה", tone: "var(--accent)" },
   preview: { label: "נבנה — ממתין למיזוג אוטומטי", tone: "var(--primary)" },
@@ -181,7 +181,7 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
       )}
       {!github && codeRequests.some((c) => c.status === "queued") && (
         <p className="mb-3 rounded-xl border border-[color:var(--warning)]/50 bg-[color:var(--warning)]/10 px-3 py-2 text-xs text-[color:var(--warning)]">
-          בקשות לשינוי באתר ממתינות: החיבור ל-GitHub עוד לא הוגדר (משתנה GITHUB_TOKEN). הן יישלחו אוטומטית כשיוגדר.
+          בקשות לשינוי באתר ממתינות: החיבור ל-GitHub עוד לא הוגדר. הן יישלחו אוטומטית כשיוגדר.
         </p>
       )}
 
