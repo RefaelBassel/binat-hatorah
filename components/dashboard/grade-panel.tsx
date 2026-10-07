@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { requestGradeProposal } from "@/lib/grade-assist-client";
 
 // Grading flow: Claude proposes score + feedback → the teacher edits →
 // final approval sends the grade to the student (bell + email).
@@ -32,27 +33,23 @@ export default function GradePanel({
   const [approved, setApproved] = useState(initialApproved);
   const [busy, setBusy] = useState<"assist" | "save" | "approve" | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // failure of the Claude check — shown inside the proposal box with a retry
+  const [assistError, setAssistError] = useState<string | null>(null);
 
   const askClaude = async () => {
     setBusy("assist");
     setNote(null);
+    setAssistError(null);
     try {
-      const res = await fetch("/api/grade-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, userId: studentId }),
-      });
-      const data = await res.json();
-      if (data.available === false) {
-        setNote(data.error ?? "העזרה האוטומטית עוד לא זמינה.");
-      } else {
-        setClaudeScore(data.score);
-        setClaudeFeedback(data.feedback);
-        if (!score) setScore(data.score != null ? String(data.score) : "");
-        if (!feedback) setFeedback(data.feedback ?? "");
+      const result = await requestGradeProposal(taskId, studentId);
+      if (!result.ok) {
+        setAssistError(result.error);
+        return;
       }
-    } catch {
-      setNote("שגיאה בחיבור — נסו שוב.");
+      setClaudeScore(result.score);
+      setClaudeFeedback(result.feedback);
+      if (!score) setScore(result.score != null ? String(result.score) : "");
+      if (!feedback) setFeedback(result.feedback);
     } finally {
       setBusy(null);
     }
@@ -97,17 +94,40 @@ export default function GradePanel({
 
       {/* Claude's proposal */}
       <div className="mb-4 rounded-xl bg-[color:var(--primary)]/5 p-4">
-        <div className="mb-2 flex items-center justify-between">
+        {/* the button sits at the start (right) edge: the teacher's floating
+            chat window is fixed over the bottom-left of the screen and was
+            swallowing clicks on the old left-aligned button */}
+        <div className="mb-2 flex flex-wrap items-center gap-3">
           <p className="text-xs font-bold text-[color:var(--primary)]">✨ ההצעה של קלוד</p>
           <button
+            type="button"
             onClick={askClaude}
             disabled={busy !== null}
+            aria-busy={busy === "assist"}
             className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
           >
-            {busy === "assist" ? "קלוד בודק..." : claudeScore != null ? "בדיקה מחדש" : "בקשת הצעת ציון והערכה"}
+            {busy === "assist" ? "בודק..." : claudeScore != null ? "בדיקה מחדש" : "בדיקה והצעת ציון"}
           </button>
         </div>
-        {claudeScore != null || claudeFeedback ? (
+        {busy === "assist" ? (
+          <p role="status" className="animate-pulse text-xs text-[color:var(--primary)]/70">
+            ⏳ בודק את ההגשה ומכין הצעת ציון — זה יכול לקחת עד דקה...
+          </p>
+        ) : assistError ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--danger)]/40 bg-[color:var(--danger)]/5 px-3 py-2"
+          >
+            <p className="text-xs font-semibold text-[color:var(--danger)]">⚠️ {assistError}</p>
+            <button
+              type="button"
+              onClick={askClaude}
+              className="rounded-full border border-[color:var(--danger)]/60 px-3 py-1 text-xs font-bold text-[color:var(--danger)] hover:bg-[color:var(--danger)]/10"
+            >
+              נסי שוב
+            </button>
+          </div>
+        ) : claudeScore != null || claudeFeedback ? (
           <>
             {claudeScore != null && (
               <p className="text-sm font-bold text-[color:var(--primary)]">
@@ -161,7 +181,7 @@ export default function GradePanel({
           disabled={busy !== null || !score}
           className="rounded-full border border-[color:var(--border)] px-5 py-2 text-sm font-semibold text-[color:var(--primary)] disabled:opacity-40"
         >
-          שמירת טיוטה
+          {busy === "save" ? "שומרים..." : "שמירת טיוטה"}
         </button>
         <button
           onClick={() => save(true)}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listAccounts } from "@/lib/approval";
 import ClassReflections from "@/components/class-reflections";
+import BatchGradeAssist from "@/components/dashboard/batch-grade-assist";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import PageShell from "@/components/page-shell";
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
     createdAt: number;
   }[] = [];
   let writingStats: { name: string; done: number; avg: number | null }[] = [];
+  let ungraded: { taskId: number; userId: number }[] = [];
   try {
     await sweepOverdue();
     students = await allStudents();
@@ -40,6 +42,23 @@ export default async function DashboardPage() {
       (a) => a.state === "pending" && a.role !== "teacher"
     ).length;
     tasks = await allTasksWithStats();
+    // submissions with no grade at all — no Claude proposal, no teacher
+    // score, not approved — for the batch Claude check
+    const ungradedRes = await db().execute({
+      sql: `SELECT p.task_id, p.user_id
+            FROM task_progress p
+            JOIN users u ON u.id = p.user_id
+            LEFT JOIN grades g ON g.task_id = p.task_id AND g.user_id = p.user_id
+            WHERE p.submitted_at IS NOT NULL AND u.role = 'student'
+              AND NOT EXISTS (SELECT 1 FROM task_cancellations c WHERE c.task_id = p.task_id)
+              AND (g.task_id IS NULL OR (g.claude_score IS NULL AND g.score IS NULL AND g.approved_at IS NULL))
+            ORDER BY p.submitted_at`,
+      args: [],
+    });
+    ungraded = ungradedRes.rows.map((r) => ({
+      taskId: Number(r.task_id),
+      userId: Number(r.user_id),
+    }));
     const refRes = await db().execute({
       sql: `SELECT u.full_name, u.email, r.context_ref, r.difficulty, r.pshat_progress,
                    r.argument_progress, r.note, r.created_at
@@ -164,6 +183,9 @@ export default async function DashboardPage() {
           emoji="✅"
         />
       </div>
+
+      {/* batch Claude check over every submission that has no grade yet */}
+      {!isGuest && <BatchGradeAssist items={ungraded} />}
 
       {/* publish new task */}
       <div className="mb-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
