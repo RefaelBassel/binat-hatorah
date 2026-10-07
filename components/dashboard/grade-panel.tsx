@@ -1,17 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const FAILED = "הבדיקה האוטומטית נכשלה — נסי שוב.";
 
 // Grading flow: Claude proposes score + feedback → the teacher edits →
 // final approval sends the grade to the student (bell + email).
+// The proposal is normally prepared on submission; if a submitted work has
+// none yet (older submissions), it is requested as soon as the page opens.
 export default function GradePanel({
   taskId,
   studentId,
   studentName,
   initialClaudeScore,
   initialClaudeFeedback,
+  initialClaudeError,
   initialScore,
   initialFeedback,
+  submitted,
   approved: initialApproved,
 }: {
   taskId: number;
@@ -19,12 +25,15 @@ export default function GradePanel({
   studentName: string;
   initialClaudeScore: number | null;
   initialClaudeFeedback: string | null;
+  initialClaudeError: string | null;
   initialScore: number | null;
   initialFeedback: string | null;
+  submitted: boolean;
   approved: boolean;
 }) {
   const [claudeScore, setClaudeScore] = useState(initialClaudeScore);
   const [claudeFeedback, setClaudeFeedback] = useState(initialClaudeFeedback);
+  const [claudeError, setClaudeError] = useState(initialClaudeError);
   const [score, setScore] = useState<string>(
     initialScore != null ? String(initialScore) : ""
   );
@@ -32,31 +41,48 @@ export default function GradePanel({
   const [approved, setApproved] = useState(initialApproved);
   const [busy, setBusy] = useState<"assist" | "save" | "approve" | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // the teacher's own fields, read inside the async callback without
+  // re-creating it on every keystroke
+  const draft = useRef({ score, feedback });
+  useEffect(() => {
+    draft.current = { score, feedback };
+  }, [score, feedback]);
 
-  const askClaude = async () => {
+  const askClaude = useCallback(async () => {
     setBusy("assist");
     setNote(null);
+    setClaudeError(null);
     try {
       const res = await fetch("/api/grade-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskId, userId: studentId }),
       });
-      const data = await res.json();
-      if (data.available === false) {
-        setNote(data.error ?? "העזרה האוטומטית עוד לא זמינה.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setClaudeError(data?.error ?? FAILED);
       } else {
         setClaudeScore(data.score);
         setClaudeFeedback(data.feedback);
-        if (!score) setScore(data.score != null ? String(data.score) : "");
-        if (!feedback) setFeedback(data.feedback ?? "");
+        if (!draft.current.score) setScore(data.score != null ? String(data.score) : "");
+        if (!draft.current.feedback) setFeedback(data.feedback ?? "");
       }
     } catch {
-      setNote("שגיאה בחיבור — נסו שוב.");
+      setClaudeError(`${FAILED} (בעיית חיבור.)`);
     } finally {
       setBusy(null);
     }
-  };
+  }, [taskId, studentId]);
+
+  // older submissions without a proposal: run the check once on open
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+    if (submitted && !initialApproved && !initialClaudeFeedback && !initialClaudeError) {
+      void askClaude();
+    }
+  }, [submitted, initialApproved, initialClaudeFeedback, initialClaudeError, askClaude]);
 
   const save = async (approve: boolean) => {
     setBusy(approve ? "approve" : "save");
@@ -104,10 +130,29 @@ export default function GradePanel({
             disabled={busy !== null}
             className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
           >
-            {busy === "assist" ? "קלוד בודק..." : claudeScore != null ? "בדיקה מחדש" : "בקשת הצעת ציון והערכה"}
+            {busy === "assist" ? "קלוד בודק..." : claudeFeedback ? "בדיקה מחדש" : "בקשת הצעת ציון והערכה"}
           </button>
         </div>
-        {claudeScore != null || claudeFeedback ? (
+        {claudeError && busy !== "assist" && (
+          <div
+            role="alert"
+            className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--danger)]/40 bg-[color:var(--danger)]/5 px-3 py-2"
+          >
+            <p className="text-sm font-semibold text-[color:var(--danger)]">⚠️ {claudeError}</p>
+            <button
+              onClick={askClaude}
+              disabled={busy !== null}
+              className="shrink-0 rounded-full border-2 border-[color:var(--danger)]/60 px-4 py-1 text-xs font-bold text-[color:var(--danger)] transition hover:bg-[color:var(--danger)]/10 disabled:opacity-50"
+            >
+              נסי שוב
+            </button>
+          </div>
+        )}
+        {busy === "assist" && !claudeFeedback ? (
+          <p className="text-xs text-[color:var(--primary)]/70">
+            ⏳ קלוד בודק את ההגשה ומכין הצעת ציון והערכה — זה יכול לקחת עד דקה.
+          </p>
+        ) : claudeScore != null || claudeFeedback ? (
           <>
             {claudeScore != null && (
               <p className="text-sm font-bold text-[color:var(--primary)]">
@@ -120,7 +165,7 @@ export default function GradePanel({
               </p>
             )}
           </>
-        ) : (
+        ) : claudeError ? null : (
           <p className="text-xs text-[color:var(--primary)]/50">
             קלוד יציע ציון והערכה — המורה עורך/ת ומאשר/ת סופית.
           </p>
@@ -161,7 +206,7 @@ export default function GradePanel({
           disabled={busy !== null || !score}
           className="rounded-full border border-[color:var(--border)] px-5 py-2 text-sm font-semibold text-[color:var(--primary)] disabled:opacity-40"
         >
-          שמירת טיוטה
+          {busy === "save" ? "שומרים..." : "שמירת טיוטה"}
         </button>
         <button
           onClick={() => save(true)}
