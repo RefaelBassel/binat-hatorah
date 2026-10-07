@@ -75,7 +75,10 @@ jobs:
         run: |
           issue=$(printf "%s" "$PR_BODY" | grep -oE 'Closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
           if [ -n "$issue" ]; then
-            gh issue close "$issue" --repo "$GITHUB_REPOSITORY" --comment "✅ השינוי מוזג ועולה לאתר עכשיו (כ-3 דקות לפריסה)." || true
+            # comment first: GitHub may already have closed the issue via "Closes #N" on
+            # the merge, and `gh issue close` on a closed issue posts nothing
+            gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "✅ השינוי מוזג ועולה לאתר עכשיו (כ-3 דקות לפריסה)." || true
+            gh issue close "$issue" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
           fi
 
       - name: Report a failed build or merge
