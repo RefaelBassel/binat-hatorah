@@ -5,7 +5,17 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import PageShell from "@/components/page-shell";
 import { db } from "@/lib/db";
-import { allStudents, allTasksWithStats, now } from "@/lib/tasks";
+import {
+  allStudents,
+  allTasksWithStats,
+  getTask,
+  publishTaskForClass,
+  updateTaskDueDate,
+} from "@/lib/tasks";
+import PublishTaskForm, {
+  type PublishState,
+  type RescheduleState,
+} from "@/components/dashboard/publish-task-form";
 import { sweepOverdue } from "@/lib/notify";
 import { TASK_REGISTRY } from "@/content/tasks/registry";
 import { formatHebDate, formatHebTime, israelWallTimeToUnix } from "@/lib/hebrew";
@@ -73,48 +83,80 @@ export default async function DashboardPage() {
     // DB unavailable
   }
 
-  async function publishTask(formData: FormData) {
+  async function publishTask(_prev: PublishState, formData: FormData): Promise<PublishState> {
     "use server";
     const session = await auth();
-    if (session?.user?.role !== "teacher" || session.user.guest) return;
+    if (session?.user?.role !== "teacher" || session.user.guest) {
+      return { status: "error", message: "אין הרשאה לפרסם משימות" };
+    }
     const contentRef = String(formData.get("contentRef") ?? "");
     const dueDate = String(formData.get("dueDate") ?? "");
     const dueTimeRaw = String(formData.get("dueTime") ?? "");
     const dueTime = /^\d{2}:\d{2}$/.test(dueTimeRaw) ? dueTimeRaw : "23:59";
-    if (!TASK_REGISTRY[contentRef] || !dueDate) return;
-    const t = now();
+    if (!TASK_REGISTRY[contentRef] || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+      return { status: "error", message: "יש לבחור יחידה ותאריך הגשה" };
+    }
     const dueAt = israelWallTimeToUnix(dueDate, dueTime);
     const title = TASK_REGISTRY[contentRef].content.title;
-    const teacherId = Number(session.user.id);
-
-    const res = await db().execute({
-      sql: `INSERT INTO tasks (content_ref, title, published_at, due_at, created_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [contentRef, title, t, dueAt, teacherId, t],
-    });
-    const taskId = Number(res.lastInsertRowid);
-
-    // Assign to all onboarded students.
-    const studentRows = await db().execute({
-      sql: `SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL
-              AND approved_at IS NOT NULL AND blocked_at IS NULL`,
-      args: [],
-    });
-    for (const r of studentRows.rows) {
-      await db().execute({
-        sql: `INSERT OR IGNORE INTO task_assignments (task_id, user_id, assigned_at)
-              VALUES (?, ?, ?)`,
-        args: [taskId, Number(r.id), t],
-      });
+    try {
+      const res = await publishTaskForClass(contentRef, title, dueAt, Number(session.user.id));
+      revalidatePath("/dashboard");
+      revalidatePath("/tasks");
+      if (res.status === "exists") {
+        return {
+          status: "exists",
+          taskId: res.taskId,
+          title,
+          currentDue: `${formatHebDate(res.dueAt)}, ${formatHebTime(res.dueAt)}`,
+          newDue: `${formatHebDate(dueAt)}, ${formatHebTime(dueAt)}`,
+          dueDate,
+          dueTime,
+        };
+      }
+      return { status: res.status, title };
+    } catch {
+      return { status: "error", message: "שגיאה בחיבור — המשימה לא פורסמה. נסו שוב." };
     }
-    revalidatePath("/dashboard");
-    revalidatePath("/tasks");
+  }
+
+  async function rescheduleTask(_prev: RescheduleState, formData: FormData): Promise<RescheduleState> {
+    "use server";
+    const session = await auth();
+    if (session?.user?.role !== "teacher" || session.user.guest) {
+      return { status: "error", message: "אין הרשאה לשנות מועד" };
+    }
+    const taskId = Number(formData.get("taskId"));
+    const dueDate = String(formData.get("dueDate") ?? "");
+    const dueTimeRaw = String(formData.get("dueTime") ?? "");
+    const dueTime = /^\d{2}:\d{2}$/.test(dueTimeRaw) ? dueTimeRaw : "23:59";
+    if (!Number.isInteger(taskId) || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+      return { status: "error", message: "המועד לא עודכן — נסו שוב" };
+    }
+    try {
+      const task = await getTask(taskId);
+      if (!task) return { status: "error", message: "המשימה לא נמצאה" };
+      const dueAt = israelWallTimeToUnix(dueDate, dueTime);
+      await updateTaskDueDate(taskId, dueAt);
+      revalidatePath("/dashboard");
+      revalidatePath("/tasks");
+      return { status: "done", title: task.title, newDue: `${formatHebDate(dueAt)}, ${formatHebTime(dueAt)}` };
+    } catch {
+      return { status: "error", message: "שגיאה בחיבור — המועד לא עודכן. נסו שוב." };
+    }
   }
 
   const publishedRefs = new Set(tasks.map((t) => t.contentRef));
   const availableRefs = Object.entries(TASK_REGISTRY).filter(
     ([ref]) => !publishedRefs.has(ref)
   );
+  // more than one active (non-cancelled) task for the same unit — students
+  // would see it twice; surfaced so the teacher can cancel the extras
+  const activeByRef = new Map<string, typeof tasks>();
+  for (const t of tasks) {
+    if (t.cancelled) continue;
+    activeByRef.set(t.contentRef, [...(activeByRef.get(t.contentRef) ?? []), t]);
+  }
+  const duplicates = [...activeByRef.values()].filter((list) => list.length > 1);
 
   return (
     <PageShell
@@ -180,53 +222,39 @@ export default async function DashboardPage() {
             במצב צפייה לא ניתן לפרסם משימות.
           </p>
         ) : (
-          <form action={publishTask} className="flex flex-wrap items-end gap-3">
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
-                משימה מספריית התוכן
-              </span>
-              <select
-                name="contentRef"
-                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
-              >
-                {availableRefs.map(([ref, reg]) => (
-                  <option key={ref} value={ref}>
-                    {reg.content.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
-                תאריך אחרון להגשה
-              </span>
-              <input
-                type="date"
-                name="dueDate"
-                required
-                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
-                עד השעה
-              </span>
-              <input
-                type="time"
-                name="dueTime"
-                defaultValue="23:59"
-                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
-              />
-            </label>
-            <button
-              type="submit"
-              className="rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
-            >
-              פרסום והקצאה לכל הכיתה
-            </button>
-          </form>
+          <PublishTaskForm
+            options={availableRefs.map(([ref, reg]) => ({ ref, title: reg.content.title }))}
+            publishAction={publishTask}
+            rescheduleAction={rescheduleTask}
+          />
         )}
       </div>
+
+      {duplicates.length > 0 && (
+        <div className="mb-8 rounded-2xl border border-[color:var(--danger)]/40 bg-[color:var(--danger)]/5 p-6">
+          <h2 className="mb-2 font-display text-lg font-bold text-[color:var(--danger)]">
+            ⚠️ יחידות שפורסמו יותר מפעם אחת
+          </h2>
+          <p className="mb-3 text-sm text-[color:var(--foreground)]/70">
+            התלמידים רואים את היחידות האלה כמה פעמים ברשימת המשימות. כדאי לבטל את העותקים המיותרים.
+          </p>
+          <ul className="space-y-1 text-sm">
+            {duplicates.map((list) => (
+              <li key={list[0].contentRef}>
+                <b className="text-[color:var(--primary)]">{list[0].title}</b> —{" "}
+                {list.map((t, i) => (
+                  <span key={t.id}>
+                    {i > 0 && " · "}
+                    <Link href={`/dashboard/task/${t.id}`} className="underline">
+                      משימה {t.id}
+                    </Link>
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* verse-audio QA */}
       <div className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
