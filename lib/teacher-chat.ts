@@ -650,7 +650,7 @@ export async function applyAction(actionId: number, userId: number): Promise<Act
       }
       case "request_code_change": {
         const cr = await createCodeRequest(userId, str(input.title, 120), str(input.body, 6000));
-        result = { codeRequestId: cr.id, status: cr.status, issueUrl: cr.issueUrl };
+        result = { codeRequestId: cr.id, status: cr.status, issueUrl: cr.issueUrl, note: cr.note, message: describeCodeRequest(cr) };
         break;
       }
       default:
@@ -740,6 +740,7 @@ const gh = async (path: string, init?: RequestInit) => {
 
 export async function createCodeRequest(userId: number, title: string, body: string): Promise<CodeRequestRow> {
   await ensureChatTables();
+  await refreshCodeRequests(userId);
   const t = now();
   const ins = await db().execute({ sql: "INSERT INTO code_requests (user_id, title, body, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)", args: [userId, title, body, t, t] });
   const id = Number(ins.lastInsertRowid);
@@ -747,13 +748,21 @@ export async function createCodeRequest(userId: number, title: string, body: str
   // conflicted and the second could not be merged. A request made while
   // another is still being built waits in the queue and is sent by itself
   // the moment the previous one is merged or closed (see refreshCodeRequests).
-  const inFlight = await db().execute({ sql: "SELECT COUNT(*) AS n FROM code_requests WHERE status IN ('open','working','preview')", args: [] });
+  const inFlight = await db().execute({ sql: "SELECT COUNT(*) AS n FROM code_requests WHERE status IN ('open','working','preview') AND created_at > CAST(strftime('%s','now') AS INTEGER) - 10800", args: [] });
   if (Number(inFlight.rows[0]?.n ?? 0) > 0) {
     await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [QUEUE_NOTE, now(), id] });
     return (await listCodeRequests(userId)).find((c) => c.id === id)!;
   }
   await openIssueFor(id);
   return (await listCodeRequests(userId)).find((c) => c.id === id)!;
+}
+
+// one line the model repeats to the teacher — never "passed to the developers"
+export function describeCodeRequest(cr: CodeRequestRow): string {
+  if (cr.status === "open" && cr.issueUrl) return `נשלחה לבנייה האוטומטית (${cr.issueUrl}); בדרך כלל עולה לאתר תוך 10–30 דקות`;
+  if (cr.status === "queued" && cr.note === QUEUE_NOTE) return "נרשמה וממתינה בתור — בקשה קודמת עדיין בבנייה; תישלח מעצמה כשתסתיים";
+  if (cr.status === "queued" && cr.note) return `השליחה ל-GitHub נכשלה (${cr.note}); המערכת תנסה שוב מעצמה`;
+  return `סטטוס: ${cr.status}`;
 }
 
 const QUEUE_NOTE = "ממתינה בתור — בקשה קודמת עדיין בבנייה; תישלח אוטומטית כשתסתיים";
@@ -811,17 +820,20 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
       const issue = (await gh(`/repos/${SITE.repo}/issues/${n}`)) as { state: string } | null;
       const prs = (await gh(`/repos/${SITE.repo}/pulls?state=all&per_page=50&sort=created&direction=desc`)) as { html_url: string; state: string; merged_at: string | null; head: { ref: string }; body: string | null; title: string }[] | null;
       const pr = prs?.find((p) => p.head.ref.includes(`issue-${n}`) || (p.body ?? "").includes(`#${n}`) || p.title.includes(`#${n}`));
+      // a closed issue ends the request whether or not a PR exists — a PR
+      // closed without merge used to leave the request "working" for ever,
+      // and every later request waited in the queue behind it
       let status = "working";
       if (pr?.merged_at) status = "merged";
       else if (pr && pr.state === "open") status = "preview";
-      else if (issue?.state === "closed" && !pr) status = "closed";
+      else if (issue?.state === "closed") status = "closed";
       await db().execute({ sql: "UPDATE code_requests SET status = ?, pr_url = ?, branch = ?, updated_at = ? WHERE id = ?", args: [status, pr?.html_url ?? null, pr?.head.ref ?? null, now(), Number(row.id)] });
     } catch (e) {
       await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), Number(row.id)] });
     }
   }
   // nothing in flight any more? send the oldest waiting request
-  const still = await db().execute({ sql: "SELECT COUNT(*) AS n FROM code_requests WHERE status IN ('open','working','preview')", args: [] });
+  const still = await db().execute({ sql: "SELECT COUNT(*) AS n FROM code_requests WHERE status IN ('open','working','preview') AND created_at > CAST(strftime('%s','now') AS INTEGER) - 10800", args: [] });
   if (Number(still.rows[0]?.n ?? 0) === 0) {
     const nextUp = await db().execute({ sql: "SELECT id FROM code_requests WHERE status = 'queued' AND issue_number IS NULL ORDER BY id LIMIT 1", args: [] });
     if (nextUp.rows[0]) await openIssueFor(Number(nextUp.rows[0].id));
@@ -837,7 +849,7 @@ const SYSTEM = `אתה קלוד — העוזר של המורה באתר "${SITE.
 - כלי שינוי (edit_unit_texts, edit_plenary, edit_opening, edit_writing_practice, reset_unit_edits, publish_unit, set_due_date, cancel_task, republish_task, account_action, send_message, request_code_change) מבצעים מיד, בלי שום אישור — זה צ׳אט רגיל: היא כותבת, אתה עושה, ומספר במשפט-שניים מה בדיוק שונה (ציטוט קצר של הנוסח החדש כשזה טקסט). אל תשאל "האם לבצע?" ואל תציג אפשרויות לבחירה — רק אם הבקשה באמת דו-משמעית, שאל שאלה אחת קצרה. כל שינוי ניתן לביטול עם undo_change כשהיא מבקשת לבטל / להחזיר.
 - לפני עריכת טקסט ביחידה — תמיד get_unit קודם, כדי לערוך את הנוסח הנוכחי ולהשתמש במפתחות (key) הנכונים של השאלות והבלוקים.
 - בדיקת ההבנה (check) נערכת בעמוד המשימה עצמו (״בדיקת ההבנה״ בלוח העריכה) — אם מבקשים לשנות שאלה סגורה, הפנה לשם, או השתמש ב-request_code_change אם זה שינוי מבני.
-- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח.
+- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח.
 - שאלות על "איך עושים X באתר" — ענה ישירות מהידע שלך על האתר (למטה).
 
 סגנון: עברית, חם, קצר ופשוט. בלי Markdown (בלי כוכביות וכותרות); רשימות עם מקפים אם צריך. במבט אחד מבינים. כשמציעים ניסוח חדש — כתוב אותו במלואו. אל תמציא תוכן לימודי שהיא לא ביקשה; כשהיא מבקשת "לשפר" — הצע נוסח והסבר במשפט מה שונה.
