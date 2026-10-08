@@ -28,6 +28,8 @@ export const authConfig = {
       const user = auth?.user;
       // sign-out and the auth handlers must always work
       if (path.startsWith("/api/auth")) return true;
+      // cron routes check their own secret
+      if (path.startsWith("/api/cron")) return true;
 
       const publicPaths = ["/", "/login"];
       const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
