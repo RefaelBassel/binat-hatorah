@@ -25,6 +25,11 @@ interface StudentRow {
   focusExits: number;
   focusAwaySec: number;
   pasteBlocked: number;
+  copyBlocked: number;
+  typingFlag: boolean;
+  rejectedSaves: number;
+  peakCpm: number;
+  typedShare: number | null;
   checkScore: number | null;
 }
 
@@ -320,14 +325,14 @@ function StudentGroup({
                 </span>
                 <span className="flex items-center gap-2">
                   {/* focus detail — teacher-private, never on the board */}
-                  {(s.focusExits > 0 || s.pasteBlocked > 0) && (
+                  {(s.focusExits > 0 || s.pasteBlocked > 0 || s.copyBlocked > 0 || s.typingFlag) && (
                     <span
                       className={
-                        s.focusExits >= 3
+                        s.focusExits >= 3 || s.typingFlag
                           ? "flex items-center gap-1 font-bold text-[color:var(--warning)]"
                           : "flex items-center gap-1"
                       }
-                      title="יציאות מחלון המשימה בשיעור הנוכחי · זמן בחוץ · הדבקות שנחסמו"
+                      title="יציאות מחלון המשימה בשיעור הנוכחי · זמן בחוץ · 📋 הדבקות והכנסות חיצוניות שנחסמו · ✂️ העתקות שאלות שנחסמו · ⌨️ קצב כתיבה לא אנושי"
                     >
                       {s.focusExits >= 3 && (
                         <span className="inline-block h-2 w-2 rounded-full bg-[color:var(--warning)]" />
@@ -335,6 +340,8 @@ function StudentGroup({
                       🎯 {s.focusExits}
                       {s.focusAwaySec >= 60 && ` · ${Math.round(s.focusAwaySec / 60)}ד׳ בחוץ`}
                       {s.pasteBlocked > 0 && ` · 📋 ${s.pasteBlocked}`}
+                      {s.copyBlocked > 0 && ` · ✂️ ${s.copyBlocked}`}
+                      {s.typingFlag && ` · ⌨️ ${s.rejectedSaves > 0 ? `${s.rejectedSaves} נדחו` : "קצב"}`}
                     </span>
                   )}
                   <span>⏱ {Math.round(s.workSeconds / 60)} דק׳</span>

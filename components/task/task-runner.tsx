@@ -88,16 +88,10 @@ interface Props {
   plenary?: PlenaryQuestion | null;
 }
 
+import { useAnswerGuard, GuardNotice, normalizeForPaste, type AnswerGuard } from "./answer-guard";
+
 type MarkKind = "leitwort" | "hard" | "question";
 
-// Paste-guard normalization: nikud, taamim, punctuation and spacing all
-// vanish, so a verse pasted from anywhere still matches the task's own text.
-function normalizeForPaste(s: string): string {
-  return s
-    .replace(/[֑-ׇ]/g, "")
-    .replace(/[^א-תa-zA-Z0-9]/g, "")
-    .toLowerCase();
-}
 
 const MARK_STYLE: Record<string, { bg: string; border: string; label: string; emoji: string }> = {
   leitwort: { bg: "#efe6f3", border: "#413055", label: "מילה מנחה", emoji: "📌" },
@@ -128,6 +122,8 @@ export default function TaskRunner({
   plenary = null,
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
   const [checkResult, setCheckResult] = useState<CheckOutcome | null>(initialCheckResult);
   const hasCheck = Boolean(check && check.length > 0);
   const [markings, setMarkings] = useState<Marking[]>(initialMarkings);
@@ -313,17 +309,22 @@ export default function TaskRunner({
   // Paste guard: short pastes pass; anything longer passes only if it comes
   // from the task's own verses/sources (we ourselves say "העתיקו את הפסוק").
   // External text is blocked with a warm message and counted for the teacher.
-  const [pasteMsg, setPasteMsg] = useState(false);
   const allowedCorpus = useMemo(() => {
     const parts: string[] = [];
-    const addVerses = (vs: { text: string }[]) =>
-      vs.forEach((v) => parts.push(v.text));
+    // verse numbers ride along when a student selects verses on the page
+    const addVerses = (vs: { num?: string; text: string }[]) =>
+      vs.forEach((v) => parts.push(`${v.num ?? ""} ${v.text}`));
+    parts.push(mainPassage.ref);
     addVerses(mainPassage.verses);
     for (const sec of content.sections) {
       for (const b of sec.blocks) {
-        if (b.type === "passage") addVerses(b.verses);
-        if (b.type === "source") parts.push(b.text);
+        if (b.type === "passage") {
+          parts.push(b.ref);
+          addVerses(b.verses);
+        }
+        if (b.type === "source") parts.push(b.title, b.text);
         if (b.type === "question" && (b as QuestionBlock).helpVerses) {
+          parts.push((b as QuestionBlock).helpVerses!.ref);
           addVerses((b as QuestionBlock).helpVerses!.verses);
         }
       }
@@ -331,20 +332,14 @@ export default function TaskRunner({
     return normalizeForPaste(parts.join(" "));
   }, [content, mainPassage]);
 
-  const onGuardedPaste = (e: React.ClipboardEvent) => {
-    if (!trackFocus) return;
-    const target = e.target as HTMLElement;
-    if (target.tagName !== "TEXTAREA" && target.tagName !== "INPUT") return;
-    // the Claude chat panel is a conversation, not an answer field
-    if (target.closest('[data-paste-free="true"]')) return;
-    const text = e.clipboardData?.getData("text") ?? "";
-    if (text.trim().split(/\s+/).length <= 2) return;
-    if (allowedCorpus.includes(normalizeForPaste(text))) return;
-    e.preventDefault();
-    setPasteMsg(true);
-    setTimeout(() => setPasteMsg(false), 4000);
-    reportFocus([{ kind: "paste-blocked" }]);
-  };
+  // the answer guard: paste/drop/injection fences + typing counters; the
+  // server-side pace check lives in lib/typing-guard.ts
+  const guard = useAnswerGuard({
+    active: trackFocus,
+    corpus: allowedCorpus,
+    ownText: () => normalizeForPaste(Object.values(answersRef.current).join(" ")),
+    report: (kind) => reportFocus([{ kind }]),
+  });
   // How to label the student's own messages in the assist chat — first name
   // when we have it, otherwise the dual form (never a gendered guess).
   const meLabel = (studentName ?? "").trim().split(/\s+/)[0] || "את/ה";
@@ -445,18 +440,55 @@ export default function TaskRunner({
   );
 
   // ---------- answers ----------
+  // Every change passes the answer guard (reverts bulk insertions). Saves go
+  // out 800ms after the last keystroke and at least every 3s while typing,
+  // so the server's pace check sees small, frequent deltas. The server may
+  // refuse a save whose pace is not human (409) — then the field goes back
+  // to the last accepted text and the student is told.
   const answerTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const setAnswer = (key: string, value: string) => {
-    setAnswers((a) => ({ ...a, [key]: value }));
+  const answerHardTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const lastSaved = useRef<Record<string, string>>({ ...initialAnswers });
+  const flushAnswer = (key: string) => {
     clearTimeout(answerTimers.current[key]);
-    answerTimers.current[key] = setTimeout(() => {
-      fetch(`/api/tasks/${taskId}/answers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionKey: key, answer: value }),
-      }).catch(() => {});
-      saveState();
-    }, 800);
+    delete answerTimers.current[key];
+    clearTimeout(answerHardTimers.current[key]);
+    delete answerHardTimers.current[key];
+    const value = answersRef.current[key] ?? "";
+    const before = lastSaved.current[key] ?? "";
+    if (value === before) return;
+    const telemetry = guard.takeTelemetry();
+    fetch(`/api/tasks/${taskId}/answers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionKey: key, answer: value, telemetry }),
+    })
+      .then(async (r) => {
+        if (r.status === 409) {
+          const d = await r.json().catch(() => ({}));
+          const back = String(d?.answer ?? before);
+          lastSaved.current[key] = back;
+          setAnswers((a) => ({ ...a, [key]: back }));
+          guard.notify("rate");
+        } else if (r.ok) {
+          lastSaved.current[key] = value;
+        } else {
+          guard.giveBack(telemetry);
+        }
+      })
+      .catch(() => guard.giveBack(telemetry));
+    saveState();
+  };
+  const setAnswer = (key: string, raw: string) => {
+    const prev = answersRef.current[key] ?? "";
+    const value = guard.filterChange(prev, raw);
+    setAnswers((a) => ({ ...a, [key]: value }));
+    if (value === prev) return;
+    answersRef.current = { ...answersRef.current, [key]: value };
+    clearTimeout(answerTimers.current[key]);
+    answerTimers.current[key] = setTimeout(() => flushAnswer(key), 800);
+    if (!answerHardTimers.current[key]) {
+      answerHardTimers.current[key] = setTimeout(() => flushAnswer(key), 3000);
+    }
   };
 
   // ---------- markings ----------
@@ -718,7 +750,7 @@ export default function TaskRunner({
     <div
       className="mx-auto w-full max-w-3xl"
       onClick={() => setMenu(null)}
-      onPaste={onGuardedPaste}
+      {...guard.rootProps}
     >
       {/* focus-mode toasts: warm, once, never shaming */}
       {focusNudge && (
@@ -737,17 +769,7 @@ export default function TaskRunner({
           </button>
         </div>
       )}
-      {pasteMsg && (
-        <div className="fixed bottom-5 left-1/2 z-[70] w-[min(420px,92vw)] -translate-x-1/2 rounded-2xl border border-[color:var(--accent)]/40 bg-[color:var(--card)] px-5 py-3 text-center text-sm shadow-2xl">
-          <p className="font-bold text-[color:var(--primary)]">
-            ✍️ כאן כותבים במילים שלכם
-          </p>
-          <p className="mt-0.5 text-xs text-[color:var(--foreground)]/70">
-            הדבקה מותרת רק לפסוקים ולמקורות מתוך המשימה. במילים שלך — זה
-            בדיוק מה שמעניין את המורה (ואת קלוד 😉).
-          </p>
-        </div>
-      )}
+      <GuardNotice kind={guard.notice} />
 
       {/* ===== sticky status bar: labeled clock, work stopwatch, progress ===== */}
       <div
@@ -979,7 +1001,7 @@ export default function TaskRunner({
           checkPreview={Boolean(canReset)}
           canEditContent={canEditContent}
           editableCheck={editableCheck}
-          onGuardedPaste={onGuardedPaste}
+          guard={guard}
         />
       )}
 
@@ -1487,7 +1509,7 @@ function DecodeStage(props: {
   checkPreview: boolean;
   canEditContent?: boolean;
   editableCheck?: { check: CheckQuestion[]; open: CheckOpenQuestion | null } | null;
-  onGuardedPaste: (e: React.ClipboardEvent) => void;
+  guard: AnswerGuard;
 }) {
   const {
     stage,
@@ -1515,7 +1537,7 @@ function DecodeStage(props: {
     checkPreview,
     canEditContent,
     editableCheck,
-    onGuardedPaste,
+    guard,
   } = props;
   const hasCheck = Boolean(check && check.length > 0);
   const [editingCheck, setEditingCheck] = useState(false);
@@ -1887,7 +1909,7 @@ function DecodeStage(props: {
           readOnly={readOnly}
           preview={checkPreview}
           onResult={setCheckResult}
-          onGuardedPaste={onGuardedPaste}
+          guard={guard}
         />
       </StageCard>
     ) : (
@@ -2040,6 +2062,7 @@ function InteractivePassage({
           compact ? "text-[17px]" : "text-[19px] sm:text-[21px]",
         ].join(" ")}
         style={{ textAlign: "justify", textAlignLast: "right" }}
+        data-copy-free="true"
       >
         {passage.verses.map((verse, vi) => {
           const loc = locs[vi];
@@ -2235,7 +2258,7 @@ function BlockView({
   }
   if (block.type === "source") {
     return (
-      <div className="rounded-2xl border-s-4 border-[color:var(--accent)] bg-[color:var(--card)] p-5 shadow-sm">
+      <div className="rounded-2xl border-s-4 border-[color:var(--accent)] bg-[color:var(--card)] p-5 shadow-sm" data-copy-free="true">
         <p className="mb-2 flex items-center justify-between gap-2 font-bold text-[color:var(--accent)]">
           <span className="font-display text-sm sm:text-base">📜 {block.title}</span>
           {block.sefariaRef && (
@@ -2283,11 +2306,11 @@ function BlockView({
       <p className="mb-1 flex items-center gap-2 text-[11px] font-bold tracking-wide" style={{ color: icon.color }}>
         <span className="text-sm">{icon.emoji}</span> {q.label}
       </p>
-      <p className="mb-3 text-[15px] font-medium leading-7 text-[color:var(--foreground)]">
+      <p className="q-text mb-3 text-[15px] font-medium leading-7 text-[color:var(--foreground)]">
         {q.prompt}
       </p>
       {q.helper && (
-        <p className="mb-2 -mt-1 text-xs text-[color:var(--primary)]/55">💡 {q.helper}</p>
+        <p className="q-text mb-2 -mt-1 text-xs text-[color:var(--primary)]/55">💡 {q.helper}</p>
       )}
       {q.helpVerses && (
         <HelpVerses refText={q.helpVerses.ref} verses={q.helpVerses.verses} />
@@ -2363,7 +2386,7 @@ function HelpVerses({
         📖 {open ? "הסתרת הפסוקים" : `לקריאת הפסוקים — ${refText}`}
       </button>
       {open && (
-        <div className="mt-2 rounded-xl border border-[color:var(--accent)]/25 bg-[color:var(--background)] p-4">
+        <div className="mt-2 rounded-xl border border-[color:var(--accent)]/25 bg-[color:var(--background)] p-4" data-copy-free="true">
           <p className="mb-1.5 text-[11px] font-bold text-[color:var(--accent)]">
             📖 {refText}
           </p>
@@ -2450,7 +2473,7 @@ function FieldArea({
   return (
     <label className="block">
       {label && (
-        <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
+        <span className="q-text mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
           {label}
         </span>
       )}

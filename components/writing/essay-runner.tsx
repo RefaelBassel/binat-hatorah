@@ -1,5 +1,6 @@
 "use client";
 
+import { useAnswerGuard, GuardNotice, normalizeForPaste } from "@/components/task/answer-guard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EssayExercise } from "@/content/writing/essays";
 import { ESSAY_STEP_MINUTES, ESSAY_WORD_COUNT } from "@/content/writing/essays";
@@ -36,10 +37,22 @@ const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "
 
 export default function EssayRunner({ taskId, exercise, sections, initialAnswers, submitted: initialSubmitted, dueAt, studentName, readOnly }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const locked = submitted || readOnly;
+  // the answer guard: the source text may be quoted, everything else is typed
+  const sourceCorpus = useMemo(
+    () => normalizeForPaste([exercise.source.title, exercise.source.byline, ...exercise.source.paragraphs].join(" ")),
+    [exercise]
+  );
+  const guard = useAnswerGuard({
+    active: !locked,
+    corpus: sourceCorpus,
+    ownText: () => normalizeForPaste(Object.values(answersRef.current).join(" ")),
+  });
 
   // ---- the answer keys, in order, and progress ----
   const keys = useMemo(() => {
@@ -66,7 +79,6 @@ export default function EssayRunner({ taskId, exercise, sections, initialAnswers
   const stepDone = (step: string) => keys.filter((k) => k.step === step).every((k) => isDone(k.key));
 
   // ---- persistence: answers (debounced), stage 8 + percentage, heartbeat ----
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const saveState = useCallback(
     (p: number) => {
       if (readOnly) return;
@@ -82,26 +94,56 @@ export default function EssayRunner({ taskId, exercise, sections, initialAnswers
     saveState(pct);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const setAnswer = (key: string, value: string) => {
-    if (locked) return;
-    setAnswers((a) => ({ ...a, [key]: value }));
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const hardTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const lastSaved = useRef<Record<string, string>>({ ...initialAnswers });
+  const flushAnswer = (key: string) => {
     clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(() => {
-      fetch(`/api/tasks/${taskId}/answers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionKey: key, answer: value }),
+    delete timers.current[key];
+    clearTimeout(hardTimers.current[key]);
+    delete hardTimers.current[key];
+    const value = answersRef.current[key] ?? "";
+    const before = lastSaved.current[key] ?? "";
+    if (value === before) return;
+    const telemetry = guard.takeTelemetry();
+    fetch(`/api/tasks/${taskId}/answers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionKey: key, answer: value, telemetry }),
+    })
+      .then(async (r) => {
+        if (r.status === 409) {
+          const d = await r.json().catch(() => ({}));
+          const back = String(d?.answer ?? before);
+          lastSaved.current[key] = back;
+          setAnswers((a) => ({ ...a, [key]: back }));
+          guard.notify("rate");
+          return;
+        }
+        if (!r.ok) {
+          guard.giveBack(telemetry);
+          return;
+        }
+        lastSaved.current[key] = value;
+        const next = { ...answersRef.current, [key]: value };
+        const d = keys.filter((k) => {
+          const v = (next[k.key] ?? "").trim();
+          return k.key === essayKey ? ESSAY_WORD_COUNT(v) >= exercise.minWords : v.length >= 3;
+        }).length;
+        saveState(Math.round((100 * d) / Math.max(1, keys.length)));
       })
-        .then(() => {
-          const next = { ...answers, [key]: value };
-          const d = keys.filter((k) => {
-            const v = (next[k.key] ?? "").trim();
-            return k.key === essayKey ? ESSAY_WORD_COUNT(v) >= exercise.minWords : v.length >= 3;
-          }).length;
-          saveState(Math.round((100 * d) / Math.max(1, keys.length)));
-        })
-        .catch(() => {});
-    }, 800);
+      .catch(() => guard.giveBack(telemetry));
+  };
+  const setAnswer = (key: string, raw: string) => {
+    if (locked) return;
+    const prev = answersRef.current[key] ?? "";
+    const value = guard.filterChange(prev, raw);
+    setAnswers((a) => ({ ...a, [key]: value }));
+    if (value === prev) return;
+    answersRef.current = { ...answersRef.current, [key]: value };
+    clearTimeout(timers.current[key]);
+    timers.current[key] = setTimeout(() => flushAnswer(key), 800);
+    if (!hardTimers.current[key]) hardTimers.current[key] = setTimeout(() => flushAnswer(key), 3000);
   };
 
   // the work stopwatch: counts while the window is visible, beats every 20s
@@ -208,7 +250,8 @@ ${mine}`,
   const keysOf = (step: string) => keys.filter((k) => k.step === step);
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6" dir="rtl" {...guard.rootProps}>
+      <GuardNotice kind={guard.notice} />
       {/* ---- the pace bar: steps, timer, progress ---- */}
       <div className="sticky top-[57px] z-20 -mx-4 border-b border-[color:var(--border)] px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6" style={{ background: "color-mix(in srgb, var(--card) 92%, transparent)" }}>
         <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -248,12 +291,12 @@ ${mine}`,
       {/* ---- 1. the text ---- */}
       <section id="step-read" className="scroll-mt-28 rounded-3xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 sm:p-7">
         <StepHead step={STEPS[0]} />
-        <p className="mb-4 rounded-xl bg-[color:var(--accent)]/10 px-4 py-3 text-sm leading-6 text-[color:var(--foreground)]/85">
+        <p className="q-text mb-4 rounded-xl bg-[color:var(--accent)]/10 px-4 py-3 text-sm leading-6 text-[color:var(--foreground)]/85">
           ❓ <b>השאלה שתצטרכו לענות עליה בסוף:</b> {exercise.question}
           <br />
           <span className="text-[color:var(--foreground)]/65">בזמן הקריאה שימו לב: מה הכותב/ת רוצה לשכנע אתכם, ובמה.</span>
         </p>
-        <article className="rounded-2xl bg-[color:var(--background)] px-5 py-5 sm:px-8 sm:py-7">
+        <article className="rounded-2xl bg-[color:var(--background)] px-5 py-5 sm:px-8 sm:py-7" data-copy-free="true">
           <h2 className="font-display text-2xl font-extrabold leading-snug text-[color:var(--primary)]">{exercise.source.title}</h2>
           <p className="mb-5 mt-1 text-xs text-[color:var(--primary)]/55">{exercise.source.byline}</p>
           <div className="space-y-4 text-[17px] leading-8 text-[color:var(--foreground)]/90">

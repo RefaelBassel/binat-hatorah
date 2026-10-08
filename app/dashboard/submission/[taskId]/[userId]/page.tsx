@@ -1,3 +1,4 @@
+import { typingStatsFor, EMPTY_TYPING, typedShare } from "@/lib/typing-guard";
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import PageShell from "@/components/page-shell";
@@ -57,7 +58,11 @@ export default async function SubmissionPage({
   const markings = await getMarkings(taskId, studentId);
   const progress = await getProgress(taskId, studentId);
   const focusMap = await focusStatsFor(taskId);
-  const focus = focusMap.get(studentId) ?? { exits: 0, awayMs: 0, pasteBlocked: 0 };
+  const focus = focusMap.get(studentId) ?? { exits: 0, awayMs: 0, pasteBlocked: 0, copyBlocked: 0 };
+  const typing = (await typingStatsFor(taskId)).get(studentId) ?? EMPTY_TYPING;
+  const blockedInserts = focus.pasteBlocked + typing.blockedInserts;
+  const typingSuspect = typing.flagged || typing.rejectedSaves > 0;
+  const share = typedShare(typing);
 
   // Teacher rescue: return a submitted task to the student for revision —
   // works even after the deadline (the student-side unsubmit does not).
@@ -211,7 +216,7 @@ export default async function SubmissionPage({
         </section>
 
         {/* focus picture — context for the teacher, never an automatic verdict */}
-        {(focus.exits > 0 || focus.pasteBlocked > 0) && (
+        {(focus.exits > 0 || blockedInserts > 0 || focus.copyBlocked > 0 || typingSuspect) && (
           <div className="mb-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
             <p className="text-sm font-bold text-[color:var(--primary)]">
               🎯 תמונת מיקוד (לאורך כל העבודה על המשימה)
@@ -220,9 +225,28 @@ export default async function SubmissionPage({
               {focus.exits} יציאות מחלון המשימה
               {focus.awayMs >= 60000 &&
                 ` · כ-${Math.round(focus.awayMs / 60000)} דקות מחוץ לחלון`}
-              {focus.pasteBlocked > 0 &&
-                ` · ${focus.pasteBlocked} ניסיונות הדבקה חיצונית נחסמו`}
+              {blockedInserts > 0 &&
+                ` · ${blockedInserts} ניסיונות הדבקה או הכנסה חיצונית נחסמו`}
+              {focus.copyBlocked > 0 &&
+                ` · ${focus.copyBlocked} ניסיונות להעתיק את השאלות נחסמו`}
             </p>
+            {(typingSuspect || share != null) && (
+              <p
+                className={
+                  typingSuspect
+                    ? "mt-2 rounded-xl border border-[color:var(--warning)]/50 bg-[color:var(--warning)]/10 px-3 py-2 text-sm font-bold text-[color:var(--warning)]"
+                    : "mt-1 text-sm text-[color:var(--foreground)]/75"
+                }
+              >
+                ⌨️ איך נכתב הטקסט:
+                {share != null && ` ${share}% הוקלד תו־תו`}
+                {typing.rejectedSaves > 0 &&
+                  ` · ${typing.rejectedSaves} שמירות נדחו — טקסט שנוסף מהר ממה שאדם מקליד`}
+                {typing.flagged && typing.rejectedSaves === 0 && " · קצב כתיבה גבוה מהרגיל"}
+                {typing.peakCpm > 0 && ` · שיא: ${typing.peakCpm} תווים בדקה`}
+                {typing.allowedChars > 0 && ` · ${typing.allowedChars} תווים הודבקו מהפסוקים/המקורות`}
+              </p>
+            )}
             <p className="mt-1 text-[11px] text-[color:var(--primary)]/50">
               נתון רקע לשיקול דעת ולשיחה — יציאה יכולה להיות גם התראת מערכת או
               מעבר תמים. אין לכך השפעה אוטומטית על הציון.

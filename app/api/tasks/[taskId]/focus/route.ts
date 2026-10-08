@@ -19,10 +19,10 @@ export async function POST(
     ? body.events
         .filter(
           (e: { kind?: string }) =>
-            e?.kind === "blur" || e?.kind === "paste-blocked"
+            e?.kind === "blur" || e?.kind === "paste-blocked" || e?.kind === "copy-blocked"
         )
         .map((e: { kind: string; awayMs?: unknown }) => ({
-          kind: e.kind as "blur" | "paste-blocked",
+          kind: e.kind as "blur" | "paste-blocked" | "copy-blocked",
           awayMs: Number(e.awayMs) || 0,
         }))
     : [];

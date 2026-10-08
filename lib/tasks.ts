@@ -322,7 +322,7 @@ export async function ensureFocusTable() {
 export async function recordFocusEvents(
   taskId: number,
   userId: number,
-  events: { kind: "blur" | "paste-blocked"; awayMs?: number }[]
+  events: { kind: "blur" | "paste-blocked" | "copy-blocked"; awayMs?: number }[]
 ) {
   await ensureFocusTable();
   const t = now();
@@ -333,7 +333,7 @@ export async function recordFocusEvents(
       args: [
         taskId,
         userId,
-        e.kind === "paste-blocked" ? "paste-blocked" : "blur",
+        e.kind === "paste-blocked" || e.kind === "copy-blocked" ? e.kind : "blur",
         e.kind === "blur" ? Math.min(Math.max(0, Math.round(e.awayMs ?? 0)), 3600_000) : null,
         t,
       ],
@@ -345,6 +345,7 @@ export interface FocusStats {
   exits: number;
   awayMs: number;
   pasteBlocked: number;
+  copyBlocked: number;
 }
 
 // Per-student focus stats for one task, optionally windowed (e.g., the
@@ -364,10 +365,12 @@ export async function focusStatsFor(
   const map = new Map<number, FocusStats>();
   for (const r of res.rows) {
     const uid = Number(r.user_id);
-    const stats = map.get(uid) ?? { exits: 0, awayMs: 0, pasteBlocked: 0 };
+    const stats = map.get(uid) ?? { exits: 0, awayMs: 0, pasteBlocked: 0, copyBlocked: 0 };
     if (String(r.kind) === "blur") {
       stats.exits = Number(r.n);
       stats.awayMs = Number(r.away);
+    } else if (String(r.kind) === "copy-blocked") {
+      stats.copyBlocked = Number(r.n);
     } else {
       stats.pasteBlocked = Number(r.n);
     }

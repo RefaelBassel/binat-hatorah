@@ -1,5 +1,6 @@
 "use client";
 
+import type { AnswerGuard } from "./answer-guard";
 import { useState } from "react";
 import type { CheckOpenQuestion } from "@/content/tasks/types";
 import type { CheckOutcome, PublicCheckQuestion } from "@/lib/check";
@@ -20,7 +21,7 @@ export default function ComprehensionCheck({
   readOnly,
   preview,
   onResult,
-  onGuardedPaste,
+  guard,
 }: {
   taskId: number;
   questions: PublicCheckQuestion[];
@@ -29,7 +30,7 @@ export default function ComprehensionCheck({
   readOnly: boolean;
   preview: boolean;
   onResult: (o: CheckOutcome) => void;
-  onGuardedPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
+  guard?: AnswerGuard;
 }) {
   const [given, setGiven] = useState<Given>({});
   const [openAnswer, setOpenAnswer] = useState("");
@@ -125,7 +126,7 @@ export default function ComprehensionCheck({
                 </span>
               )}
             </div>
-            <p className="mb-3 text-sm font-semibold leading-7 text-[color:var(--foreground)]">
+            <p className="q-text mb-3 text-sm font-semibold leading-7 text-[color:var(--foreground)]">
               {q.prompt}
             </p>
             {q.kind === "order" ? (
@@ -174,11 +175,13 @@ export default function ComprehensionCheck({
           <p className="mb-1 text-xs font-bold text-[color:var(--primary)]/60">
             שאלה פתוחה · לגיוון — לא נכנסת למספר
           </p>
-          <p className="mb-2 text-sm font-semibold leading-7">{open.prompt}</p>
+          <p className="q-text mb-2 text-sm font-semibold leading-7">{open.prompt}</p>
           <textarea
             value={openAnswer}
-            onChange={(e) => setOpenAnswer(e.target.value)}
-            onPaste={onGuardedPaste}
+            onChange={(e) => {
+              const next = e.target.value;
+              setOpenAnswer((prev) => (guard ? guard.filterChange(prev, next) : next));
+            }}
             disabled={locked}
             rows={2}
             placeholder="במילים שלכם…"
