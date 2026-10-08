@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { MISSION_WORD_COUNT } from "@/content/tasks/lesson-05";
 
 export type StudentTaskStatus =
   | "not_started" // טרם נלמדה (teacher-only label)
@@ -190,7 +191,66 @@ export async function getAnswers(taskId: number, userId: number) {
   return map;
 }
 
+// Word markings are stored by word index within the passage, so verses added
+// to the START of a main passage would leave saved markings on the wrong
+// words. Each entry shifts that passage's existing markings once (tracked in
+// _migrations, like scripts/migrate.mjs); applied lazily so production needs
+// no manual run. The shift exceeds the old passage length, so no
+// shifted index can collide with an unshifted one.
+const PASSAGE_SHIFTS = [
+  // issue #9: lesson-05 now starts at במדבר יג, א instead of יג, כה
+  {
+    name: "data:lesson-05-main-from-13-1",
+    contentRef: "lesson-05",
+    passageKey: "main",
+    shift: MISSION_WORD_COUNT,
+  },
+];
+
+let shiftsReady = false;
+export async function ensurePassageShifts() {
+  if (shiftsReady) return;
+  await db().execute(
+    "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)"
+  );
+  const applied = await db().execute({
+    sql: `SELECT name FROM _migrations WHERE name IN (${PASSAGE_SHIFTS.map(() => "?").join(", ")})`,
+    args: PASSAGE_SHIFTS.map((s) => s.name),
+  });
+  const done = new Set(applied.rows.map((r) => String(r.name)));
+  for (const s of PASSAGE_SHIFTS) {
+    if (done.has(s.name)) continue;
+    try {
+      // one transaction: a concurrent request fails on the _migrations
+      // primary key and rolls back, so the shift happens exactly once
+      await db().batch(
+        [
+          {
+            sql: "INSERT INTO _migrations (name, applied_at) VALUES (?, ?)",
+            args: [s.name, now()],
+          },
+          {
+            sql: `UPDATE text_markings SET word_index = word_index + ?
+                  WHERE passage_key = ?
+                    AND task_id IN (SELECT id FROM tasks WHERE content_ref = ?)`,
+            args: [s.shift, s.passageKey, s.contentRef],
+          },
+        ],
+        "write"
+      );
+    } catch (e) {
+      const again = await db().execute({
+        sql: "SELECT 1 FROM _migrations WHERE name = ?",
+        args: [s.name],
+      });
+      if (again.rows.length === 0) throw e;
+    }
+  }
+  shiftsReady = true;
+}
+
 export async function getMarkings(taskId: number, userId: number) {
+  await ensurePassageShifts();
   const res = await db().execute({
     sql: `SELECT passage_key, word_index, word_text, kind, note
           FROM text_markings WHERE task_id = ? AND user_id = ?`,

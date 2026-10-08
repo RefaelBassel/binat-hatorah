@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireStudentTask } from "@/lib/api-auth";
-import { now } from "@/lib/tasks";
+import { ensurePassageShifts, now } from "@/lib/tasks";
 
 const KINDS = new Set(["leitwort", "hard", "parallel", "question"]);
 
@@ -26,6 +26,8 @@ export async function POST(
     return NextResponse.json({ error: "בקשה לא תקינה." }, { status: 400 });
   }
 
+  // shift old markings before writing new-index ones (never mix the two)
+  await ensurePassageShifts();
   if (remove) {
     await db().execute({
       sql: `DELETE FROM text_markings
