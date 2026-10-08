@@ -55,7 +55,9 @@ export const STATUS_META: Record<
 
 export async function tasksForStudent(userId: number, allPublished = false) {
   // allPublished: teacher in "מצב תלמיד" — sees every published task as if
-  // assigned, with her own progress rows.
+  // assigned, with her own progress rows (cancelled tasks excluded, as for
+  // students, whose assignments are deleted on cancel).
+  if (allPublished) await ensureCancellationsTable();
   const res = await db().execute({
     sql: allPublished
       ? `SELECT t.id, t.content_ref, t.title, t.published_at, t.due_at,
@@ -65,6 +67,7 @@ export async function tasksForStudent(userId: number, allPublished = false) {
          LEFT JOIN task_progress p ON p.task_id = t.id AND p.user_id = ?
          LEFT JOIN grades g ON g.task_id = t.id AND g.user_id = ?
          WHERE t.published_at <= ?
+           AND NOT EXISTS (SELECT 1 FROM task_cancellations c WHERE c.task_id = t.id)
          ORDER BY t.due_at ASC`
       : `SELECT t.id, t.content_ref, t.title, t.published_at, t.due_at,
                 p.opened_at, p.work_seconds, p.progress_pct, p.stage, p.submitted_at,
@@ -292,6 +295,66 @@ export async function updateTaskDueDate(taskId: number, dueAt: number) {
     sql: "UPDATE tasks SET due_at = ? WHERE id = ?",
     args: [dueAt, taskId],
   });
+}
+
+// ---------- publishing: at most one active task per content ref ----------
+
+export type PublishResult =
+  | { status: "created" | "republished"; taskId: number }
+  | { status: "exists"; taskId: number; dueAt: number };
+
+const ACTIVE_TASK_FOR_REF = `SELECT id, due_at FROM tasks t WHERE t.content_ref = ?
+  AND NOT EXISTS (SELECT 1 FROM task_cancellations c WHERE c.task_id = t.id)
+  ORDER BY t.id ASC LIMIT 1`;
+
+// Publish a unit to the whole class without ever creating a second active
+// copy (repeated clicks once produced 7 identical tasks). An active task for
+// the ref is reported back untouched; a cancelled one is re-assigned with the
+// new due date; only otherwise is a new row inserted — and the insert itself
+// re-checks inside one statement, so concurrent requests cannot both create.
+export async function publishTaskForClass(
+  contentRef: string,
+  title: string,
+  dueAt: number,
+  teacherId: number
+): Promise<PublishResult> {
+  await ensureCancellationsTable();
+  const active = await db().execute({ sql: ACTIVE_TASK_FOR_REF, args: [contentRef] });
+  if (active.rows[0]) {
+    return {
+      status: "exists",
+      taskId: Number(active.rows[0].id),
+      dueAt: Number(active.rows[0].due_at),
+    };
+  }
+
+  const cancelled = await db().execute({
+    sql: "SELECT id FROM tasks WHERE content_ref = ? ORDER BY id DESC LIMIT 1",
+    args: [contentRef],
+  });
+  if (cancelled.rows[0]) {
+    const taskId = Number(cancelled.rows[0].id);
+    await updateTaskDueDate(taskId, dueAt);
+    await republishTask(taskId);
+    return { status: "republished", taskId };
+  }
+
+  const t = now();
+  const res = await db().execute({
+    sql: `INSERT INTO tasks (content_ref, title, published_at, due_at, created_by, created_at)
+          SELECT ?, ?, ?, ?, ?, ?
+          WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE content_ref = ?)`,
+    args: [contentRef, title, t, dueAt, teacherId, t, contentRef],
+  });
+  if (res.rowsAffected === 0) {
+    // another request published it a moment ago
+    const again = await db().execute({ sql: ACTIVE_TASK_FOR_REF, args: [contentRef] });
+    if (!again.rows[0]) throw new Error("publish race: no active task found");
+    return { status: "exists", taskId: Number(again.rows[0].id), dueAt: Number(again.rows[0].due_at) };
+  }
+  const taskId = Number(res.lastInsertRowid);
+  await republishTask(taskId); // assigns every onboarded student
+  return { status: "created", taskId };
 }
 
 // ---------- focus mode (מצב מיקוד) ----------

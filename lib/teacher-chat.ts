@@ -15,7 +15,7 @@ import {
   type WorksheetEdits,
   type WritingEdits,
 } from "./content-overrides";
-import { allTasksWithStats, cancelTaskAssignment, getTask, now, republishTask, taskRoster, updateTaskDueDate } from "./tasks";
+import { allTasksWithStats, cancelTaskAssignment, getTask, now, publishTaskForClass, republishTask, taskRoster, updateTaskDueDate } from "./tasks";
 import { approveUser, blockUser, listAccounts, preApproveEmail, unblockUser } from "./approval";
 import { sendGroupMessage, sendMessage } from "./messages";
 import { formatHebDate, formatHebTime, israelWallTimeToUnix } from "./hebrew";
@@ -247,32 +247,17 @@ async function unitSnapshot(ref: string) {
 }
 
 // publish like the dashboard does: a task row + an assignment per student
-async function publishUnit(contentRef: string, dueAt: number, teacherId: number): Promise<number> {
+// — never a second active copy: an already-active task only gets the new due date
+async function publishUnit(contentRef: string, dueAt: number, teacherId: number): Promise<{ taskId: number; previousDueAt: number | null }> {
   const reg = TASK_REGISTRY[contentRef];
   if (!reg) throw new Error("היחידה לא נמצאה");
-  const existing = await db().execute({ sql: "SELECT id FROM tasks WHERE content_ref = ? ORDER BY id DESC LIMIT 1", args: [contentRef] });
-  const t = now();
-  let taskId: number;
-  if (existing.rows[0]) {
-    taskId = Number(existing.rows[0].id);
-    await republishTask(taskId);
-    await updateTaskDueDate(taskId, dueAt);
-  } else {
-    const content = await effectiveContent(reg.content);
-    const res = await db().execute({
-      sql: "INSERT INTO tasks (content_ref, title, published_at, due_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      args: [contentRef, content.title, t, dueAt, teacherId, t],
-    });
-    taskId = Number(res.lastInsertRowid);
+  const content = await effectiveContent(reg.content);
+  const res = await publishTaskForClass(contentRef, content.title, dueAt, teacherId);
+  if (res.status === "exists") {
+    await updateTaskDueDate(res.taskId, dueAt);
+    return { taskId: res.taskId, previousDueAt: res.dueAt };
   }
-  const students = await db().execute({
-    sql: "SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL AND approved_at IS NOT NULL AND blocked_at IS NULL",
-    args: [],
-  });
-  for (const r of students.rows) {
-    await db().execute({ sql: "INSERT OR IGNORE INTO task_assignments (task_id, user_id, assigned_at) VALUES (?, ?, ?)", args: [taskId, Number(r.id), t] });
-  }
-  return taskId;
+  return { taskId: res.taskId, previousDueAt: null };
 }
 
 // --------------------------------------------------------------- tools ----
@@ -612,8 +597,9 @@ export async function applyAction(actionId: number, userId: number): Promise<Act
       }
       case "publish_unit": {
         const dueTime = /^\d{2}:\d{2}$/.test(str(input.dueTime, 5)) ? str(input.dueTime, 5) : "23:59";
-        const taskId = await publishUnit(str(input.ref, 80), israelWallTimeToUnix(str(input.dueDate, 10), dueTime), userId);
-        undo = { cancelTaskId: taskId };
+        const { taskId, previousDueAt } = await publishUnit(str(input.ref, 80), israelWallTimeToUnix(str(input.dueDate, 10), dueTime), userId);
+        // already active → only the due date changed, so undo restores it
+        undo = previousDueAt == null ? { cancelTaskId: taskId } : { taskId, dueAt: previousDueAt };
         result = { taskId };
         break;
       }
@@ -706,7 +692,8 @@ export async function undoAction(actionId: number, userId: number): Promise<Acti
       break;
     case "publish_unit":
     case "republish_task":
-      await cancelTaskAssignment(Number(undo.cancelTaskId));
+      if (undo.cancelTaskId != null) await cancelTaskAssignment(Number(undo.cancelTaskId));
+      else await updateTaskDueDate(Number(undo.taskId), Number(undo.dueAt));
       break;
     case "cancel_task":
       await republishTask(Number(undo.republishTaskId));
