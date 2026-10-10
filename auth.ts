@@ -41,7 +41,9 @@ const devProvider = Credentials({
 // (which runs in Edge runtime). Middleware uses `auth.config.ts` only.
 export const { handlers, auth, signIn, signOut, unstable_update: updateSession } = NextAuth({
   ...authConfig,
-  providers: [...authConfig.providers, devProvider],
+  // the dev provider is not even registered in production (it would refuse
+  // every attempt anyway, but it should not be listed there at all)
+  providers: [...authConfig.providers, ...(process.env.NODE_ENV === "production" ? [] : [devProvider])],
   logger: {
     error(error) {
       console.error("[next-auth] error:", error);
