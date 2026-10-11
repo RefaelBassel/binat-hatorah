@@ -896,7 +896,7 @@ async function loadRepairedHistory(userId: number, thread: number): Promise<Anth
 
 // how long one turn may keep calling the model; the route's maxDuration is
 // longer, so the turn always ends with a saved answer rather than a kill
-const TURN_BUDGET_MS = 200_000;
+const TURN_BUDGET_MS = 700_000;
 
 export async function chatTurn(userId: number, teacherName: string | null, text: string): Promise<ChatTurnResult> {
   await ensureChatTables();

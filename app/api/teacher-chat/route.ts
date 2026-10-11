@@ -9,7 +9,8 @@ import { applyAction, chatTurn, dismissAction, loadChat, newThread, refreshCodeR
 // POST { text }                       → one turn (Claude may propose actions)
 // POST { newThread: true }            → start a fresh conversation
 // POST { action: id, do: "apply" | "dismiss" | "undo" }
-export const maxDuration = 300;
+// Vercel Pro maximum (Fluid compute); the turn itself stops at TURN_BUDGET_MS
+export const maxDuration = 800;
 
 export async function GET(req: Request) {
   const guard = await requireTeacher();
