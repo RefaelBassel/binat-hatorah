@@ -853,13 +853,57 @@ export interface ChatTurnResult {
   messages: ChatMessageRow[];
 }
 
+// A thread stored with a tool call but no result (the function died
+// mid-turn) made every later request fail with 400 ("tool_use ids found
+// without tool_result"). History is repaired while loading: such calls are
+// stripped from the stored message, results whose call is gone are dropped.
+async function loadRepairedHistory(userId: number, thread: number): Promise<Anthropic.MessageParam[]> {
+  const rows = (await db().execute({ sql: "SELECT id, role, content_json FROM teacher_chat_messages WHERE user_id = ? AND thread = ? ORDER BY id", args: [userId, thread] })).rows;
+  const parsed = rows.map((r) => ({ id: Number(r.id), role: String(r.role) as "user" | "assistant", content: JSON.parse(String(r.content_json)) as Anthropic.ContentBlockParam[] | string }));
+  const out: Anthropic.MessageParam[] = [];
+  for (let i = 0; i < parsed.length; i++) {
+    const m = parsed[i];
+    let content: Anthropic.ContentBlockParam[] = Array.isArray(m.content) ? m.content : [{ type: "text", text: String(m.content) }];
+    if (m.role === "assistant") {
+      const calls = content.filter((b) => b.type === "tool_use").map((b) => (b as Anthropic.ToolUseBlockParam).id);
+      if (calls.length) {
+        const next = parsed[i + 1];
+        const answered = new Set(
+          next && next.role === "user" && Array.isArray(next.content)
+            ? next.content.filter((b) => b.type === "tool_result").map((b) => (b as Anthropic.ToolResultBlockParam).tool_use_id)
+            : []
+        );
+        if (calls.some((id) => !answered.has(id))) {
+          content = content.filter((b) => b.type !== "tool_use");
+          if (!content.some((b) => b.type === "text")) content = [...content, { type: "text", text: "(הפעולה נקטעה באמצע)" }];
+          await db().execute({ sql: "UPDATE teacher_chat_messages SET content_json = ? WHERE id = ?", args: [JSON.stringify(content), m.id] });
+        }
+      }
+    } else {
+      const prev = out[out.length - 1];
+      const open = new Set(
+        prev && prev.role === "assistant" && Array.isArray(prev.content)
+          ? prev.content.filter((b) => b.type === "tool_use").map((b) => (b as Anthropic.ToolUseBlockParam).id)
+          : []
+      );
+      content = content.filter((b) => b.type !== "tool_result" || open.has((b as Anthropic.ToolResultBlockParam).tool_use_id));
+      if (content.length === 0) continue;
+    }
+    out.push({ role: m.role, content });
+  }
+  return out;
+}
+
+// how long one turn may keep calling the model; the route's maxDuration is
+// longer, so the turn always ends with a saved answer rather than a kill
+const TURN_BUDGET_MS = 200_000;
+
 export async function chatTurn(userId: number, teacherName: string | null, text: string): Promise<ChatTurnResult> {
   await ensureChatTables();
   const apiKey = getAnthropicApiKey();
   if (!apiKey) throw new Error("מפתח Claude לא מוגדר");
   const thread = await currentThread(userId);
-  const history = await db().execute({ sql: "SELECT role, content_json FROM teacher_chat_messages WHERE user_id = ? AND thread = ? ORDER BY id", args: [userId, thread] });
-  const messages: Anthropic.MessageParam[] = history.rows.map((r) => ({ role: String(r.role) as "user" | "assistant", content: JSON.parse(String(r.content_json)) }));
+  const messages = await loadRepairedHistory(userId, thread);
   const stamp = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "full", timeStyle: "short" }).format(new Date());
   const userContent: Anthropic.ContentBlockParam[] = [{ type: "text", text: `[${stamp}${teacherName ? ` · ${teacherName}` : ""}]\n${text}` }];
   messages.push({ role: "user", content: userContent });
@@ -868,27 +912,35 @@ export async function chatTurn(userId: number, teacherName: string | null, text:
   };
   await save("user", userContent);
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 });
   const newActions: ActionRow[] = [];
   let reply = "";
+  const startedAt = Date.now();
   for (let i = 0; i < 10; i++) {
-    const res = await client.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 6000,
-      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-      tools: TOOLS,
-      messages,
-    });
-    messages.push({ role: "assistant", content: res.content });
-    await save("assistant", res.content);
-    const texts = res.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text);
-    if (texts.length) reply = texts.join("\n").trim();
-    if (res.stop_reason === "refusal") {
-      reply = reply || "לא אוכל לעזור בבקשה הזאת.";
+    if (Date.now() - startedAt > TURN_BUDGET_MS) {
+      reply = (reply ? reply + "\n\n" : "") + "עצרתי כאן כי הפעולה ארוכה — כתבי ״המשך״ ואמשיך מאותה נקודה.";
+      await save("assistant", [{ type: "text", text: reply }]);
       break;
     }
+    const res = await client.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 6000,
+        system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+        tools: TOOLS,
+        messages,
+      });
+    const texts = res.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text);
+    if (texts.length) reply = texts.join("\n").trim();
     const uses = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
-    if (uses.length === 0 || res.stop_reason === "end_turn" || res.stop_reason === "max_tokens") break;
+    const finished = res.stop_reason === "refusal" || uses.length === 0 || res.stop_reason === "end_turn" || res.stop_reason === "max_tokens";
+    if (finished) {
+      if (res.stop_reason === "refusal") reply = reply || "לא אוכל לעזור בבקשה הזאת.";
+      // never store a tool call that will get no result
+      const kept = res.content.filter((b) => b.type !== "tool_use");
+      await save("assistant", kept.some((b) => b.type === "text") ? kept : [...kept, { type: "text", text: reply || "(ללא תשובה)" }]);
+      break;
+    }
+    messages.push({ role: "assistant", content: res.content });
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const u of uses) {
       const input = (u.input ?? {}) as Record<string, unknown>;
@@ -933,6 +985,8 @@ export async function chatTurn(userId: number, teacherName: string | null, text:
       results.push({ type: "tool_result", tool_use_id: u.id, content: compact(out).slice(0, 60000) });
     }
     messages.push({ role: "user", content: results });
+    // the call and its results are stored together, never one without the other
+    await save("assistant", res.content);
     await save("user", results);
   }
   const all = await loadChat(userId);

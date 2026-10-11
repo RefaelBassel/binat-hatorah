@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/auth";
 import { requireTeacher } from "@/lib/api-auth";
 import { applyAction, chatTurn, dismissAction, loadChat, newThread, refreshCodeRequests, undoAction } from "@/lib/teacher-chat";
@@ -8,7 +9,7 @@ import { applyAction, chatTurn, dismissAction, loadChat, newThread, refreshCodeR
 // POST { text }                       → one turn (Claude may propose actions)
 // POST { newThread: true }            → start a fresh conversation
 // POST { action: id, do: "apply" | "dismiss" | "undo" }
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   const guard = await requireTeacher();
@@ -45,6 +46,13 @@ export async function POST(req: Request) {
     const result = await chatTurn(guard.userId, session?.user?.fullName ?? null, text);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "משהו השתבש" }, { status: 500 });
+    console.error("[teacher-chat] turn failed", e);
+    const status = e instanceof Anthropic.APIError ? e.status : undefined;
+    const msg = status
+      ? `השירות של Claude החזיר שגיאה (${status}). נסי שוב בעוד רגע; אם זה חוזר, פתחי שיחה חדשה.`
+      : e instanceof Error
+        ? e.message
+        : "משהו השתבש";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
