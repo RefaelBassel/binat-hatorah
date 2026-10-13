@@ -85,6 +85,11 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
             sql: "UPDATE users SET google_id = ?, role = ?, last_seen_at = ? WHERE email = ?",
             args: [googleId, role, now, email],
           });
+          // a merged secondary email: the student is seen on the primary account
+          await db().execute({
+            sql: "UPDATE users SET last_seen_at = ? WHERE id = (SELECT merged_into FROM users WHERE email = ?)",
+            args: [now, email],
+          });
         }
       } catch (err) {
         console.error("[auth.signIn] DB sync failed:", err);
@@ -101,26 +106,21 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         token.blocked = true;
         return token;
       }
-      // On first sign-in (user present), load our internal row.
+      // On first sign-in (user present), load our internal row — for a
+      // merged secondary email, the primary account it was merged into.
       if (user?.email) {
         token.email = user.email.toLowerCase();
         try {
-          const { ensureApprovalColumns } = await import("@/lib/approval");
-          await ensureApprovalColumns();
-          const row = await db().execute({
-            sql: "SELECT id, role, full_name, address_form, onboarded_at, approved_at, blocked_at FROM users WHERE email = ?",
-            args: [user.email.toLowerCase()],
-          });
-          const r = row.rows[0];
+          const { resolveAccount } = await import("@/lib/approval");
+          const r = await resolveAccount(user.email);
           if (r) {
-            token.userId = r.id as number;
-            token.role = r.role as string;
-            token.fullName = (r.full_name as string | null) ?? null;
-            token.addressForm = (r.address_form as string | null) ?? null;
-            token.onboarded = r.onboarded_at != null;
-            token.blocked = r.blocked_at != null;
-            token.approved =
-              !token.blocked && (r.role === "teacher" || r.approved_at != null);
+            token.userId = r.id;
+            token.role = r.role;
+            token.fullName = r.fullName;
+            token.addressForm = r.addressForm;
+            token.onboarded = r.onboarded;
+            token.blocked = r.state === "blocked";
+            token.approved = r.state === "approved";
           }
         } catch (err) {
           console.error("[auth.jwt] DB load failed:", err);
@@ -130,25 +130,32 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         // moment a teacher approves, the next click lets the student in —
         // no sign-out needed. Approved tokens never pay this query.
         try {
-          const { accountStateFor } = await import("@/lib/approval");
-          const state = await accountStateFor(String(token.email));
-          token.approved = state === "approved";
-          token.blocked = state === "blocked";
-          if (state === null) token.approved = false; // removed by a teacher
+          const { resolveAccount } = await import("@/lib/approval");
+          const r = await resolveAccount(String(token.email));
+          token.approved = r?.state === "approved";
+          token.blocked = r?.state === "blocked";
+          if (r) token.userId = r.id;
         } catch (err) {
           console.error("[auth.jwt] approval re-check failed:", err);
         }
       } else if (token.approved === true && token.email && token.role !== "teacher") {
         // approved students: cheap periodic re-check so a block takes effect
-        // within a minute, not at the next sign-in
+        // within a minute, not at the next sign-in — and so a teacher's
+        // account merge/separation or rename reaches an open session
         const last = Number(token.checkedAt ?? 0);
         const nowSec = Math.floor(Date.now() / 1000);
         if (nowSec - last > 60) {
           try {
-            const { accountStateFor } = await import("@/lib/approval");
-            const state = await accountStateFor(String(token.email));
-            token.approved = state === "approved";
-            token.blocked = state === "blocked";
+            const { resolveAccount } = await import("@/lib/approval");
+            const r = await resolveAccount(String(token.email));
+            token.approved = r?.state === "approved";
+            token.blocked = r?.state === "blocked";
+            if (r) {
+              token.userId = r.id;
+              token.fullName = r.fullName;
+              token.onboarded = r.onboarded;
+              token.addressForm = r.addressForm;
+            }
             token.checkedAt = nowSec;
           } catch {
             /* keep the current token on a transient DB error */
