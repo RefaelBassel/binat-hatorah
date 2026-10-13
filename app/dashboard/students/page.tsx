@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import PageShell from "@/components/page-shell";
 import StudentsAdmin from "@/components/dashboard/students-admin";
 import { listAccounts } from "@/lib/approval";
+import { listActiveMerges, similarAccounts } from "@/lib/account-merge";
 
 // The class roster — every account that ever signed in, grouped by state:
 // waiting for approval, approved, blocked. Teachers approve, block or
 // remove; strangers who wandered in with a Google account are removed here.
+// Students who signed in with two Google accounts are merged here (#19).
 export default async function StudentsPage() {
   const session = await auth();
   const user = session?.user;
@@ -18,6 +20,9 @@ export default async function StudentsPage() {
   const approved = accounts.filter((a) => a.state === "approved" && a.role !== "teacher");
   const blocked = accounts.filter((a) => a.state === "blocked");
   const teachers = accounts.filter((a) => a.role === "teacher");
+  const students = accounts.filter((a) => a.role !== "teacher");
+  const merges = await listActiveMerges();
+  const similar = Object.fromEntries(similarAccounts(students));
 
   return (
     <PageShell
@@ -29,6 +34,9 @@ export default async function StudentsPage() {
         approved={approved}
         blocked={blocked}
         teachers={teachers}
+        students={students}
+        merges={merges}
+        similar={similar}
       />
     </PageShell>
   );

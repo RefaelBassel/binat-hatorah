@@ -287,6 +287,7 @@ export async function allStudents() {
     sql: `SELECT id, email, full_name FROM users
           WHERE role = 'student' AND onboarded_at IS NOT NULL
             AND approved_at IS NOT NULL AND blocked_at IS NULL
+            AND merged_into IS NULL
           ORDER BY full_name`,
     args: [],
   });
@@ -347,9 +348,12 @@ export async function republishTask(taskId: number) {
     sql: "DELETE FROM task_cancellations WHERE task_id = ?",
     args: [taskId],
   });
+  const { ensureApprovalColumns } = await import("./approval");
+  await ensureApprovalColumns();
   const students = await db().execute({
     sql: `SELECT id FROM users WHERE role = 'student' AND onboarded_at IS NOT NULL
-            AND approved_at IS NOT NULL AND blocked_at IS NULL`,
+            AND approved_at IS NOT NULL AND blocked_at IS NULL
+            AND merged_into IS NULL`,
     args: [],
   });
   const t = now();

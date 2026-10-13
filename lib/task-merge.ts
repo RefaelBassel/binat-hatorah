@@ -50,8 +50,9 @@ const MERGES: TaskMerge[] = [
 const DUPLICATE_MARK = "(מהעותק הכפול)";
 
 // Single-choice / flag answers ("yes", a picked genre or stance): two values
-// cannot be stacked, so the latest one simply wins.
-const CHOICE_KEYS = new Set([
+// cannot be stacked, so the latest one simply wins. Shared with
+// lib/account-merge.ts.
+export const CHOICE_KEYS = new Set([
   "decode:genre",
   "decode:no-leitwort",
   "decode:q5-added",

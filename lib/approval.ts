@@ -22,6 +22,11 @@ export async function ensureApprovalColumns() {
   if (!cols.has("blocked_at")) {
     await db().execute("ALTER TABLE users ADD COLUMN blocked_at INTEGER");
   }
+  // account merges (issue #19): a secondary Google account points at the
+  // account that now holds all its work (lib/account-merge.ts)
+  if (!cols.has("merged_into")) {
+    await db().execute("ALTER TABLE users ADD COLUMN merged_into INTEGER");
+  }
   // teachers are always in
   await db().execute(
     "UPDATE users SET approved_at = COALESCE(approved_at, created_at) WHERE role = 'teacher'"
@@ -31,17 +36,46 @@ export async function ensureApprovalColumns() {
 
 export type AccountState = "approved" | "pending" | "blocked";
 
-export async function accountStateFor(email: string): Promise<AccountState | null> {
+export interface ResolvedAccount {
+  id: number;
+  role: string;
+  fullName: string | null;
+  addressForm: string | null;
+  onboarded: boolean;
+  state: AccountState;
+}
+
+// The account an email signs in to. A merged secondary email resolves to
+// the primary account it was merged into, so both emails land on the same
+// student with all the work.
+export async function resolveAccount(email: string): Promise<ResolvedAccount | null> {
   await ensureApprovalColumns();
   const res = await db().execute({
-    sql: "SELECT role, approved_at, blocked_at FROM users WHERE email = ?",
+    sql: `SELECT u.id, u.role, u.full_name, u.address_form, u.onboarded_at,
+                 u.approved_at, u.blocked_at
+          FROM users e JOIN users u ON u.id = COALESCE(e.merged_into, e.id)
+          WHERE e.email = ?`,
     args: [email.toLowerCase()],
   });
   const r = res.rows[0];
   if (!r) return null;
-  if (r.blocked_at != null) return "blocked";
-  if (r.role === "teacher" || r.approved_at != null) return "approved";
-  return "pending";
+  return {
+    id: Number(r.id),
+    role: String(r.role),
+    fullName: (r.full_name as string | null) ?? null,
+    addressForm: (r.address_form as string | null) ?? null,
+    onboarded: r.onboarded_at != null,
+    state:
+      r.blocked_at != null
+        ? "blocked"
+        : r.role === "teacher" || r.approved_at != null
+          ? "approved"
+          : "pending",
+  };
+}
+
+export async function accountStateFor(email: string): Promise<AccountState | null> {
+  return (await resolveAccount(email))?.state ?? null;
 }
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -126,9 +160,24 @@ export async function removeUser(userId: number) {
   ] as const) {
     await db().execute({ sql: `DELETE FROM ${table} WHERE ${col} = ?`, args: [userId] });
   }
+  // emails merged into this account (their work already lives here) go too
+  await db().execute({
+    sql: "DELETE FROM users WHERE merged_into = ? AND role <> 'teacher'",
+    args: [userId],
+  });
   await db().execute({
     sql: "DELETE FROM users WHERE id = ? AND role <> 'teacher'",
     args: [userId],
+  });
+}
+
+// Teacher rename (issue #19): the display name shown everywhere — class
+// pulse, submissions, messages.
+export async function renameUser(userId: number, fullName: string) {
+  await ensureApprovalColumns();
+  await db().execute({
+    sql: "UPDATE users SET full_name = ? WHERE id = ? AND merged_into IS NULL",
+    args: [fullName, userId],
   });
 }
 
@@ -142,25 +191,35 @@ export interface AccountRow {
   onboardedAt: number | null;
   state: AccountState;
   hasWork: boolean;
+  // every email that signs in to this account: its own, then the emails of
+  // accounts merged into it (lib/account-merge.ts)
+  emails: string[];
 }
 
+// Merged secondary accounts are not listed: they live on as an extra email
+// of their primary account.
 export async function listAccounts(): Promise<AccountRow[]> {
   await ensureApprovalColumns();
   const res = await db().execute({
-    sql: `SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.last_seen_at,
+    sql: `SELECT u.id, u.email, u.full_name, u.role, u.created_at,
+                 MAX(COALESCE(u.last_seen_at, 0),
+                     COALESCE((SELECT MAX(m.last_seen_at) FROM users m WHERE m.merged_into = u.id), 0)) AS last_seen_at,
                  u.onboarded_at, u.approved_at, u.blocked_at,
+                 (SELECT GROUP_CONCAT(m.email, ' ') FROM users m WHERE m.merged_into = u.id) AS linked,
                  EXISTS(SELECT 1 FROM task_answers a WHERE a.user_id = u.id) AS has_work
           FROM users u
+          WHERE u.merged_into IS NULL
           ORDER BY (u.approved_at IS NULL AND u.blocked_at IS NULL) DESC, u.created_at DESC`,
     args: [],
   });
   return res.rows.map((r) => ({
     id: Number(r.id),
     email: String(r.email),
+    emails: [String(r.email), ...String(r.linked ?? "").split(" ").filter(Boolean)],
     fullName: (r.full_name as string | null) ?? null,
     role: String(r.role),
     createdAt: Number(r.created_at),
-    lastSeenAt: r.last_seen_at != null ? Number(r.last_seen_at) : null,
+    lastSeenAt: Number(r.last_seen_at) > 0 ? Number(r.last_seen_at) : null,
     onboardedAt: r.onboarded_at != null ? Number(r.onboarded_at) : null,
     state:
       r.blocked_at != null
