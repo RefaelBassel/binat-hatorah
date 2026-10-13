@@ -12,6 +12,84 @@
   --success: #3e6b4f;        /* olive green — "נלמדה" */
   --warning: #b3892b;        /* amber — "בלימוד" */
   --danger: #9d3438;         /* pomegranate red — "עבר זמנה" */
+  /* Solid fills (buttons, badges, "mine" chat bubbles) that carry white
+     text. Identical to the base colors in light mode; dark mode keeps them
+     deep while the base colors lighten for text on the dark background. */
+  --primary-fill: var(--primary);
+  --accent-fill: var(--accent);
+  --success-fill: var(--success);
+  --warning-fill: var(--warning);
+  --danger-fill: var(--danger);
+  --field: #ffffff;          /* text inputs and textareas */
+  --info: #2f5d8a;           /* blue "question" tags */
+  --info-bg: #e3edf7;
+  /* word marks in passages (task runner) */
+  --mark-leitwort: #413055;
+  --mark-leitwort-bg: #efe6f3;
+  --mark-hard: #b3892b;
+  --mark-hard-bg: #fdf3d7;
+  --mark-question: #2f5d8a;
+  --mark-question-bg: #e3edf7;
+  /* task status tags (lib/tasks.ts STATUS_META) */
+  --status-not-started: #6b6055;
+  --status-not-started-bg: #f0e9e1;
+  --status-in-progress: #8a6516;
+  --status-in-progress-bg: #fdf3d7;
+  --status-overdue: #9d3438;
+  --status-overdue-bg: #f9e5e3;
+  --status-submitted: #2f5d8a;
+  --status-submitted-bg: #e3edf7;
+  --status-graded: #3e6b4f;
+  --status-graded-bg: #e5efe8;
+}
+
+/* Dark mode ("מסך חשוך") — chosen per user via the moon/sun toggle
+   (components/theme-toggle.tsx), stored on <html data-theme>. Deep grape
+   background (not pure black), light ink, palette colors lifted so text,
+   tints and borders stay visible. Screen only — printing stays light. */
+@media screen {
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #1d1824;
+  --foreground: #ebe4f0;
+  --primary: #cdbbe6;
+  --accent: #e3a274;
+  --card: #262030;
+  --border: #40354c;
+  --success: #85c79f;
+  --warning: #e3c06a;
+  --danger: #f08e91;
+  --primary-fill: #5c4780;
+  --accent-fill: #a5592b;
+  --success-fill: #3d7355;
+  --warning-fill: #8e6b1b;
+  --danger-fill: #a6373d;
+  --field: #2d2638;
+  --info: #a9c8ea;
+  --info-bg: #22344a;
+  --mark-leitwort: #cdbbe6;
+  --mark-leitwort-bg: #3d2f52;
+  --mark-hard: #e3c06a;
+  --mark-hard-bg: #463718;
+  --mark-question: #a9c8ea;
+  --mark-question-bg: #22344a;
+  --status-not-started: #cfc3b6;
+  --status-not-started-bg: #352d3a;
+  --status-in-progress: #e8c56f;
+  --status-in-progress-bg: #42341a;
+  --status-overdue: #f39a9c;
+  --status-overdue-bg: #4a2228;
+  --status-submitted: #a9c8ea;
+  --status-submitted-bg: #22344a;
+  --status-graded: #8fd0a8;
+  --status-graded-bg: #213a2c;
+}
+
+/* Illustrations: dim the bright scenes slightly so they don't glow like a
+   lantern on the dark page. */
+[data-theme="dark"] .task-art-scene {
+  filter: brightness(0.82) saturate(0.9);
+}
 }
 
 @theme inline {

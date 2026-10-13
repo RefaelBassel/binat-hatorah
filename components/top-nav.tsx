@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { auth, signOut } from "@/auth";
 import { getUnreadCount } from "@/lib/notifications";
 import { isStudentMode, STUDENT_MODE_COOKIE } from "@/lib/student-mode";
+import { currentTheme } from "@/lib/theme-store";
 import MobileNav from "./mobile-nav";
+import ThemeToggle from "./theme-toggle";
 
 // =============================================================================
 // Top navigation. Renders BOTH a desktop inline nav (visible at xl+) and a
@@ -20,6 +22,7 @@ export default async function TopNav() {
   const isTeacher = realTeacher && !studentMode;
   const userId = user?.id ? Number(user.id) : null;
   const unread = userId ? await getUnreadCount(userId) : 0;
+  const theme = await currentTheme();
 
   async function handleSignOut() {
     "use server";
@@ -69,7 +72,7 @@ export default async function TopNav() {
       style={{ backgroundColor: "var(--card)" }}
     >
       {studentMode && (
-        <div className="flex items-center justify-center gap-3 bg-[color:var(--warning)] px-4 py-1.5 text-center text-xs font-bold text-white">
+        <div className="flex items-center justify-center gap-3 bg-[color:var(--warning-fill)] px-4 py-1.5 text-center text-xs font-bold text-white">
           <span>👩‍🎓 מצב תלמיד פעיל — את/ה חווה את האתר בדיוק כמו תלמיד/ה</span>
           <form action={exitStudentMode}>
             <button
@@ -105,6 +108,7 @@ export default async function TopNav() {
         {/* Left cluster (RTL) — bell always visible; user greeting +
             sign-out only on xl+; hamburger only below xl. */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle initial={theme} persist={Boolean(user?.id) && !user?.guest} />
           {user && (
             <Link
               href="/me#notifications"
@@ -121,7 +125,7 @@ export default async function TopNav() {
                 <BellIcon />
               </span>
               {unread > 0 && (
-                <span className="absolute -top-0.5 -left-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[color:var(--danger)] px-1 text-[10px] font-bold text-white">
+                <span className="absolute -top-0.5 -left-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[color:var(--danger-fill)] px-1 text-[10px] font-bold text-white">
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}

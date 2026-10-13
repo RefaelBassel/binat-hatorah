@@ -165,7 +165,7 @@ export default function ReflectionDrawer({
           style={{
             width: HANDLE_W,
             height: 68,
-            background: "var(--primary)",
+            background: "var(--primary-fill)",
             color: "#fff",
             cursor: dragging ? "grabbing" : "grab",
             touchAction: "none",
@@ -255,13 +255,13 @@ export default function ReflectionDrawer({
                   onChange={(e) => setNote(e.target.value)}
                   rows={3}
                   placeholder="מה היה משמעותי? מה הפתיע? מה עוד מבלבל?"
-                  className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-xs leading-5 outline-none focus:border-[color:var(--accent)]"
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-xs leading-5 outline-none focus:border-[color:var(--accent)]"
                 />
               </label>
               <button
                 onClick={submit}
                 disabled={state === "busy"}
-                className="w-full rounded-full bg-[color:var(--primary)] py-2.5 text-xs font-bold text-white shadow transition hover:scale-[1.01] disabled:opacity-50"
+                className="w-full rounded-full bg-[color:var(--primary-fill)] py-2.5 text-xs font-bold text-white shadow transition hover:scale-[1.01] disabled:opacity-50"
               >
                 {state === "busy" ? "שומרים..." : "שמירת הרפלקציה 🌱"}
               </button>

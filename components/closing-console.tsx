@@ -179,7 +179,7 @@ export default function ClosingConsole({
                 type="button"
                 onClick={fetchAid}
                 disabled={aidBusy || !hasCheck || count === 0}
-                className="rounded-full bg-[color:var(--warning)] px-3 py-1 text-xs font-bold text-white transition hover:scale-[1.03] disabled:opacity-40 disabled:hover:scale-100"
+                className="rounded-full bg-[color:var(--warning-fill)] px-3 py-1 text-xs font-bold text-white transition hover:scale-[1.03] disabled:opacity-40 disabled:hover:scale-100"
               >
                 {aidBusy ? "מכין…" : aid ? "לרענן" : "✨ להכין עזר-חזרה"}
               </button>
@@ -282,7 +282,7 @@ export default function ClosingConsole({
               type="button"
               onClick={() => setProjection({ kind: "plenary" })}
               disabled={!plenary}
-              className="w-full rounded-full bg-[color:var(--primary)] px-5 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
+              className="w-full rounded-full bg-[color:var(--primary-fill)] px-5 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
             >
               🖥️ להקרין את שאלת המליאה
             </button>

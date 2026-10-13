@@ -220,7 +220,7 @@ export default function ComprehensionCheck({
             type="button"
             onClick={submit}
             disabled={!ready || busy || locked}
-            className="rounded-full bg-[color:var(--primary)] px-6 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+            className="rounded-full bg-[color:var(--primary-fill)] px-6 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
             {busy ? "בודק…" : "לבדוק ✓"}
           </button>
@@ -267,7 +267,7 @@ function OrderPicker({
               <span
                 className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-extrabold ${
                   picked
-                    ? "bg-[color:var(--accent)] text-white"
+                    ? "bg-[color:var(--accent-fill)] text-white"
                     : "border border-[color:var(--border)] text-transparent"
                 }`}
               >

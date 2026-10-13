@@ -150,7 +150,7 @@ export default function ClassPulseDrawer({ taskId }: { taskId: number }) {
           style={{
             width: HANDLE_W,
             height: 68,
-            background: "var(--accent)",
+            background: "var(--accent-fill)",
             color: "#fff",
             cursor: dragging ? "grabbing" : "grab",
             touchAction: "none",
@@ -182,7 +182,7 @@ export default function ClassPulseDrawer({ taskId }: { taskId: number }) {
                 href={`/dashboard/class-board/${taskId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full bg-[color:var(--primary)] px-3 py-1 text-[11px] font-bold text-white shadow transition hover:scale-[1.03]"
+                className="rounded-full bg-[color:var(--primary-fill)] px-3 py-1 text-[11px] font-bold text-white shadow transition hover:scale-[1.03]"
               >
                 🖥️ הקרנה על הלוח
               </a>

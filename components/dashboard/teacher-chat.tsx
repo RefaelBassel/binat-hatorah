@@ -26,13 +26,13 @@ function flatten(rows: ChatMessageRow[]): Msg[] {
 }
 
 const STATUS_HE: Record<string, { label: string; tone: string }> = {
-  queued: { label: "בתור — תישלח כשהבקשה הקודמת תסתיים", tone: "var(--warning)" },
-  open: { label: "נשלח — קלוד מתחיל", tone: "var(--accent)" },
-  working: { label: "קלוד עובד על זה", tone: "var(--accent)" },
-  preview: { label: "נבנה — ממתין למיזוג אוטומטי", tone: "var(--primary)" },
-  merged: { label: "עלה לאתר ✓", tone: "var(--success)" },
-  failed: { label: "הבנייה נכשלה — רפאל קיבל הודעה", tone: "var(--danger)" },
-  closed: { label: "נסגר", tone: "var(--primary)" },
+  queued: { label: "בתור — תישלח כשהבקשה הקודמת תסתיים", tone: "var(--warning-fill)" },
+  open: { label: "נשלח — קלוד מתחיל", tone: "var(--accent-fill)" },
+  working: { label: "קלוד עובד על זה", tone: "var(--accent-fill)" },
+  preview: { label: "נבנה — ממתין למיזוג אוטומטי", tone: "var(--primary-fill)" },
+  merged: { label: "עלה לאתר ✓", tone: "var(--success-fill)" },
+  failed: { label: "הבנייה נכשלה — רפאל קיבל הודעה", tone: "var(--danger-fill)" },
+  closed: { label: "נסגר", tone: "var(--primary-fill)" },
 };
 
 export default function TeacherChat({ teacherName, compact = false }: { teacherName: string | null; compact?: boolean }) {
@@ -156,7 +156,7 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
             <select
               value={thread ?? ""}
               onChange={(e) => void load(Number(e.target.value))}
-              className="rounded-full border border-[color:var(--border)] bg-white px-2 py-1 text-[11px] font-bold text-[color:var(--primary)]"
+              className="rounded-full border border-[color:var(--border)] bg-[color:var(--field)] px-2 py-1 text-[11px] font-bold text-[color:var(--primary)]"
               aria-label="שיחות קודמות"
             >
               {threads.map((t) => (
@@ -202,7 +202,7 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
           <div key={m.id}>
             <div className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}>
               <div
-                className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-7 shadow-sm ${m.role === "user" ? "bg-[color:var(--primary)] text-white" : "bg-[color:var(--background)] text-[color:var(--foreground)]"}`}
+                className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-7 shadow-sm ${m.role === "user" ? "bg-[color:var(--primary-fill)] text-white" : "bg-[color:var(--background)] text-[color:var(--foreground)]"}`}
               >
                 {m.text}
               </div>
@@ -236,14 +236,14 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
           }}
           rows={2}
           placeholder="מה לשנות או לבדוק? (Enter שולח, Shift+Enter שורה חדשה)"
-          className="flex-1 rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-[15px] leading-6 outline-none focus:border-[color:var(--accent)]"
+          className="flex-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--field)] px-4 py-3 text-[15px] leading-6 outline-none focus:border-[color:var(--accent)]"
         />
         <button
           type="button"
           onClick={send}
           disabled={busy || !draft.trim()}
           className={`rounded-full px-5 py-3 text-sm font-extrabold text-white shadow transition active:scale-95 disabled:opacity-40 ${busy ? "animate-pulse" : ""}`}
-          style={{ background: "var(--accent)" }}
+          style={{ background: "var(--accent-fill)" }}
         >
           {busy ? "…" : "שליחה"}
         </button>
@@ -257,7 +257,7 @@ function ActionCard({ a, code, onAct }: { a: ActionRow; code: CodeRequestRow | n
   // approve: the chat is a chat, the change already happened.
   const working = a.status === "undoing";
   const isCode = a.tool === "request_code_change";
-  const st = code ? STATUS_HE[code.status] ?? { label: code.status, tone: "var(--primary)" } : null;
+  const st = code ? STATUS_HE[code.status] ?? { label: code.status, tone: "var(--primary-fill)" } : null;
   const tone = a.status === "applied" ? "var(--success)" : a.status === "failed" ? "var(--danger)" : "var(--primary)";
   return (
     <div className="my-1 me-0 ms-auto flex max-w-[92%] flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-3 py-1.5 text-[12px]" style={{ background: "color-mix(in srgb, var(--background) 70%, transparent)" }}>

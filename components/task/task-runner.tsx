@@ -94,9 +94,9 @@ type MarkKind = "leitwort" | "hard" | "question";
 
 
 const MARK_STYLE: Record<string, { bg: string; border: string; label: string; emoji: string }> = {
-  leitwort: { bg: "#efe6f3", border: "#413055", label: "מילה מנחה", emoji: "📌" },
-  hard: { bg: "#fdf3d7", border: "#b3892b", label: "מילה קשה", emoji: "🤔" },
-  question: { bg: "#e3edf7", border: "#2f5d8a", label: "שאלה", emoji: "❓" },
+  leitwort: { bg: "var(--mark-leitwort-bg)", border: "var(--mark-leitwort)", label: "מילה מנחה", emoji: "📌" },
+  hard: { bg: "var(--mark-hard-bg)", border: "var(--mark-hard)", label: "מילה קשה", emoji: "🤔" },
+  question: { bg: "var(--mark-question-bg)", border: "var(--mark-question)", label: "שאלה", emoji: "❓" },
 };
 
 export default function TaskRunner({
@@ -763,7 +763,7 @@ export default function TaskRunner({
           </p>
           <button
             onClick={() => setFocusNudge(false)}
-            className="mt-2 rounded-full bg-[color:var(--primary)] px-5 py-1 text-xs font-bold text-white"
+            className="mt-2 rounded-full bg-[color:var(--primary-fill)] px-5 py-1 text-xs font-bold text-white"
           >
             חוזר/ת למיקוד 💪
           </button>
@@ -840,7 +840,7 @@ export default function TaskRunner({
             <button
               onClick={() => doSubmit("unsubmit")}
               disabled={submitBusy}
-              className="shrink-0 rounded-full border-2 border-[color:var(--success)]/60 bg-white px-4 py-1.5 text-xs font-bold text-[color:var(--success)] shadow-sm transition hover:bg-[color:var(--success)]/10 disabled:opacity-50"
+              className="shrink-0 rounded-full border-2 border-[color:var(--success)]/60 bg-[color:var(--field)] px-4 py-1.5 text-xs font-bold text-[color:var(--success)] shadow-sm transition hover:bg-[color:var(--success)]/10 disabled:opacity-50"
             >
               🔓 {submitBusy ? "רגע..." : "ביטול ההגשה וחזרה לעבודה"}
             </button>
@@ -881,7 +881,7 @@ export default function TaskRunner({
           ].join(" ")}
         >
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[color:var(--primary)] px-2.5 py-0.5 text-[11px] font-bold text-white">
+            <span className="rounded-full bg-[color:var(--primary-fill)] px-2.5 py-0.5 text-[11px] font-bold text-white">
               חלק א
             </span>
             <span className="font-display text-sm font-bold text-[color:var(--primary)]">
@@ -905,7 +905,7 @@ export default function TaskRunner({
                 className={[
                   "rounded-full px-3 py-1 text-xs font-semibold transition",
                   s.n === stage
-                    ? "bg-[color:var(--primary)] text-white shadow"
+                    ? "bg-[color:var(--primary-fill)] text-white shadow"
                     : s.n < Math.max(stage, maxStage) || maxStage === 8
                       ? "bg-[color:var(--success)]/15 text-[color:var(--success)] hover:bg-[color:var(--success)]/25"
                       : "border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)]/40",
@@ -936,7 +936,7 @@ export default function TaskRunner({
           ].join(" ")}
         >
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[color:var(--accent)] px-2.5 py-0.5 text-[11px] font-bold text-white">
+            <span className="rounded-full bg-[color:var(--accent-fill)] px-2.5 py-0.5 text-[11px] font-bold text-white">
               חלק ב
             </span>
             <span className="font-display text-sm font-bold text-[color:var(--primary)]">
@@ -957,7 +957,7 @@ export default function TaskRunner({
             className={[
               "rounded-full px-4 py-1 text-xs font-bold transition",
               stage === 8
-                ? "bg-[color:var(--accent)] text-white shadow"
+                ? "bg-[color:var(--accent-fill)] text-white shadow"
                 : canReset || maxStage >= 8
                   ? "border border-[color:var(--accent)]/60 text-[color:var(--accent)] hover:bg-[color:var(--accent)]/10"
                   : "border border-[color:var(--border)] text-[color:var(--primary)]/35",
@@ -1037,7 +1037,7 @@ export default function TaskRunner({
                     className={[
                       "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition",
                       active
-                        ? "border-[color:var(--primary)] bg-[color:var(--primary)] text-white shadow"
+                        ? "border-[color:var(--primary)] bg-[color:var(--primary-fill)] text-white shadow"
                         : complete
                           ? "border-[color:var(--success)]/50 bg-[color:var(--success)]/10 text-[color:var(--success)] hover:bg-[color:var(--success)]/20"
                           : "border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--primary)] hover:border-[color:var(--accent)]",
@@ -1068,7 +1068,7 @@ export default function TaskRunner({
             return (
               <section key={section.key}>
                 <div className="mb-4 flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary)] font-display text-sm font-bold text-white">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary-fill)] font-display text-sm font-bold text-white">
                     {si + 1}
                   </span>
                   <h2 className="font-display text-xl font-bold text-[color:var(--primary)]">
@@ -1113,7 +1113,7 @@ export default function TaskRunner({
                     <button
                       type="button"
                       onClick={() => gotoSection(si + 1)}
-                      className="rounded-full bg-[color:var(--primary)] px-6 py-2 text-xs font-bold text-white shadow transition hover:scale-[1.02]"
+                      className="rounded-full bg-[color:var(--primary-fill)] px-6 py-2 text-xs font-bold text-white shadow transition hover:scale-[1.02]"
                     >
                       {st.done >= st.total && st.total > 0
                         ? "סיימתי כאן — לתת-המשימה הבאה ←"
@@ -1148,7 +1148,7 @@ export default function TaskRunner({
               <button
                 onClick={() => doSubmit("submit")}
                 disabled={submitBusy}
-                className="rounded-full bg-[color:var(--primary)] px-10 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] disabled:opacity-50"
+                className="rounded-full bg-[color:var(--primary-fill)] px-10 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] disabled:opacity-50"
               >
                 {submitBusy ? "שולחים..." : "הגשת המשימה ✨"}
               </button>
@@ -1303,7 +1303,7 @@ export default function TaskRunner({
               rows={3}
               autoFocus
               placeholder="מה השאלה? (למשל: למה הפסוק חוזר על... / מה מוזר כאן...)"
-              className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
+              className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
             />
             <div className="mt-3 flex justify-end gap-2">
               <button
@@ -1315,7 +1315,7 @@ export default function TaskRunner({
               <button
                 onClick={saveComposerQuestion}
                 disabled={!qComposerDraft.trim()}
-                className="rounded-full bg-[color:var(--primary)] px-5 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+                className="rounded-full bg-[color:var(--primary-fill)] px-5 py-1.5 text-xs font-bold text-white disabled:opacity-40"
               >
                 שמירה למאגר 💾
               </button>
@@ -1348,7 +1348,7 @@ export default function TaskRunner({
             <div className="mt-6 flex flex-col gap-2">
               <Link
                 href="/"
-                className="rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+                className="rounded-full bg-[color:var(--primary-fill)] px-6 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
               >
                 לעמוד הבית ←
               </Link>
@@ -1408,7 +1408,7 @@ export default function TaskRunner({
             title="אפשר לגרור אותי לכל מקום"
           >
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary)]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary-fill)]">
                 <span className="text-sm">✨</span>
               </div>
               <p className="text-[10px] text-[color:var(--primary)]/45">
@@ -1460,12 +1460,12 @@ export default function TaskRunner({
                 }}
                 rows={Math.min(4, Math.max(1, assistDraft.split("\n").length))}
                 placeholder="תשובה לקלוד... (שיפט+אנטר לשורה חדשה)"
-                className="flex-1 resize-none rounded-2xl border border-[color:var(--border)] bg-white px-3.5 py-1.5 text-xs leading-5 outline-none focus:border-[color:var(--accent)]"
+                className="flex-1 resize-none rounded-2xl border border-[color:var(--border)] bg-[color:var(--field)] px-3.5 py-1.5 text-xs leading-5 outline-none focus:border-[color:var(--accent)]"
               />
               <button
                 onClick={replyToClaude}
                 disabled={assist.loading || !assistDraft.trim()}
-                className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+                className="rounded-full bg-[color:var(--primary-fill)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-40"
               >
                 שליחה
               </button>
@@ -1725,7 +1725,7 @@ function DecodeStage(props: {
               className={[
                 "rounded-full border px-4 py-1.5 text-sm font-semibold transition",
                 (answers["decode:genre"] ?? "") === g
-                  ? "border-[color:var(--primary)] bg-[color:var(--primary)] text-white"
+                  ? "border-[color:var(--primary)] bg-[color:var(--primary-fill)] text-white"
                   : "border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)] hover:border-[color:var(--accent)]",
               ].join(" ")}
             >
@@ -1806,12 +1806,12 @@ function DecodeStage(props: {
                 ? "כתבו שאלה נוספת... (אפשר להתחיל ב״למה דווקא...״)"
                 : "כתבו שאלה... (אפשר להתחיל ב״למה דווקא...״)"
             }
-            className="flex-1 resize-none rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
+            className="flex-1 resize-none rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
           />
           <button
             onClick={() => bankQuestion(questionDraft, passage.ref)}
             disabled={readOnly || !questionDraft.trim()}
-            className="rounded-lg bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="rounded-lg bg-[color:var(--primary-fill)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
             למאגר 💾
           </button>
@@ -1961,7 +1961,7 @@ function DecodeStage(props: {
           <button
             onClick={finishStage}
             disabled={blocked}
-            className="rounded-full bg-[color:var(--accent)] px-8 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+            className="rounded-full bg-[color:var(--accent-fill)] px-8 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
           >
             {stage === 7
               ? "סיימתי — לחלק ב ←"
@@ -2194,8 +2194,8 @@ function InteractivePassage({
           style={{
             insetInlineStart: "1.5rem",
             background: "var(--card)",
-            borderColor: "#2f5d8a",
-            color: "#2f5d8a",
+            borderColor: "var(--info)",
+            color: "var(--info)",
           }}
         >
           <span aria-hidden>💭</span>
@@ -2211,10 +2211,10 @@ function InteractivePassage({
 // =============================================================================
 
 const ICON_MAP = {
-  thinking: { emoji: "💡", color: "#b3892b" },
-  argument: { emoji: "⚖️", color: "#413055" },
-  reading: { emoji: "📖", color: "#3e6b4f" },
-  leadership: { emoji: "👑", color: "#9d3438" },
+  thinking: { emoji: "💡", color: "var(--warning)" },
+  argument: { emoji: "⚖️", color: "var(--primary)" },
+  reading: { emoji: "📖", color: "var(--success)" },
+  leadership: { emoji: "👑", color: "var(--danger)" },
 } as const;
 
 function BlockView({
@@ -2483,7 +2483,7 @@ function FieldArea({
         readOnly={readOnly}
         rows={rows}
         placeholder="כתבו כאן..."
-        className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none transition focus:border-[color:var(--accent)] read-only:bg-[color:var(--background)] read-only:text-[color:var(--foreground)]/70"
+        className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm leading-6 outline-none transition focus:border-[color:var(--accent)] read-only:bg-[color:var(--background)] read-only:text-[color:var(--foreground)]/70"
       />
     </label>
   );

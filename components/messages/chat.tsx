@@ -104,7 +104,7 @@ export default function Chat({
                 className={[
                   "flex w-full items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2.5 text-start text-sm transition",
                   active?.id === c.id
-                    ? "bg-[color:var(--primary)] text-white"
+                    ? "bg-[color:var(--primary-fill)] text-white"
                     : "hover:bg-[color:var(--primary)]/5",
                 ].join(" ")}
               >
@@ -113,7 +113,7 @@ export default function Chat({
                 </span>
                 <span className="flex-1 font-semibold">{c.name}</span>
                 {c.unread > 0 && (
-                  <span className="rounded-full bg-[color:var(--danger)] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="rounded-full bg-[color:var(--danger-fill)] px-1.5 py-0.5 text-[10px] font-bold text-white">
                     {c.unread}
                   </span>
                 )}
@@ -141,7 +141,7 @@ export default function Chat({
                     className={[
                       "max-w-[80%] rounded-2xl px-4 py-2 text-sm leading-6 shadow-sm",
                       mine
-                        ? "rounded-tl-md bg-[color:var(--primary)] text-white"
+                        ? "rounded-tl-md bg-[color:var(--primary-fill)] text-white"
                         : "rounded-tr-md bg-[color:var(--background)] text-[color:var(--foreground)]",
                     ].join(" ")}
                   >
@@ -180,13 +180,13 @@ export default function Chat({
             }}
             rows={Math.min(5, Math.max(1, draft.split("\n").length))}
             placeholder={`הודעה ${active?.id === "group" ? "לקבוצה" : `ל${active?.name ?? ""}`}...`}
-            className="flex-1 resize-none rounded-2xl border border-[color:var(--border)] bg-white px-4 py-2.5 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
+            className="flex-1 resize-none rounded-2xl border border-[color:var(--border)] bg-[color:var(--field)] px-4 py-2.5 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
           />
           <button
             onClick={send}
             disabled={busy || !draft.trim()}
             aria-label="שליחה"
-            className="rounded-full bg-[color:var(--primary)] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+            className="rounded-full bg-[color:var(--primary-fill)] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"
           >
             שליחה ↖
           </button>

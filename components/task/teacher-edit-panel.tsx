@@ -62,7 +62,7 @@ export default function TeacherEditPanel({
               aria-pressed={tab === t.id}
               className={`rounded-full border-2 px-3 py-1 text-xs font-bold transition active:scale-95 ${
                 tab === t.id
-                  ? "border-[color:var(--primary)] bg-[color:var(--primary)] text-white shadow"
+                  ? "border-[color:var(--primary)] bg-[color:var(--primary-fill)] text-white shadow"
                   : "border-[color:var(--border)] text-[color:var(--primary)] hover:border-[color:var(--accent)]"
               }`}
             >
@@ -75,7 +75,7 @@ export default function TeacherEditPanel({
               href={`/dashboard/opening/${taskId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full bg-[color:var(--accent)] px-3 py-1 text-xs font-bold text-white shadow transition hover:scale-[1.03]"
+              className="rounded-full bg-[color:var(--accent-fill)] px-3 py-1 text-xs font-bold text-white shadow transition hover:scale-[1.03]"
             >
               🖥️ להציג את אור פותח ↗
             </a>

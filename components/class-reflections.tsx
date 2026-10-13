@@ -150,7 +150,7 @@ export default function ClassReflections() {
                     className={[
                       "rounded-full px-3 py-1 text-[11px] font-semibold transition",
                       active
-                        ? "bg-[color:var(--primary)] text-white shadow"
+                        ? "bg-[color:var(--primary-fill)] text-white shadow"
                         : empty
                           ? "bg-[color:var(--card)] text-[color:var(--foreground)]/40 hover:text-[color:var(--foreground)]/70"
                           : "bg-[color:var(--card)] text-[color:var(--primary)] hover:bg-[color:var(--primary)]/10",

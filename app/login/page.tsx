@@ -26,7 +26,7 @@ export default async function LoginPage() {
           <form action={signInWithGoogle}>
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-3 rounded-xl bg-[color:var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow transition hover:opacity-90"
+              className="flex w-full items-center justify-center gap-3 rounded-xl bg-[color:var(--primary-fill)] px-5 py-3 text-sm font-semibold text-white shadow transition hover:opacity-90"
             >
               <GoogleIcon />
               כניסה עם חשבון Google
@@ -71,17 +71,17 @@ function DevLogin() {
         type="email"
         required
         placeholder="student@test.local"
-        className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-xs"
+        className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-1.5 text-xs"
       />
       <input
         name="name"
         type="text"
         placeholder="שם מלא (לדוגמה: שרה כהן)"
-        className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-xs"
+        className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-1.5 text-xs"
       />
       <button
         type="submit"
-        className="w-full rounded-lg bg-[color:var(--warning)] px-3 py-1.5 text-xs font-bold text-white"
+        className="w-full rounded-lg bg-[color:var(--warning-fill)] px-3 py-1.5 text-xs font-bold text-white"
       >
         כניסת פיתוח
       </button>

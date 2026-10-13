@@ -120,7 +120,7 @@ export default function ProgramPage() {
                 className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5"
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[color:var(--primary)] px-3 py-1 text-[11px] font-bold text-white">
+                  <span className="rounded-full bg-[color:var(--primary-fill)] px-3 py-1 text-[11px] font-bold text-white">
                     {t.half}
                   </span>
                   <span className="rounded-full bg-[color:var(--accent)]/15 px-3 py-1 text-[11px] font-bold text-[color:var(--accent)]">

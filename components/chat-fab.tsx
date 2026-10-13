@@ -58,7 +58,7 @@ export default function ChatFab({ teacherName, bottom = "1rem", hideOn = [] }: {
         aria-label={open ? "לסגור את הצ׳אט עם קלוד" : "לפתוח את הצ׳אט עם קלוד"}
         aria-expanded={open}
         className={`no-print fixed left-3 z-[48] flex h-12 items-center gap-2 rounded-full px-4 text-sm font-extrabold text-white shadow-2xl transition hover:scale-[1.04] active:scale-95 sm:left-5 ${open ? "" : "fab-live"}`}
-        style={{ bottom, background: "linear-gradient(135deg, var(--accent), var(--primary))" }}
+        style={{ bottom, background: "linear-gradient(135deg, var(--accent-fill), var(--primary-fill))" }}
       >
         <span className="text-lg" aria-hidden>
           {open ? "▾" : "✨"}

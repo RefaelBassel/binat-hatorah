@@ -133,7 +133,7 @@ export default async function DashboardTaskPage({
         <Link
           href={`/dashboard/class-board/${taskId}`}
           target="_blank"
-          className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+          className="rounded-full bg-[color:var(--primary-fill)] px-4 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
         >
           🖥️ לוח כיתה להקרנה
         </Link>
@@ -168,7 +168,7 @@ export default async function DashboardTaskPage({
           <form action={republishForClass}>
             <button
               type="submit"
-              className="rounded-full bg-[color:var(--primary)] px-6 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+              className="rounded-full bg-[color:var(--primary-fill)] px-6 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
             >
               📣 פרסום מחדש לכל הכיתה
             </button>
@@ -186,17 +186,17 @@ export default async function DashboardTaskPage({
                 name="dueDate"
                 defaultValue={dueDateValue}
                 required
-                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
+                className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
               />
               <input
                 type="time"
                 name="dueTime"
                 defaultValue={dueTimeValue}
-                className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
+                className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
               />
               <button
                 type="submit"
-                className="rounded-full bg-[color:var(--primary)] px-5 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+                className="rounded-full bg-[color:var(--primary-fill)] px-5 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
               >
                 עדכון
               </button>

@@ -70,7 +70,7 @@ export default function BulkApprove({ taskId, rows }: { taskId: number; rows: Ro
         {rows.length > 0 && (
           <Link
             href={`/dashboard/submission/${taskId}/${rows[0].userId}`}
-            className="shrink-0 rounded-full bg-[color:var(--primary)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+            className="shrink-0 rounded-full bg-[color:var(--primary-fill)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
           >
             מעבר להגשה הראשונה שממתינה ←
           </Link>
@@ -110,7 +110,7 @@ export default function BulkApprove({ taskId, rows }: { taskId: number; rows: Ro
           <button
             onClick={approve}
             disabled={busy || selected.size === 0}
-            className="rounded-full bg-[color:var(--success)] px-5 py-2 text-sm font-bold text-white shadow disabled:opacity-40"
+            className="rounded-full bg-[color:var(--success-fill)] px-5 py-2 text-sm font-bold text-white shadow disabled:opacity-40"
           >
             {busy
               ? "מאשרים..."

@@ -32,7 +32,7 @@ export default async function ContinueFab() {
     <Link
       href={`/tasks/${next.id}`}
       className="fixed bottom-5 z-40 flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:scale-[1.03]"
-      style={{ insetInlineStart: "1rem", background: "var(--accent)" }}
+      style={{ insetInlineStart: "1rem", background: "var(--accent-fill)" }}
       title={next.title}
     >
       <span aria-hidden>▶️</span>

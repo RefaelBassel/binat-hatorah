@@ -243,7 +243,7 @@ ${mine}`,
         disabled={locked}
         rows={rows}
         placeholder={placeholder ?? "כתבו כאן…"}
-        className="w-full rounded-xl border border-[color:var(--border)] bg-white px-3 py-2 text-[15px] leading-7 outline-none transition focus:border-[color:var(--accent)] disabled:bg-[color:var(--background)]"
+        className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-[15px] leading-7 outline-none transition focus:border-[color:var(--accent)] disabled:bg-[color:var(--background)]"
       />
     </label>
   );
@@ -338,7 +338,7 @@ ${mine}`,
                 type="button"
                 disabled={locked}
                 onClick={() => setAnswer("q-stand:stand", s)}
-                className={`rounded-2xl border-2 px-3 py-2.5 text-start text-sm font-semibold transition active:scale-[0.98] disabled:cursor-default ${on ? "border-[color:var(--primary)] bg-[color:var(--primary)] text-white shadow" : "border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)] hover:border-[color:var(--accent)]"}`}
+                className={`rounded-2xl border-2 px-3 py-2.5 text-start text-sm font-semibold transition active:scale-[0.98] disabled:cursor-default ${on ? "border-[color:var(--primary)] bg-[color:var(--primary-fill)] text-white shadow" : "border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)] hover:border-[color:var(--accent)]"}`}
               >
                 {on ? "✓ " : ""}{s}
               </button>
@@ -389,7 +389,7 @@ ${mine}`,
           disabled={locked}
           rows={10}
           placeholder="הפסקה שלי…"
-          className="w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-[16px] leading-8 outline-none transition focus:border-[color:var(--accent)] disabled:bg-[color:var(--background)]"
+          className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--field)] px-4 py-3 text-[16px] leading-8 outline-none transition focus:border-[color:var(--accent)] disabled:bg-[color:var(--background)]"
         />
         <div className="mt-1 flex items-center justify-between text-xs font-bold">
           <span className={essayWords >= exercise.minWords ? "text-[color:var(--success)]" : "text-[color:var(--primary)]/60"}>
@@ -421,7 +421,7 @@ ${mine}`,
               disabled={busy || readOnly || doneCount < keys.length}
               onClick={submit}
               className={`mt-3 rounded-full px-8 py-3 text-base font-extrabold text-white shadow-lg transition hover:scale-[1.03] active:scale-95 disabled:opacity-40 disabled:hover:scale-100 ${busy ? "animate-pulse" : ""}`}
-              style={{ background: "var(--accent)" }}
+              style={{ background: "var(--accent-fill)" }}
               title={doneCount < keys.length ? "אפשר להגיש כשכל השלבים מולאו" : undefined}
             >
               {busy ? "שולחים…" : "הגשת התרגול ✨"}
@@ -437,7 +437,7 @@ ${mine}`,
 function StepHead({ step }: { step: (typeof STEPS)[number] }) {
   return (
     <div className="mb-3 flex items-center gap-3">
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--primary)] text-xl">{step.emoji}</span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--primary-fill)] text-xl">{step.emoji}</span>
       <h2 className="font-display text-xl font-extrabold text-[color:var(--primary)]">{step.title}</h2>
       <span className="ms-auto rounded-full bg-[color:var(--background)] px-2.5 py-0.5 text-[11px] font-bold text-[color:var(--primary)]/60">~{step.minutes} דק׳</span>
     </div>

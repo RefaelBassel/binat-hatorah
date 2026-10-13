@@ -4,6 +4,8 @@ import "./globals.css";
 import InstallPrompt from "@/components/pwa/install-prompt";
 import RememberLastPath from "@/components/pwa/remember-last-path";
 import ChatFab from "@/components/chat-fab";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { currentTheme } from "@/lib/theme-store";
 
 const heebo = Heebo({
   variable: "--font-heebo",
@@ -51,12 +53,20 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   } catch {
     teacher = null;
   }
+  // light/dark ("מצב כהה"); null → decided on the client before first paint
+  const theme = await currentTheme();
   return (
     <html
       lang="he"
       dir="rtl"
+      data-theme={theme ?? undefined}
+      // THEME_INIT_SCRIPT may set data-theme before hydration
+      suppressHydrationWarning
       className={`${heebo.variable} ${assistant.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <RememberLastPath />
         {children}
