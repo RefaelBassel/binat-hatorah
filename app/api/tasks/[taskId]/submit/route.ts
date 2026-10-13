@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { requireStudentTask } from "@/lib/api-auth";
 import { now, ensureProgress } from "@/lib/tasks";
 import { notifyTeachers } from "@/lib/notify";
-import { proposeGrade } from "@/lib/grade-assist";
+import { proposeGrade, ensureGradeAssistColumns } from "@/lib/grade-assist";
 import { auth } from "@/auth";
 
-// leaves room for the after-response grade proposal (see below)
-export const maxDuration = 120;
+// leaves room for the after-response grade proposal (see below), including
+// its automatic retry
+export const maxDuration = 300;
 
 // Submit or un-submit. Un-submit ("ביטול הגשה ותיקון") is allowed until the
 // task's final due date.
@@ -69,10 +70,18 @@ export async function POST(
   });
 
   // Claude's grade proposal is prepared right away, after the response, so
-  // it is waiting for the teacher on the submission page. Failures are
-  // recorded on the grades row (the teacher sees them with a retry button).
+  // it is waiting for the teacher on the submission page — on every
+  // submission, so a re-submission gets a fresh one. Failures are retried
+  // once, then recorded on the grades row (the teacher sees them with a
+  // retry button); the grade-proposals cron catches runs that were cut off.
   const taskIdNum = guard.task.id;
   const studentId = guard.userId;
+  // a new submission gets a fresh round of automatic attempts
+  await ensureGradeAssistColumns();
+  await db().execute({
+    sql: "UPDATE grades SET claude_attempts = 0 WHERE task_id = ? AND user_id = ?",
+    args: [taskIdNum, studentId],
+  });
   after(() => proposeGrade(taskIdNum, studentId).then(() => undefined));
 
   return NextResponse.json({ ok: true, submitted: true });

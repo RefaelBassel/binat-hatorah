@@ -6,7 +6,12 @@ import PageShell from "@/components/page-shell";
 import ClassPulseDrawer from "@/components/class-pulse-drawer";
 import ConfirmButton from "@/components/confirm-button";
 import BulkGradeAssist from "@/components/dashboard/bulk-grade-assist";
-import { submissionsMissingProposal } from "@/lib/grade-assist";
+import BulkApprove from "@/components/dashboard/bulk-approve";
+import {
+  submissionsMissingProposal,
+  reviewStates,
+  type ReviewState,
+} from "@/lib/grade-assist";
 import {
   getTask,
   taskRoster,
@@ -22,6 +27,14 @@ import {
   formatWorkTime,
   israelWallTimeToUnix,
 } from "@/lib/hebrew";
+
+// where a submission stands in the review flow (Claude proposes → teacher approves)
+const REVIEW_META: Record<ReviewState, { label: string; color: string; bg: string }> = {
+  pending_approval: { label: "✨ הצעה ממתינה לאישור", color: "#8a6514", bg: "#f6ecd4" },
+  approved: { label: "✓ אושר", color: "#3e6b4f", bg: "#e5efe8" },
+  preparing: { label: "⏳ ההצעה בהכנה", color: "#413055", bg: "#ece7f1" },
+  failed: { label: "⚠️ הבדיקה נכשלה", color: "#9d3438", bg: "#f5e3e3" },
+};
 
 async function requireTeacherAction() {
   const session = await auth();
@@ -88,6 +101,14 @@ export default async function DashboardTaskPage({
 
   const roster = await taskRoster(taskId);
   const missingProposals = await submissionsMissingProposal(taskId);
+  const review = new Map(
+    (await reviewStates(taskId)).map((s) => [s.userId, s.state] as const)
+  );
+  const awaitingApproval = [...review]
+    .filter(([, state]) => state === "pending_approval")
+    .map(([userId]) => roster.find((r) => r.userId === userId))
+    .filter((r) => r != null)
+    .map((r) => ({ userId: r.userId, name: r.fullName, score: r.score ?? r.claudeScore }));
   const groups = {
     submitted: roster.filter((r) => r.status === "submitted"),
     graded: roster.filter((r) => r.status === "graded"),
@@ -206,6 +227,7 @@ export default async function DashboardTaskPage({
         </div>
       )}
 
+      <BulkApprove taskId={taskId} rows={awaitingApproval} />
       <BulkGradeAssist taskId={taskId} missingUserIds={missingProposals} />
 
       {(
@@ -237,6 +259,10 @@ export default async function DashboardTaskPage({
                 <tbody>
                   {groups[key].map((r) => {
                     const meta = STATUS_META[r.status];
+                    const reviewState =
+                      r.status === "submitted" || r.status === "graded"
+                        ? review.get(r.userId)
+                        : undefined;
                     return (
                       <tr
                         key={r.userId}
@@ -252,6 +278,14 @@ export default async function DashboardTaskPage({
                           >
                             {meta.label}
                           </span>
+                          {reviewState && (
+                            <span
+                              className="ms-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                              style={{ background: REVIEW_META[reviewState].bg, color: REVIEW_META[reviewState].color }}
+                            >
+                              {REVIEW_META[reviewState].label}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2">
