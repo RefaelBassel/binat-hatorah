@@ -261,6 +261,48 @@ async function statementsForUser(m: TaskMerge, userId: number): Promise<InStatem
   return stmts;
 }
 
+// Before touching anything, every row of both tasks (for the merge's
+// students) is exported once as JSON into data_backups (#17), so a merge —
+// or anything after it — can always be checked against or restored from it.
+// Already-applied merges get a snapshot of the current state.
+const BACKUP_TABLES = [
+  "task_assignments",
+  "task_progress",
+  "task_answers",
+  "text_markings",
+  "check_results",
+  "question_bank",
+];
+
+async function ensureBackupsTable() {
+  await db().execute(
+    `CREATE TABLE IF NOT EXISTS data_backups (
+       name TEXT PRIMARY KEY,
+       created_at INTEGER NOT NULL,
+       payload TEXT NOT NULL
+     )`
+  );
+}
+
+async function backupBeforeMerge(m: TaskMerge) {
+  const name = `backup:${m.name}`;
+  const exists = await db().execute({ sql: "SELECT 1 FROM data_backups WHERE name = ?", args: [name] });
+  if (exists.rows.length > 0) return;
+  const userFilter = m.userIds ? ` AND user_id IN (${m.userIds.map(() => "?").join(", ")})` : "";
+  const payload: Record<string, Record<string, unknown>[]> = {};
+  for (const table of BACKUP_TABLES) {
+    const res = await db().execute({
+      sql: `SELECT * FROM ${table} WHERE task_id IN (?, ?)${userFilter}`,
+      args: [m.sourceTaskId, m.targetTaskId, ...(m.userIds ?? [])],
+    });
+    payload[table] = res.rows.map((r) => Object.fromEntries(res.columns.map((c) => [c, r[c]])));
+  }
+  await db().execute({
+    sql: "INSERT OR IGNORE INTO data_backups (name, created_at, payload) VALUES (?, ?, ?)",
+    args: [name, now(), JSON.stringify({ sourceTaskId: m.sourceTaskId, targetTaskId: m.targetTaskId, userIds: m.userIds, rows: payload })],
+  });
+}
+
 async function runMerge(m: TaskMerge) {
   const tasks = await db().execute({
     sql: "SELECT id, content_ref FROM tasks WHERE id IN (?, ?)",
@@ -292,11 +334,23 @@ async function runMerge(m: TaskMerge) {
 let mergesReady = false;
 export async function ensureDuplicateTaskMerges() {
   if (mergesReady) return;
+  let retryLater = false;
   try {
     // markings are copied as stored: settle the lesson-05 index shift first
     await ensurePassageShifts();
     await ensureCancellationsTable();
     await ensureCheckTable();
+    await ensureBackupsTable();
+    // no backup, no merge: a failed export leaves that merge for a later request
+    const backedUp = new Set<string>();
+    for (const m of MERGES) {
+      try {
+        await backupBeforeMerge(m);
+        backedUp.add(m.name);
+      } catch (e) {
+        console.error(`backup before ${m.name} failed`, e);
+      }
+    }
     const applied = await db().execute({
       sql: `SELECT name FROM _migrations WHERE name IN (${MERGES.map(() => "?").join(", ")})`,
       args: MERGES.map((m) => m.name),
@@ -304,6 +358,10 @@ export async function ensureDuplicateTaskMerges() {
     const done = new Set(applied.rows.map((r) => String(r.name)));
     for (const m of MERGES) {
       if (done.has(m.name)) continue;
+      if (!backedUp.has(m.name)) {
+        retryLater = true;
+        continue;
+      }
       try {
         await runMerge(m);
       } catch (e) {
@@ -318,5 +376,5 @@ export async function ensureDuplicateTaskMerges() {
     // never take the tasks pages down over a one-time data fix
     console.error("duplicate task merges failed", e);
   }
-  mergesReady = true;
+  mergesReady = !retryLater;
 }
