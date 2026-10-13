@@ -14,7 +14,7 @@ import {
 import { getTaskContent } from "@/content/tasks/registry";
 import { formatWorkTime } from "@/lib/hebrew";
 import { salvageGradeProposal } from "@/lib/grade-utils";
-import { ensureGradeAssistColumns } from "@/lib/grade-assist";
+import { ensureGradeAssistColumns, reviewStates } from "@/lib/grade-assist";
 import ConfirmButton from "@/components/confirm-button";
 import { DECODE_STAGES } from "@/content/tasks/registry";
 
@@ -94,11 +94,27 @@ export default async function SubmissionPage({
 
   await ensureGradeAssistColumns();
   const gradeRes = await db().execute({
-    sql: `SELECT claude_score, claude_feedback, claude_error, score, feedback, approved_at
+    sql: `SELECT claude_score, claude_feedback, claude_error, claude_submitted_at,
+                 score, feedback, approved_at
           FROM grades WHERE task_id = ? AND user_id = ?`,
     args: [taskId, studentId],
   });
   const grade = gradeRes.rows[0];
+  // a proposal written before an un-submit → re-submit is out of date
+  const proposalStale =
+    grade?.claude_submitted_at != null &&
+    progress?.submitted_at != null &&
+    Number(grade.claude_submitted_at) !== Number(progress.submitted_at);
+
+  // quick hop to the next proposal waiting for approval (after this one in
+  // submission order, wrapping around)
+  const states = await reviewStates(taskId);
+  const waitingIds = states.filter((s) => s.state === "pending_approval").map((s) => s.userId);
+  const myIndex = states.findIndex((s) => s.userId === studentId);
+  const nextPending =
+    states.slice(myIndex + 1).find((s) => s.state === "pending_approval")?.userId ??
+    waitingIds.find((id) => id !== studentId) ??
+    null;
 
   // legacy rows may hold the proposal as a raw JSON blob — clean for display
   const salvageIfBlob = (raw: string | null, score: number | null) => {
@@ -285,8 +301,13 @@ export default async function SubmissionPage({
             salvageIfBlob((grade?.feedback as string | null) ?? null, null)
           }
           initialClaudeError={(grade?.claude_error as string | null) ?? null}
+          initialStale={proposalStale}
           submitted={progress?.submitted_at != null}
+          submittedAt={progress?.submitted_at != null ? Number(progress.submitted_at) : null}
           approved={grade?.approved_at != null}
+          nextPendingHref={
+            nextPending != null ? `/dashboard/submission/${taskId}/${nextPending}` : null
+          }
         />
       </div>
     </PageShell>

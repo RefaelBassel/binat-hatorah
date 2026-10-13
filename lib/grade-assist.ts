@@ -6,14 +6,17 @@ import { getTaskContent } from "@/content/tasks/registry";
 import { CLAUDE_MODEL } from "./claude";
 import { addressInstruction } from "./address-form";
 import { salvageGradeProposal } from "./grade-utils";
+import { notifyStudent } from "./notify";
 
 // Claude proposes a score + feedback for a submission. The teacher edits and
 // approves — nothing reaches the student without teacher approval.
 //
-// Runs automatically when a student submits (see the submit route) and on
-// demand from the submission page. Failures never throw: they are stored on
-// the grades row (claude_error) so the teacher sees a clear message and a
-// retry button instead of an empty panel.
+// Runs automatically when a student submits (see the submit route), from the
+// grade-proposals cron (older submissions, and runs that never finished), and
+// on demand from the submission page. A failed run is retried once right
+// away. Failures never throw: they are stored on the grades row
+// (claude_error) so the teacher sees a clear message and a retry button
+// instead of an empty panel.
 
 let columnsReady = false;
 export async function ensureGradeAssistColumns() {
@@ -26,6 +29,12 @@ export async function ensureGradeAssistColumns() {
   if (!cols.has("claude_error_at")) {
     await db().execute("ALTER TABLE grades ADD COLUMN claude_error_at INTEGER");
   }
+  if (!cols.has("claude_attempts")) {
+    await db().execute("ALTER TABLE grades ADD COLUMN claude_attempts INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!cols.has("claude_submitted_at")) {
+    await db().execute("ALTER TABLE grades ADD COLUMN claude_submitted_at INTEGER");
+  }
   columnsReady = true;
 }
 
@@ -33,37 +42,56 @@ export type GradeProposal =
   | { ok: true; score: number | null; feedback: string }
   | { ok: false; error: string };
 
+// An error a second try cannot fix (missing API key, task or student).
+class FinalError extends Error {}
+
 export async function proposeGrade(taskId: number, studentId: number): Promise<GradeProposal> {
   await ensureGradeAssistColumns();
-  let result: GradeProposal;
-  try {
-    result = await runProposal(taskId, studentId);
-  } catch (err) {
-    console.error("grade-assist failed", { taskId, studentId, err });
-    result = { ok: false, error: describeError(err) };
+  // the submission this proposal belongs to — a re-submission makes it stale
+  const progress = await db().execute({
+    sql: "SELECT submitted_at FROM task_progress WHERE task_id = ? AND user_id = ?",
+    args: [taskId, studentId],
+  });
+  const submittedAt = (progress.rows[0]?.submitted_at as number | null | undefined) ?? null;
+
+  let result: GradeProposal = { ok: false, error: describeError(null) };
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      result = await runProposal(taskId, studentId);
+      break;
+    } catch (err) {
+      console.error("grade-assist failed", { taskId, studentId, attempt, err });
+      result = { ok: false, error: describeError(err) };
+      if (err instanceof FinalError) break;
+      if (attempt === 1) await new Promise((r) => setTimeout(r, 5000));
+    }
   }
 
   const t = now();
   if (result.ok) {
     await db().execute({
-      sql: `INSERT INTO grades (task_id, user_id, claude_score, claude_feedback, claude_error, claude_error_at, updated_at)
-            VALUES (?, ?, ?, ?, NULL, NULL, ?)
+      sql: `INSERT INTO grades (task_id, user_id, claude_score, claude_feedback, claude_error, claude_error_at,
+                                claude_attempts, claude_submitted_at, updated_at)
+            VALUES (?, ?, ?, ?, NULL, NULL, 0, ?, ?)
             ON CONFLICT(task_id, user_id) DO UPDATE SET
               claude_score = excluded.claude_score,
               claude_feedback = excluded.claude_feedback,
               claude_error = NULL,
               claude_error_at = NULL,
+              claude_attempts = 0,
+              claude_submitted_at = excluded.claude_submitted_at,
               updated_at = excluded.updated_at`,
-      args: [taskId, studentId, result.score, result.feedback, t],
+      args: [taskId, studentId, result.score, result.feedback, submittedAt, t],
     });
   } else {
     // keep any earlier good proposal; only record the failure
     await db().execute({
-      sql: `INSERT INTO grades (task_id, user_id, claude_error, claude_error_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
+      sql: `INSERT INTO grades (task_id, user_id, claude_error, claude_error_at, claude_attempts, updated_at)
+            VALUES (?, ?, ?, ?, 1, ?)
             ON CONFLICT(task_id, user_id) DO UPDATE SET
               claude_error = excluded.claude_error,
               claude_error_at = excluded.claude_error_at,
+              claude_attempts = grades.claude_attempts + 1,
               updated_at = excluded.updated_at`,
       args: [taskId, studentId, result.error, t, t],
     });
@@ -71,18 +99,115 @@ export async function proposeGrade(taskId: number, studentId: number): Promise<G
   return result;
 }
 
+// A submitted, unapproved work needs a proposal when it has none, or when the
+// one it has was written for an earlier submission (un-submit → re-submit).
+const NEEDS_PROPOSAL = `p.submitted_at IS NOT NULL
+            AND g.approved_at IS NULL
+            AND (g.claude_feedback IS NULL OR TRIM(g.claude_feedback) = ''
+                 OR (g.claude_submitted_at IS NOT NULL AND g.claude_submitted_at <> p.submitted_at))`;
+
 // Submitted work that still has no proposal (for the bulk re-run).
 export async function submissionsMissingProposal(taskId: number): Promise<number[]> {
+  await ensureGradeAssistColumns();
   const res = await db().execute({
     sql: `SELECT p.user_id FROM task_progress p
           LEFT JOIN grades g ON g.task_id = p.task_id AND g.user_id = p.user_id
-          WHERE p.task_id = ? AND p.submitted_at IS NOT NULL
-            AND g.approved_at IS NULL
-            AND (g.claude_feedback IS NULL OR TRIM(g.claude_feedback) = '')
+          WHERE p.task_id = ? AND ${NEEDS_PROPOSAL}
           ORDER BY p.submitted_at`,
     args: [taskId],
   });
   return res.rows.map((r) => Number(r.user_id));
+}
+
+// The cron's work list, across all tasks: submissions that need a proposal,
+// skipping fresh ones (the submit route is still on them) and ones that
+// already failed three automatic rounds (the teacher sees the error and the
+// retry button). A failed one waits half an hour before the next round.
+export async function pendingProposalsForCron(
+  limit: number
+): Promise<{ taskId: number; userId: number }[]> {
+  await ensureGradeAssistColumns();
+  const t = now();
+  const res = await db().execute({
+    sql: `SELECT p.task_id, p.user_id FROM task_progress p
+          LEFT JOIN grades g ON g.task_id = p.task_id AND g.user_id = p.user_id
+          WHERE ${NEEDS_PROPOSAL}
+            AND p.submitted_at < ?
+            AND COALESCE(g.claude_attempts, 0) < 3
+            AND (g.claude_error_at IS NULL OR g.claude_error_at < ?)
+          ORDER BY p.submitted_at
+          LIMIT ?`,
+    args: [t - 300, t - 1800, limit],
+  });
+  return res.rows.map((r) => ({ taskId: Number(r.task_id), userId: Number(r.user_id) }));
+}
+
+export type ReviewState = "approved" | "pending_approval" | "preparing" | "failed";
+
+// Where each submitted work of a task stands in the review flow, in
+// submission order: approved / proposal waiting for the teacher / proposal
+// still being prepared / automatic check failed (teacher must retry).
+export async function reviewStates(
+  taskId: number
+): Promise<{ userId: number; state: ReviewState }[]> {
+  await ensureGradeAssistColumns();
+  const res = await db().execute({
+    sql: `SELECT p.user_id, g.approved_at, g.claude_feedback, g.claude_error,
+                 g.claude_submitted_at, p.submitted_at
+          FROM task_progress p
+          LEFT JOIN grades g ON g.task_id = p.task_id AND g.user_id = p.user_id
+          WHERE p.task_id = ? AND (p.submitted_at IS NOT NULL OR g.approved_at IS NOT NULL)
+          ORDER BY p.submitted_at`,
+    args: [taskId],
+  });
+  return res.rows.map((r) => {
+    const hasProposal =
+      r.claude_feedback != null &&
+      String(r.claude_feedback).trim() !== "" &&
+      (r.claude_submitted_at == null ||
+        r.submitted_at == null ||
+        Number(r.claude_submitted_at) === Number(r.submitted_at));
+    const state: ReviewState =
+      r.approved_at != null
+        ? "approved"
+        : hasProposal
+          ? "pending_approval"
+          : r.claude_error != null
+            ? "failed"
+            : "preparing";
+    return { userId: Number(r.user_id), state };
+  });
+}
+
+// The teacher's final approval: only now does the grade become visible to
+// the student, who is notified by bell + email.
+export async function approveGrade(opts: {
+  taskId: number;
+  studentId: number;
+  score: number;
+  feedback: string;
+  teacherId: number;
+}) {
+  const { taskId, studentId, score, feedback, teacherId } = opts;
+  const t = now();
+  await db().execute({
+    sql: `INSERT INTO grades (task_id, user_id, score, feedback, graded_by, approved_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(task_id, user_id) DO UPDATE SET
+            score = excluded.score,
+            feedback = excluded.feedback,
+            graded_by = excluded.graded_by,
+            approved_at = COALESCE(grades.approved_at, excluded.approved_at),
+            updated_at = excluded.updated_at`,
+    args: [taskId, studentId, score, feedback, teacherId, t, t],
+  });
+  const task = await getTask(taskId);
+  await notifyStudent(studentId, {
+    kind: `graded:${taskId}:${studentId}`,
+    title: `המשימה ״${task?.title ?? ""}״ נבדקה — הציון: ${score}`,
+    body: feedback ? `הערכת המורה: ${feedback.slice(0, 500)}` : undefined,
+    link: `/tasks/${taskId}`,
+  });
 }
 
 function describeError(err: unknown): string {
@@ -108,6 +233,7 @@ function describeError(err: unknown): string {
     return `${base} (שגיאה ${err.status ?? ""} מהשירות.)`;
   }
   if (err instanceof NoProposalError) return `${base} (${err.message})`;
+  if (err instanceof FinalError) return err.message;
   return base;
 }
 
@@ -116,14 +242,13 @@ class NoProposalError extends Error {}
 async function runProposal(taskId: number, studentId: number): Promise<GradeProposal> {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) {
-    return {
-      ok: false,
-      error: "הבדיקה האוטומטית לא זמינה: מפתח ה-API של אנתרופיק לא הוגדר בשרת — יש לפנות לרפאל.",
-    };
+    throw new FinalError(
+      "הבדיקה האוטומטית לא זמינה: מפתח ה-API של אנתרופיק לא הוגדר בשרת — יש לפנות לרפאל."
+    );
   }
 
   const task = await getTask(taskId);
-  if (!task) return { ok: false, error: "המשימה לא נמצאה." };
+  if (!task) throw new FinalError("המשימה לא נמצאה.");
   const reg = getTaskContent(task.content_ref);
   const answers = await getAnswers(taskId, studentId);
   const markings = await getMarkings(taskId, studentId);
@@ -131,7 +256,7 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
     sql: "SELECT full_name, email, address_form FROM users WHERE id = ?",
     args: [studentId],
   });
-  if (!studentRow.rows[0]) return { ok: false, error: "התלמיד/ה לא נמצא/ה." };
+  if (!studentRow.rows[0]) throw new FinalError("התלמיד/ה לא נמצא/ה.");
   const studentName =
     (studentRow.rows[0]?.full_name as string | null) ??
     (studentRow.rows[0]?.email as string | undefined) ??
