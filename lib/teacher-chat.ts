@@ -15,7 +15,7 @@ import {
   type WorksheetEdits,
   type WritingEdits,
 } from "./content-overrides";
-import { allTasksWithStats, cancelTaskAssignment, getTask, now, publishTaskForClass, republishTask, taskRoster, updateTaskDueDate } from "./tasks";
+import { allTasksWithStats, cancelTaskAssignment, getTask, isTaskCancelled, keptTaskWork, now, publishTaskForClass, republishTask, taskRoster, updateTaskDueDate } from "./tasks";
 import { approveUser, blockUser, listAccounts, preApproveEmail, unblockUser } from "./approval";
 import { sendGroupMessage, sendMessage } from "./messages";
 import { formatHebDate, formatHebTime, israelWallTimeToUnix } from "./hebrew";
@@ -276,7 +276,7 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   { name: "list_students", description: "Every account: id, name, email, role, state (approved / pending / blocked), last seen, whether they have work.", input_schema: { type: "object", properties: {}, additionalProperties: false } },
   { name: "list_tasks", description: "Published tasks (taskId, ref, title, due date, assigned/submitted/graded counts).", input_schema: { type: "object", properties: {}, additionalProperties: false } },
-  { name: "class_progress", description: "Per-student status on one published task.", input_schema: { type: "object", properties: { taskId: { type: "integer" } }, required: ["taskId"], additionalProperties: false } },
+  { name: "class_progress", description: "Per-student status on one published task: `assigned` students, plus `keptWorkNotAssigned` — saved work (progress, work time, answer count) of students no longer assigned, e.g. after cancel_task or a duplicate merge. Cancelling never deletes work, so check keptWorkNotAssigned before concluding work was lost.", input_schema: { type: "object", properties: { taskId: { type: "integer" } }, required: ["taskId"], additionalProperties: false } },
   { name: "list_code_requests", description: "Requests for changes to the site's code sent to the developer pipeline, with status.", input_schema: { type: "object", properties: {}, additionalProperties: false } },
   // ---- write (proposals) ----
   {
@@ -378,8 +378,15 @@ async function runReadTool(name: string, input: Record<string, unknown>, userId:
     case "list_tasks":
       return (await allTasksWithStats()).map((t) => ({ taskId: t.id, ref: t.contentRef, title: t.title, dueAt: formatHebDateTime(t.dueAt), assigned: t.assigned, submitted: t.submitted, graded: t.graded }));
     case "class_progress": {
-      const roster = await taskRoster(Number(input.taskId));
-      return roster.map((r) => ({ userId: r.userId, name: r.fullName, status: r.status, progressPct: r.progressPct, workMinutes: Math.round(r.workSeconds / 60), score: r.score, submittedAt: r.submittedAt ? formatHebDateTime(r.submittedAt) : null }));
+      const taskId = Number(input.taskId);
+      const roster = await taskRoster(taskId);
+      const kept = await keptTaskWork(taskId);
+      return {
+        cancelled: await isTaskCancelled(taskId),
+        assigned: roster.map((r) => ({ userId: r.userId, name: r.fullName, status: r.status, progressPct: r.progressPct, workMinutes: Math.round(r.workSeconds / 60), score: r.score, submittedAt: r.submittedAt ? formatHebDateTime(r.submittedAt) : null })),
+        // saved work of students no longer assigned (cancelled task / merged duplicate) — still stored
+        keptWorkNotAssigned: kept.map((r) => ({ userId: r.userId, name: r.fullName, progressPct: r.progressPct, workMinutes: Math.round(r.workSeconds / 60), stage: r.stage, answers: r.answers, markings: r.markings, submittedAt: r.submittedAt ? formatHebDateTime(r.submittedAt) : null })),
+      };
     }
     case "list_code_requests":
       return (await listCodeRequests(userId)).map((c) => ({ id: c.id, title: c.title, status: c.status, issueUrl: c.issueUrl, prUrl: c.prUrl, previewUrl: c.previewUrl, note: c.note }));
@@ -834,6 +841,7 @@ const SYSTEM = `אתה קלוד — העוזר של המורה באתר "${SITE.
 איך זה עובד:
 - כלי קריאה (list_units, get_unit, list_students, list_tasks, class_progress, list_code_requests) פועלים מיד — השתמש בהם בחופשיות כדי לדעת את המצב האמיתי לפני שאתה מציע משהו.
 - כלי שינוי (edit_unit_texts, edit_plenary, edit_opening, edit_writing_practice, reset_unit_edits, publish_unit, set_due_date, cancel_task, republish_task, account_action, send_message, request_code_change) מבצעים מיד, בלי שום אישור — זה צ׳אט רגיל: היא כותבת, אתה עושה, ומספר במשפט-שניים מה בדיוק שונה (ציטוט קצר של הנוסח החדש כשזה טקסט). אל תשאל "האם לבצע?" ואל תציג אפשרויות לבחירה — רק אם הבקשה באמת דו-משמעית, שאל שאלה אחת קצרה. כל שינוי ניתן לביטול עם undo_change כשהיא מבקשת לבטל / להחזיר.
+- ביטול משימה (cancel_task) לעולם לא מוחק עבודה של תלמידים — רק מוריד את המשימה מהרשימה שלהם. לכן במשימה מבוטלת class_progress מחזיר את העבודה השמורה ב-keptWorkNotAssigned (אחוז התקדמות, זמן עבודה, מספר תשובות); אל תאמר שעבודה אבדה בלי לבדוק שם.
 - לפני עריכת טקסט ביחידה — תמיד get_unit קודם, כדי לערוך את הנוסח הנוכחי ולהשתמש במפתחות (key) הנכונים של השאלות והבלוקים.
 - בדיקת ההבנה (check) נערכת בעמוד המשימה עצמו (״בדיקת ההבנה״ בלוח העריכה) — אם מבקשים לשנות שאלה סגורה, הפנה לשם, או השתמש ב-request_code_change אם זה שינוי מבני.
 - כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח.

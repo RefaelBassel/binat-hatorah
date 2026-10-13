@@ -326,6 +326,8 @@ export async function isTaskCancelled(taskId: number): Promise<boolean> {
 
 // Cancel = remove the task from every student (their saved work stays
 // untouched) and mark it so late-joiner auto-assignment skips it.
+// Invariant: only task_assignments rows are deleted here — never answers,
+// progress, work time, markings, checks or banked questions (#17).
 export async function cancelTaskAssignment(taskId: number) {
   await ensureCancellationsTable();
   await db().execute({
@@ -575,4 +577,39 @@ export async function taskRoster(taskId: number) {
       status: deriveStatus(progress, task?.due_at ?? 0, r.approved_at != null),
     };
   });
+}
+
+// Work saved in a task by students who are no longer assigned to it — after
+// a cancel, or after their work was folded into the kept copy of a duplicate
+// (lib/task-merge.ts). taskRoster lists assignments only, so without this a
+// cancelled task looked empty although every answer was still stored (#17).
+export async function keptTaskWork(taskId: number) {
+  await ensureMerges();
+  const res = await db().execute({
+    sql: `SELECT u.id AS user_id, u.full_name, u.email,
+                 p.work_seconds, p.progress_pct, p.stage, p.submitted_at,
+                 (SELECT COUNT(*) FROM task_answers ans
+                    WHERE ans.task_id = ? AND ans.user_id = u.id AND TRIM(ans.answer) <> '') AS answers,
+                 (SELECT COUNT(*) FROM text_markings m
+                    WHERE m.task_id = ? AND m.user_id = u.id) AS markings
+          FROM users u
+          LEFT JOIN task_progress p ON p.task_id = ? AND p.user_id = u.id
+          WHERE u.id IN (
+                  SELECT user_id FROM task_progress WHERE task_id = ?
+                  UNION SELECT user_id FROM task_answers WHERE task_id = ? AND TRIM(answer) <> ''
+                  UNION SELECT user_id FROM text_markings WHERE task_id = ?)
+            AND u.id NOT IN (SELECT user_id FROM task_assignments WHERE task_id = ?)
+          ORDER BY u.full_name`,
+    args: Array(7).fill(taskId),
+  });
+  return res.rows.map((r) => ({
+    userId: Number(r.user_id),
+    fullName: (r.full_name as string | null) ?? String(r.email),
+    workSeconds: Number(r.work_seconds ?? 0),
+    progressPct: Number(r.progress_pct ?? 0),
+    stage: Number(r.stage ?? 1),
+    submittedAt: r.submitted_at as number | null,
+    answers: Number(r.answers ?? 0),
+    markings: Number(r.markings ?? 0),
+  }));
 }
