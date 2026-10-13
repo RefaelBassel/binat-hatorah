@@ -55,7 +55,15 @@ export const STATUS_META: Record<
   graded: { label: "נלמדה", color: "var(--status-graded)", bg: "var(--status-graded-bg)" },
 };
 
+// One-time fold of duplicate-published tasks (lib/task-merge.ts), run before
+// any task list or task page is read. Dynamic import: task-merge imports us.
+async function ensureMerges() {
+  const { ensureDuplicateTaskMerges } = await import("./task-merge");
+  await ensureDuplicateTaskMerges();
+}
+
 export async function tasksForStudent(userId: number, allPublished = false) {
+  await ensureMerges();
   // allPublished: teacher in "מצב תלמיד" — sees every published task as if
   // assigned, with her own progress rows (cancelled tasks excluded, as for
   // students, whose assignments are deleted on cancel).
@@ -125,6 +133,7 @@ export async function continueTask(userId: number, allPublished = false) {
 }
 
 export async function getTask(taskId: number): Promise<TaskRow | null> {
+  await ensureMerges();
   const res = await db().execute({
     sql: "SELECT id, content_ref, title, published_at, due_at FROM tasks WHERE id = ?",
     args: [taskId],
@@ -504,6 +513,7 @@ export async function focusStatsFor(
 }
 
 export async function allTasksWithStats() {
+  await ensureMerges();
   await ensureCancellationsTable();
   const res = await db().execute({
     sql: `SELECT t.id, t.content_ref, t.title, t.published_at, t.due_at,
@@ -528,6 +538,7 @@ export async function allTasksWithStats() {
 }
 
 export async function taskRoster(taskId: number) {
+  await ensureMerges();
   const res = await db().execute({
     sql: `SELECT u.id AS user_id, u.full_name, u.email,
                  p.opened_at, p.work_seconds, p.progress_pct, p.stage, p.submitted_at,
