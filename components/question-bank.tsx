@@ -59,7 +59,7 @@ export default function QuestionBank({
           </button>
           <span className="flex-1">{q.question}</span>
           {q.chosen ? (
-            <span className="shrink-0 rounded-full bg-[color:var(--accent)] px-2 py-0.5 text-[10px] font-bold text-white">
+            <span className="shrink-0 rounded-full bg-[color:var(--accent-fill)] px-2 py-0.5 text-[10px] font-bold text-white">
               🌟 למיני-סמינריון
             </span>
           ) : (

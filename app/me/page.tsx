@@ -7,6 +7,8 @@ import ContinueFab from "@/components/continue-fab";
 import QuestionBank from "@/components/question-bank";
 import AddressFormPicker from "@/components/address-form-picker";
 import MeReflections from "@/components/me-reflections";
+import ThemeToggle from "@/components/theme-toggle";
+import { currentTheme } from "@/lib/theme-store";
 
 // row shape for the archive list + the trend chart's initial points
 interface ReflectionPoint {
@@ -84,6 +86,7 @@ export default async function MePage() {
     // DB not available
   }
 
+  const theme = await currentTheme();
   const overdue = tasks.filter((t) => t.status === "overdue");
   const current =
     tasks.find((t) => t.status === "in_progress") ??
@@ -122,6 +125,9 @@ export default async function MePage() {
         {!user.guest && (
           <div className="mb-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4">
             <AddressFormPicker initial={user.addressForm ?? null} />
+            <div className="mt-4 border-t border-[color:var(--border)] pt-4">
+              <ThemeToggle initial={theme} persist variant="panel" />
+            </div>
           </div>
         )}
 

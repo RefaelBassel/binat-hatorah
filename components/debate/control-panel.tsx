@@ -150,7 +150,7 @@ function Btn({
         "rounded-xl px-4 py-3 text-sm font-bold transition disabled:opacity-40",
         wide ? "col-span-2" : "",
         primary
-          ? "bg-[color:var(--primary)] text-white"
+          ? "bg-[color:var(--primary-fill)] text-white"
           : danger
             ? "border border-[color:var(--danger)]/50 text-[color:var(--danger)]"
             : "border border-[color:var(--border)] text-[color:var(--primary)]",

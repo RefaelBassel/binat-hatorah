@@ -67,7 +67,7 @@ export default async function HomePage() {
               <>
                 <Link
                   href="/me"
-                  className="group flex items-center gap-3 rounded-full bg-[color:var(--primary)] px-8 py-4 text-base font-semibold text-[color:var(--background)] shadow-lg shadow-black/10 transition hover:scale-[1.02] hover:shadow-xl active:scale-100"
+                  className="group flex items-center gap-3 rounded-full bg-[color:var(--primary-fill)] px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:scale-[1.02] hover:shadow-xl active:scale-100"
                 >
                   <span>לעמוד האישי שלי</span>
                   <span aria-hidden className="transition group-hover:-translate-x-0.5">
@@ -89,7 +89,7 @@ export default async function HomePage() {
                 <form action={signInWithGoogle}>
                   <button
                     type="submit"
-                    className="group flex items-center gap-3 rounded-full bg-[color:var(--primary)] px-8 py-4 text-base font-semibold text-[color:var(--background)] shadow-lg shadow-black/10 transition hover:scale-[1.02] hover:shadow-xl active:scale-100"
+                    className="group flex items-center gap-3 rounded-full bg-[color:var(--primary-fill)] px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:scale-[1.02] hover:shadow-xl active:scale-100"
                   >
                     <GoogleIcon />
                     <span>כניסה עם חשבון Google</span>

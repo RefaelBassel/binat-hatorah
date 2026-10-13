@@ -42,16 +42,17 @@ export function deriveStatus(
   return "not_started";
 }
 
-// Hebrew labels + palette color tokens for the color-coded statuses.
+// Hebrew labels + palette color tokens for the color-coded statuses. The
+// values are CSS variables (app/globals.css) so the tags follow dark mode.
 export const STATUS_META: Record<
   StudentTaskStatus,
   { label: string; color: string; bg: string }
 > = {
-  not_started: { label: "טרם נלמדה", color: "#6b6055", bg: "#f0e9e1" },
-  in_progress: { label: "בלימוד", color: "#8a6516", bg: "#fdf3d7" },
-  overdue: { label: "עבר זמנה", color: "#9d3438", bg: "#f9e5e3" },
-  submitted: { label: "הוגשה", color: "#2f5d8a", bg: "#e3edf7" },
-  graded: { label: "נלמדה", color: "#3e6b4f", bg: "#e5efe8" },
+  not_started: { label: "טרם נלמדה", color: "var(--status-not-started)", bg: "var(--status-not-started-bg)" },
+  in_progress: { label: "בלימוד", color: "var(--status-in-progress)", bg: "var(--status-in-progress-bg)" },
+  overdue: { label: "עבר זמנה", color: "var(--status-overdue)", bg: "var(--status-overdue-bg)" },
+  submitted: { label: "הוגשה", color: "var(--status-submitted)", bg: "var(--status-submitted-bg)" },
+  graded: { label: "נלמדה", color: "var(--status-graded)", bg: "var(--status-graded-bg)" },
 };
 
 export async function tasksForStudent(userId: number, allPublished = false) {

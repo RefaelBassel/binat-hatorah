@@ -185,7 +185,7 @@ function ActionBtn({
   const [err, setErr] = useState<string | null>(null);
   const cls =
     tone === "success"
-      ? "bg-[color:var(--success)] text-white"
+      ? "bg-[color:var(--success-fill)] text-white"
       : tone === "danger"
         ? "border border-[color:var(--danger)]/50 text-[color:var(--danger)] hover:bg-[color:var(--danger)]/10"
         : "border border-[color:var(--border)] text-[color:var(--primary)]/75 hover:border-[color:var(--accent)]";
@@ -245,7 +245,7 @@ function PreApprove() {
               if (r.ok) setText("");
             })
           }
-          className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-xs font-bold text-white transition disabled:opacity-40"
+          className="rounded-full bg-[color:var(--primary-fill)] px-4 py-1.5 text-xs font-bold text-white transition disabled:opacity-40"
         >
           {busy ? "מוסיף…" : "הוספה לרשימה המאושרת"}
         </button>

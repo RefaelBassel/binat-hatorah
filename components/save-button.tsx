@@ -83,10 +83,10 @@ export default function SaveButton({
   const look: Record<Phase, string> = {
     idle: "cursor-not-allowed border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)]/40",
     armed:
-      "bg-[color:var(--accent)] text-white shadow-md hover:scale-[1.03] save-armed",
-    saving: "scale-[0.96] bg-[color:var(--accent)] text-white shadow-inner opacity-90",
-    saved: "bg-[color:var(--success)] text-white shadow-md scale-[1.04]",
-    error: "bg-[color:var(--danger)] text-white shadow-md",
+      "bg-[color:var(--accent-fill)] text-white shadow-md hover:scale-[1.03] save-armed",
+    saving: "scale-[0.96] bg-[color:var(--accent-fill)] text-white shadow-inner opacity-90",
+    saved: "bg-[color:var(--success-fill)] text-white shadow-md scale-[1.04]",
+    error: "bg-[color:var(--danger-fill)] text-white shadow-md",
   };
 
   return (

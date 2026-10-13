@@ -32,7 +32,7 @@ export default function WritingSpace({
         return (
           <section key={level.n}>
             <div className="mb-3 flex flex-wrap items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--primary)] text-lg">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--primary-fill)] text-lg">
                 {level.emoji}
               </span>
               <h2 className="font-display text-xl font-bold text-[color:var(--primary)]">
@@ -87,7 +87,7 @@ export default function WritingSpace({
                             {r.score}
                           </span>
                         ) : r ? (
-                          <span className="rounded-full bg-[#e3edf7] px-2.5 py-1 text-xs font-bold text-[#2f5d8a]">
+                          <span className="rounded-full bg-[color:var(--info-bg)] px-2.5 py-1 text-xs font-bold text-[color:var(--info)]">
                             נשלח ✓
                           </span>
                         ) : (
@@ -198,7 +198,7 @@ function ExerciseRunner({
                       className={[
                         "rounded-full border px-3 py-1 text-xs font-semibold transition",
                         tagChoices[s.id] === label
-                          ? "border-[color:var(--primary)] bg-[color:var(--primary)] text-white"
+                          ? "border-[color:var(--primary)] bg-[color:var(--primary-fill)] text-white"
                           : "border-[color:var(--border)] text-[color:var(--primary)] hover:border-[color:var(--accent)]",
                       ].join(" ")}
                     >
@@ -252,7 +252,7 @@ function ExerciseRunner({
                   disabled={Boolean(result)}
                   rows={2}
                   placeholder={f.placeholder ?? "כתבו כאן..."}
-                  className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]"
                 />
               </label>
             ))}
@@ -282,7 +282,7 @@ function ExerciseRunner({
           <button
             onClick={submit}
             disabled={!canSubmit || busy}
-            className="rounded-full bg-[color:var(--primary)] px-8 py-2.5 text-sm font-bold text-white shadow disabled:opacity-40"
+            className="rounded-full bg-[color:var(--primary-fill)] px-8 py-2.5 text-sm font-bold text-white shadow disabled:opacity-40"
           >
             {busy ? "בודקים..." : "בדיקה ✨"}
           </button>

@@ -136,7 +136,7 @@ export default function VotePanel({ debateId }: { debateId: number }) {
       <button
         onClick={submit}
         disabled={busy}
-        className="w-full rounded-full bg-[color:var(--primary)] py-3.5 text-sm font-bold text-white shadow-lg disabled:opacity-50"
+        className="w-full rounded-full bg-[color:var(--primary-fill)] py-3.5 text-sm font-bold text-white shadow-lg disabled:opacity-50"
       >
         {busy ? "שולחים..." : "שליחת ההצבעה 🗳️"}
       </button>

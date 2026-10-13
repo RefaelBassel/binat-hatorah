@@ -250,7 +250,7 @@ export default function WorksheetEditor({
                             שאלה {qIndex}
                             {off && " · מוסתרת"}
                           </span>
-                          <button type="button" onClick={() => toggleHidden(q.key)} className={`rounded-full px-3 py-0.5 text-[11px] font-bold transition ${off ? "bg-[color:var(--success)] text-white" : "border border-[color:var(--danger)]/50 text-[color:var(--danger)] hover:bg-[color:var(--danger)]/10"}`}>
+                          <button type="button" onClick={() => toggleHidden(q.key)} className={`rounded-full px-3 py-0.5 text-[11px] font-bold transition ${off ? "bg-[color:var(--success-fill)] text-white" : "border border-[color:var(--danger)]/50 text-[color:var(--danger)] hover:bg-[color:var(--danger)]/10"}`}>
                             {off ? "↩ להחזיר" : "להסתיר"}
                           </button>
                         </div>

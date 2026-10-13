@@ -169,8 +169,8 @@ export default async function DashboardPage() {
           href="/dashboard/students"
           className={`rounded-full px-5 py-2 text-sm font-bold shadow transition hover:scale-[1.02] ${
             pendingCount > 0
-              ? "bg-[color:var(--warning)] text-white"
-              : "bg-[color:var(--primary)] text-white"
+              ? "bg-[color:var(--warning-fill)] text-white"
+              : "bg-[color:var(--primary-fill)] text-white"
           }`}
         >
           👥 רשימת התלמידים ואישורי כניסה
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
         <Link
           href="/dashboard/chat"
           className="rounded-full px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
-          style={{ background: "linear-gradient(135deg, var(--accent), var(--primary))" }}
+          style={{ background: "linear-gradient(135deg, var(--accent-fill), var(--primary-fill))" }}
         >
           ✨ הצ׳אט עם קלוד — לשנות כל דבר באתר
         </Link>
@@ -268,7 +268,7 @@ export default async function DashboardPage() {
         </div>
         <Link
           href="/dashboard/audio-qa"
-          className="shrink-0 rounded-full bg-[color:var(--primary)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+          className="shrink-0 rounded-full bg-[color:var(--primary-fill)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
         >
           לעמוד הביקורת ←
         </Link>

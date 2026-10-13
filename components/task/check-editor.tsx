@@ -217,7 +217,7 @@ export default function CheckEditor({
               {q.options.map((opt, k) => (
                 <div key={k} className="flex items-center gap-2">
                   {q.kind === "order" ? (
-                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-[11px] font-extrabold text-white">
+                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent-fill)] text-[11px] font-extrabold text-white">
                       {k + 1}
                     </span>
                   ) : (

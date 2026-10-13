@@ -44,7 +44,7 @@ export default function PublishTaskForm({
           </span>
           <select
             name="contentRef"
-            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
+            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
           >
             {options.map((o) => (
               <option key={o.ref} value={o.ref}>
@@ -61,7 +61,7 @@ export default function PublishTaskForm({
             type="date"
             name="dueDate"
             required
-            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
+            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
           />
         </label>
         <label className="block">
@@ -72,14 +72,14 @@ export default function PublishTaskForm({
             type="time"
             name="dueTime"
             defaultValue="23:59"
-            className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
+            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
           />
         </label>
         <button
           type="submit"
           disabled={pending}
           aria-live="polite"
-          className={`inline-flex items-center gap-2 rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-bold text-white shadow transition ${
+          className={`inline-flex items-center gap-2 rounded-full bg-[color:var(--primary-fill)] px-6 py-2.5 text-sm font-bold text-white shadow transition ${
             pending ? "scale-[0.96] cursor-wait opacity-80 shadow-inner" : "hover:scale-[1.02]"
           }`}
         >
@@ -141,7 +141,7 @@ function AlreadyPublished({
           <button
             type="submit"
             disabled={resPending}
-            className={`inline-flex items-center gap-2 rounded-full bg-[color:var(--accent)] px-5 py-2 text-sm font-bold text-white shadow transition ${
+            className={`inline-flex items-center gap-2 rounded-full bg-[color:var(--accent-fill)] px-5 py-2 text-sm font-bold text-white shadow transition ${
               resPending ? "scale-[0.96] cursor-wait opacity-80 shadow-inner" : "hover:scale-[1.02]"
             }`}
           >

@@ -186,7 +186,7 @@ export default function GradePanel({
           <button
             onClick={askClaude}
             disabled={busy !== null}
-            className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+            className="rounded-full bg-[color:var(--primary-fill)] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
           >
             {busy === "assist" ? "קלוד בודק..." : claudeFeedback ? "בדיקה מחדש" : "בקשת הצעת ציון והערכה"}
           </button>
@@ -251,7 +251,7 @@ export default function GradePanel({
               fieldsFromProposal.current = false;
               setScore(e.target.value);
             }}
-            className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-center text-lg font-bold"
+            className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-center text-lg font-bold"
           />
         </label>
         <label className="block">
@@ -265,7 +265,7 @@ export default function GradePanel({
               setFeedback(e.target.value);
             }}
             rows={8}
-            className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6"
+            className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm leading-6"
           />
         </label>
       </div>
@@ -281,7 +281,7 @@ export default function GradePanel({
         <button
           onClick={() => save(true)}
           disabled={busy !== null || !score}
-          className="rounded-full bg-[color:var(--success)] px-6 py-2 text-sm font-bold text-white shadow disabled:opacity-40"
+          className="rounded-full bg-[color:var(--success-fill)] px-6 py-2 text-sm font-bold text-white shadow disabled:opacity-40"
         >
           {busy === "approve"
             ? "שולחים..."

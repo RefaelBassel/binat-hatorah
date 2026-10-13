@@ -140,7 +140,7 @@ export default async function DebatePage() {
                     {d.status === "live" && (
                       <Link
                         href={`/debate/${d.id}/vote`}
-                        className="rounded-full bg-[color:var(--primary)] px-4 py-1.5 text-white"
+                        className="rounded-full bg-[color:var(--primary-fill)] px-4 py-1.5 text-white"
                       >
                         🗳️ להצבעה
                       </Link>
@@ -190,7 +190,7 @@ export default async function DebatePage() {
                 name="title"
                 required
                 placeholder="כותרת הדיבייט (למשל: דיבייט אחריות קהילתית — במדבר)"
-                className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
               />
               {[1, 2, 3].map((i) => (
                 <fieldset
@@ -204,19 +204,19 @@ export default async function DebatePage() {
                     name={`q${i}`}
                     required={i === 1}
                     placeholder="השאלה שבמחלוקת (למשל: האם משה צדק כשעצר את המסע בגלל מרים?)"
-                    className="mb-2 w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm"
+                    className="mb-2 w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
                   />
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <input name={`q${i}ga`} placeholder="שם קבוצה א׳" className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm" />
-                    <input name={`q${i}gb`} placeholder="שם קבוצה ב׳" className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm" />
-                    <input name={`q${i}a`} placeholder="עמדת קבוצה א׳" className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm" />
-                    <input name={`q${i}b`} placeholder="עמדת קבוצה ב׳" className="rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm" />
+                    <input name={`q${i}ga`} placeholder="שם קבוצה א׳" className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm" />
+                    <input name={`q${i}gb`} placeholder="שם קבוצה ב׳" className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm" />
+                    <input name={`q${i}a`} placeholder="עמדת קבוצה א׳" className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm" />
+                    <input name={`q${i}b`} placeholder="עמדת קבוצה ב׳" className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm" />
                   </div>
                 </fieldset>
               ))}
               <button
                 type="submit"
-                className="rounded-full bg-[color:var(--primary)] px-8 py-2.5 text-sm font-bold text-white shadow"
+                className="rounded-full bg-[color:var(--primary-fill)] px-8 py-2.5 text-sm font-bold text-white shadow"
               >
                 יצירת הדיבייט
               </button>

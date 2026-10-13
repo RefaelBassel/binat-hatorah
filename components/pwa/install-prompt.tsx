@@ -135,7 +135,7 @@ export default function InstallPrompt() {
                   type="button"
                   onClick={handleInstall}
                   disabled={installing}
-                  className="rounded-lg bg-[color:var(--primary)] px-4 py-1.5 text-xs font-semibold text-white shadow transition hover:opacity-90 disabled:opacity-50"
+                  className="rounded-lg bg-[color:var(--primary-fill)] px-4 py-1.5 text-xs font-semibold text-white shadow transition hover:opacity-90 disabled:opacity-50"
                 >
                   {installing ? "מתקינים…" : "התקנה"}
                 </button>
@@ -241,7 +241,7 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          className="mt-6 w-full rounded-xl bg-[color:var(--primary)] px-5 py-2.5 text-sm font-semibold text-white"
+          className="mt-6 w-full rounded-xl bg-[color:var(--primary-fill)] px-5 py-2.5 text-sm font-semibold text-white"
         >
           הבנתי
         </button>

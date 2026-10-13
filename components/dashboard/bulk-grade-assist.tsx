@@ -66,7 +66,7 @@ export default function BulkGradeAssist({
         <button
           onClick={run}
           disabled={running}
-          className="shrink-0 rounded-full bg-[color:var(--primary)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:opacity-50"
+          className="shrink-0 rounded-full bg-[color:var(--primary-fill)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:opacity-50"
         >
           {running ? `בודקים... (${done}/${total})` : finished && failed > 0 ? "נסי שוב" : "הפקת הצעות לכל ההגשות החסרות"}
         </button>

@@ -2855,7 +2855,7 @@ export default function TaskArt({
   if (!scene) return null;
   return (
     <figure className="overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] shadow-sm">
-      <div className="[&>svg]:block [&>svg]:h-auto [&>svg]:w-full">{scene}</div>
+      <div className="task-art-scene [&>svg]:block [&>svg]:h-auto [&>svg]:w-full">{scene}</div>
       {caption && (
         <figcaption className="px-4 py-2.5 text-center text-xs leading-5 text-[color:var(--primary)]/60">
           {caption}

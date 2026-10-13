@@ -135,7 +135,7 @@ async function TeacherView() {
       <div className="mb-6 text-center">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--primary-fill)] px-6 py-2.5 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
         >
           + פרסום משימה חדשה (בדשבורד)
         </Link>
@@ -162,7 +162,7 @@ async function TeacherView() {
                 <span className="rounded-full bg-[color:var(--primary)]/10 px-3 py-1 text-[color:var(--primary)]">
                   👥 {t.assigned} הוקצו
                 </span>
-                <span className="rounded-full bg-[#e3edf7] px-3 py-1 text-[#2f5d8a]">
+                <span className="rounded-full bg-[color:var(--info-bg)] px-3 py-1 text-[color:var(--info)]">
                   📬 {t.submitted} הוגשו
                 </span>
                 <span className="rounded-full bg-[color:var(--success)]/15 px-3 py-1 text-[color:var(--success)]">

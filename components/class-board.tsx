@@ -179,7 +179,7 @@ export default function ClassBoard({ taskId }: { taskId: number }) {
             className="flex h-full items-center justify-end rounded-full pe-2 text-[11px] font-bold text-white transition-all duration-1000"
             style={{
               width: `${Math.max(classPct, 4)}%`,
-              background: "linear-gradient(270deg, var(--primary), var(--accent))",
+              background: "linear-gradient(270deg, var(--primary-fill), var(--accent-fill))",
             }}
           >
             {classPct}%

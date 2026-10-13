@@ -42,7 +42,7 @@ export default function AddressFormPicker({ initial }: { initial: string | null 
             className={[
               "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition",
               value === o.value
-                ? "border-[color:var(--primary)] bg-[color:var(--primary)] text-white"
+                ? "border-[color:var(--primary)] bg-[color:var(--primary-fill)] text-white"
                 : "border-[color:var(--border)] text-[color:var(--primary)] hover:border-[color:var(--accent)]",
             ].join(" ")}
           >

@@ -98,7 +98,7 @@ export default function EssayEditor({ contentRef, original, edits, sections }: {
   const area = (label: string, value: string, onChange: (v: string) => void, rows = 2) => (
     <label className="block">
       <span className="mb-1 block text-xs font-bold text-[color:var(--primary)]/70">{label}</span>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]" />
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]" />
     </label>
   );
 
@@ -127,7 +127,7 @@ export default function EssayEditor({ contentRef, original, edits, sections }: {
               {draft.paragraphs.map((p, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <span className="mt-2 w-5 shrink-0 text-center text-[11px] font-bold text-[color:var(--primary)]/50">{i + 1}</span>
-                  <textarea value={p} onChange={(e) => set("paragraphs", draft.paragraphs.map((x, j) => (j === i ? e.target.value : x)))} rows={3} className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]" />
+                  <textarea value={p} onChange={(e) => set("paragraphs", draft.paragraphs.map((x, j) => (j === i ? e.target.value : x)))} rows={3} className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)]" />
                   <button type="button" onClick={() => set("paragraphs", draft.paragraphs.filter((_, j) => j !== i))} aria-label="למחוק פסקה" className="mt-1 shrink-0 text-xs text-[color:var(--primary)]/40 hover:text-[color:var(--danger)]">✕</button>
                 </div>
               ))}
@@ -146,7 +146,7 @@ export default function EssayEditor({ contentRef, original, edits, sections }: {
             <p className="mb-2 text-xs font-extrabold text-[color:var(--primary)]">📌 שלוש העמדות לבחירה</p>
             <div className="space-y-2">
               {draft.stands.map((s, i) => (
-                <input key={i} value={s} onChange={(e) => set("stands", draft.stands.map((x, j) => (j === i ? e.target.value : x)))} className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]" />
+                <input key={i} value={s} onChange={(e) => set("stands", draft.stands.map((x, j) => (j === i ? e.target.value : x)))} className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]" />
               ))}
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function EssayEditor({ contentRef, original, edits, sections }: {
           </div>
           <label className="block w-40">
             <span className="mb-1 block text-xs font-bold text-[color:var(--primary)]/70">מינימום מילים לפסקה</span>
-            <input type="number" min={30} max={600} value={draft.minWords} onChange={(e) => set("minWords", e.target.value)} className="w-full rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]" />
+            <input type="number" min={30} max={600} value={draft.minWords} onChange={(e) => set("minWords", e.target.value)} className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]" />
           </label>
           {error && <p className="text-xs font-bold text-[color:var(--danger)]">{error}</p>}
           <div className="flex flex-wrap items-center gap-2">
@@ -165,7 +165,7 @@ export default function EssayEditor({ contentRef, original, edits, sections }: {
               disabled={!dirty || state === "working"}
               onClick={save}
               className={`rounded-full px-6 py-2 text-sm font-extrabold text-white shadow transition-all duration-300 active:scale-95 disabled:opacity-40 ${state === "working" ? "animate-pulse" : ""}`}
-              style={{ background: state === "done" ? "var(--success)" : "var(--accent)" }}
+              style={{ background: state === "done" ? "var(--success-fill)" : "var(--accent-fill)" }}
             >
               {state === "done" ? "נשמר ✓" : state === "working" ? "שומרים…" : dirty ? "שמירה — זה מה שהתלמידים יראו" : "אין שינויים"}
             </button>

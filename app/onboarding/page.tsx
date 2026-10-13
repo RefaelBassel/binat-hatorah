@@ -75,7 +75,7 @@ export default async function OnboardingPage() {
               required
               autoComplete="name"
               placeholder="לדוגמה: שרה כהן"
-              className="w-full rounded-lg border border-[color:var(--border)] bg-white px-4 py-2 text-right outline-none transition focus:border-[color:var(--accent)]"
+              className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-4 py-2 text-right outline-none transition focus:border-[color:var(--accent)]"
             />
           </div>
 
@@ -113,7 +113,7 @@ export default async function OnboardingPage() {
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-[color:var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90"
+            className="w-full rounded-xl bg-[color:var(--primary-fill)] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90"
           >
             המשך לאתר
           </button>
