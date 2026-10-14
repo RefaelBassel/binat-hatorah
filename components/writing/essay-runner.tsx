@@ -45,7 +45,7 @@ export default function EssayRunner({ taskId, exercise, sections, initialAnswers
   const locked = submitted || readOnly;
   // the answer guard: the source text may be quoted, everything else is typed
   const sourceCorpus = useMemo(
-    () => normalizeForPaste([exercise.source.title, exercise.source.byline, ...exercise.source.paragraphs].join(" ")),
+    () => normalizeForPaste([exercise.source.title, exercise.source.byline, ...exercise.source.paragraphs, ...exercise.stands].join(" ")),
     [exercise]
   );
   const guard = useAnswerGuard({
@@ -134,10 +134,12 @@ export default function EssayRunner({ taskId, exercise, sections, initialAnswers
       })
       .catch(() => guard.giveBack(telemetry));
   };
-  const setAnswer = (key: string, raw: string) => {
+  // `trusted`: a value the page itself inserts (a stand chip), not typed —
+  // it bypasses the paste guard
+  const setAnswer = (key: string, raw: string, trusted = false) => {
     if (locked) return;
     const prev = answersRef.current[key] ?? "";
-    const value = guard.filterChange(prev, raw);
+    const value = trusted ? raw : guard.filterChange(prev, raw);
     setAnswers((a) => ({ ...a, [key]: value }));
     if (value === prev) return;
     answersRef.current = { ...answersRef.current, [key]: value };
@@ -337,7 +339,7 @@ ${mine}`,
                 key={s}
                 type="button"
                 disabled={locked}
-                onClick={() => setAnswer("q-stand:stand", s)}
+                onClick={() => setAnswer("q-stand:stand", s, true)}
                 className={`rounded-2xl border-2 px-3 py-2.5 text-start text-sm font-semibold transition active:scale-[0.98] disabled:cursor-default ${on ? "border-[color:var(--primary)] bg-[color:var(--primary-fill)] text-white shadow" : "border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--primary)] hover:border-[color:var(--accent)]"}`}
               >
                 {on ? "✓ " : ""}{s}

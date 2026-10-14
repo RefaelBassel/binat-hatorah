@@ -163,7 +163,9 @@ export async function taskCorpus(contentRef: string): Promise<string> {
       }
     }
   }
-  const w = (content as { writing?: { source?: { title?: string; byline?: string; paragraphs?: string[] } } }).writing;
+  const w = (content as { writing?: { source?: { title?: string; byline?: string; paragraphs?: string[] }; stands?: string[] } }).writing;
+  // the stand chips insert their own text into the answer — that is free
+  for (const st of w?.stands ?? []) parts.push(st);
   if (w?.source) {
     if (w.source.title) parts.push(w.source.title);
     if (w.source.byline) parts.push(w.source.byline);

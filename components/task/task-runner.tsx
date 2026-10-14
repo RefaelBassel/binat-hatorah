@@ -478,9 +478,11 @@ export default function TaskRunner({
       .catch(() => guard.giveBack(telemetry));
     saveState();
   };
-  const setAnswer = (key: string, raw: string) => {
+  // `trusted`: a value the page itself sets (a genre chip, a checkbox flag),
+  // not typed — it bypasses the paste guard
+  const setAnswer = (key: string, raw: string, trusted = false) => {
     const prev = answersRef.current[key] ?? "";
-    const value = guard.filterChange(prev, raw);
+    const value = trusted ? raw : guard.filterChange(prev, raw);
     setAnswers((a) => ({ ...a, [key]: value }));
     if (value === prev) return;
     answersRef.current = { ...answersRef.current, [key]: value };
@@ -618,7 +620,7 @@ export default function TaskRunner({
     setBanked((b) => [...b, q]);
     setQuestionDraft("");
     // The question stage requires at least one question formulated IN it.
-    if (stage === 5) setAnswer("decode:q5-added", "yes");
+    if (stage === 5) setAnswer("decode:q5-added", "yes", true);
     fetch(`/api/questions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1486,7 +1488,7 @@ function DecodeStage(props: {
   content: TaskContent;
   passage: PassageBlock;
   answers: Record<string, string>;
-  setAnswer: (k: string, v: string) => void;
+  setAnswer: (k: string, v: string, trusted?: boolean) => void;
   markings: Marking[];
   markOf: (p: string, i: number) => Marking[];
   setMenu: (m: WordMenuState | null) => void;
@@ -1684,7 +1686,7 @@ function DecodeStage(props: {
             checked={noLeitwortClaim}
             disabled={readOnly}
             onChange={(e) =>
-              setAnswer("decode:no-leitwort", e.target.checked ? "yes" : "")
+              setAnswer("decode:no-leitwort", e.target.checked ? "yes" : "", true)
             }
             className="h-4 w-4 accent-[color:var(--primary)]"
           />
@@ -1721,7 +1723,7 @@ function DecodeStage(props: {
             <button
               key={g}
               disabled={readOnly}
-              onClick={() => setAnswer("decode:genre", g)}
+              onClick={() => setAnswer("decode:genre", g, true)}
               className={[
                 "rounded-full border px-4 py-1.5 text-sm font-semibold transition",
                 (answers["decode:genre"] ?? "") === g
@@ -1848,7 +1850,7 @@ function DecodeStage(props: {
               checked={answers["decode:q5-enough"] === "yes"}
               disabled={readOnly}
               onChange={(e) =>
-                setAnswer("decode:q5-enough", e.target.checked ? "yes" : "")
+                setAnswer("decode:q5-enough", e.target.checked ? "yes" : "", true)
               }
               className="h-4 w-4 accent-[color:var(--primary)]"
             />
@@ -2229,7 +2231,7 @@ function BlockView({
 }: {
   block: TaskBlock;
   answers: Record<string, string>;
-  setAnswer: (k: string, v: string) => void;
+  setAnswer: (k: string, v: string, trusted?: boolean) => void;
   markOf: (p: string, i: number) => Marking[];
   setMenu: (m: WordMenuState | null) => void;
   readOnly: boolean;
