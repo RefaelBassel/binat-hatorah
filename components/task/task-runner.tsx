@@ -32,7 +32,8 @@ import {
 // Part A: the 8-stage pshat-decoding engine on the main passage (iron rule:
 //         every task opens with structured interactive reading, never a bare
 //         "read the text").
-// Part B (stage 8): the teacher's worksheet sections.
+// Part B (stage 8): the teacher's worksheet sections — by default one
+//         question per slide (worksheet-slides.tsx), or the full sub-task.
 // Includes: word-marking (hover/tap menu), personal question bank capture,
 // Claude help everywhere ("אני עשיתי לבד אבל לא פגשתי קיר"), Israel clock +
 // work stopwatch (pauses when the window loses focus), progress meter,
@@ -86,9 +87,22 @@ interface Props {
   editableCheck?: { check: CheckQuestion[]; open: CheckOpenQuestion | null } | null;
   // the plenary question, shown after Part B as "שאלה למחשבה" (inert)
   plenary?: PlenaryQuestion | null;
+  // Part B layout: one question per slide (default) or the whole sub-task;
+  // saved per account when `canSaveView` (not for guests)
+  initialView?: TaskView;
+  canSaveView?: boolean;
 }
 
 import { useAnswerGuard, GuardNotice, normalizeForPaste, type AnswerGuard } from "./answer-guard";
+import {
+  buildSlides,
+  slideAnswered,
+  SlideBanner,
+  SlideView,
+  SlidesSummary,
+  ViewToggle,
+} from "./worksheet-slides";
+import type { TaskView } from "@/lib/task-view";
 
 type MarkKind = "leitwort" | "hard" | "question";
 
@@ -120,6 +134,8 @@ export default function TaskRunner({
   canEditContent = false,
   editableCheck = null,
   plenary = null,
+  initialView = "slides",
+  canSaveView = false,
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
   const answersRef = useRef(answers);
@@ -170,6 +186,26 @@ export default function TaskRunner({
     setActiveSection(Math.max(0, Math.min(content.sections.length - 1, si)));
     partBRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // ----- Part B slides: one question at a time (issue #21) -----
+  const [view, setView] = useState<TaskView>(initialView);
+  const [viewStatus, setViewStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const slides = useMemo(() => buildSlides(content.sections), [content.sections]);
+  // index into `slides`; slides.length = the summary screen. Opens on the
+  // first unanswered question (the summary once everything is answered).
+  const [slideIdx, setSlideIdx] = useState(() => {
+    if (initialSubmitted) return slides.length;
+    const i = slides.findIndex((s) => s.question && !slideAnswered(s, initialAnswers));
+    return i === -1 ? slides.length : i;
+  });
+  // the furthest slide reached — unanswered questions before it are "open"
+  const [furthestSlide, setFurthestSlide] = useState(() => {
+    let last = -1;
+    slides.forEach((s, i) => {
+      if (s.keys.some((k) => (initialAnswers[k] ?? "").trim())) last = i;
+    });
+    return Math.max(slideIdx, last + 1);
+  });
   // Register the task's book + main chapter so passages, help-verses and the
   // word menu can resolve verse audio without prop-threading.
   useEffect(() => {
@@ -493,6 +529,60 @@ export default function TaskRunner({
     }
   };
 
+  // ---------- slide navigation ----------
+  // Every move saves the slide being left right away (no waiting for the
+  // typing debounce), then brings the new slide's top into view.
+  const gotoSlide = (i: number) => {
+    const next = Math.max(0, Math.min(slides.length, i));
+    for (const k of slides[slideIdx]?.keys ?? []) {
+      if (answerTimers.current[k] || answerHardTimers.current[k]) flushAnswer(k);
+    }
+    setSlideIdx(next);
+    setFurthestSlide((f) => Math.max(f, next));
+    partBRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const changeView = async (next: TaskView) => {
+    if (next === view) return;
+    if (next === "full") {
+      for (const k of slides[slideIdx]?.keys ?? []) {
+        if (answerTimers.current[k] || answerHardTimers.current[k]) flushAnswer(k);
+      }
+      const at = slides[Math.min(slideIdx, slides.length - 1)];
+      if (at) setActiveSection(at.sectionIndex);
+    } else {
+      // land on the first open question of the sub-task that was on screen
+      const inSection = slides
+        .map((s, i) => ({ s, i }))
+        .filter(({ s }) => s.sectionIndex === activeSection);
+      const target =
+        inSection.find(({ s }) => s.question && !slideAnswered(s, answersRef.current)) ??
+        inSection[0];
+      if (target) {
+        setSlideIdx(target.i);
+        setFurthestSlide((f) => Math.max(f, target.i));
+      }
+    }
+    setView(next);
+    if (!canSaveView) return;
+    setViewStatus("saving");
+    try {
+      const r = await fetch(`/api/profile/task-view`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ view: next }),
+      });
+      setViewStatus(r.ok ? "saved" : "error");
+    } catch {
+      setViewStatus("error");
+    }
+  };
+  useEffect(() => {
+    if (viewStatus !== "saved") return;
+    const t = setTimeout(() => setViewStatus("idle"), 2000);
+    return () => clearTimeout(t);
+  }, [viewStatus]);
+
   // ---------- markings ----------
   const markOf = (passageKey: string, wordIndex: number) =>
     markings.filter((m) => m.passageKey === passageKey && m.wordIndex === wordIndex);
@@ -748,6 +838,39 @@ export default function TaskRunner({
 
   const overdue = Date.now() / 1000 > dueAt && !submitted;
 
+  // one worksheet block, shared by the slides and the full-page view
+  const renderBlock = (block: TaskBlock) => (
+    <BlockView
+      block={block}
+      answers={answers}
+      setAnswer={setAnswer}
+      markOf={markOf}
+      setMenu={setMenu}
+      readOnly={readOnly}
+      askClaude={askClaude}
+      onAskQuestion={openPassageQuestion}
+    />
+  );
+
+  const submitCard = !submitted && (
+    <div className="rounded-2xl border-2 border-[color:var(--accent)]/40 bg-[color:var(--card)] p-6 text-center">
+      <p className="mb-1 font-display text-lg font-bold text-[color:var(--primary)]">
+        מסיימים? זמן להגיש 🎉
+      </p>
+      <p className="mb-4 text-xs text-[color:var(--primary)]/60">
+        ענית על {answeredCount} מתוך {totalUnits} חלקים ({progressPct}%).
+        אפשר לבטל הגשה ולתקן עד המועד האחרון.
+      </p>
+      <button
+        onClick={() => doSubmit("submit")}
+        disabled={submitBusy}
+        className="rounded-full bg-[color:var(--primary-fill)] px-10 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] disabled:opacity-50"
+      >
+        {submitBusy ? "שולחים..." : "הגשת המשימה ✨"}
+      </button>
+    </div>
+  );
+
   return (
     <div
       className="mx-auto w-full max-w-3xl"
@@ -830,6 +953,15 @@ export default function TaskRunner({
             </p>
           </div>
         </div>
+        {stage === 8 && view === "slides" && slides.length > 0 && (
+          <SlideBanner
+            slides={slides}
+            index={slideIdx}
+            answers={answers}
+            furthest={furthestSlide}
+            onJump={gotoSlide}
+          />
+        )}
       </div>
 
       {submitted && (
@@ -1004,6 +1136,7 @@ export default function TaskRunner({
           canEditContent={canEditContent}
           editableCheck={editableCheck}
           guard={guard}
+          stepped={view === "slides"}
         />
       )}
 
@@ -1012,9 +1145,70 @@ export default function TaskRunner({
           filled textareas + justified nikud text is expensive layout), so
           Part B is paginated: a sub-task navigator + only the active
           section in the DOM. Answers auto-save, so switching is free. */}
-      {stage === 8 && (
-        <div className="space-y-8" ref={partBRef}>
+      {/* ===== Part B as slides (the default): one question at a time ===== */}
+      {stage === 8 && view === "slides" && (
+        <div className="scroll-mt-56 space-y-6" ref={partBRef}>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3">
+            <div>
+              <p className="font-display text-base font-extrabold text-[color:var(--primary)]">
+                <span className="me-2 rounded-full bg-[color:var(--accent-fill)] px-2 py-0.5 text-[11px] font-bold text-white">
+                  חלק ב
+                </span>
+                העמקה ודיון — כתיבה טיעונית
+              </p>
+              <p className="mt-0.5 text-[11px] text-[color:var(--primary)]/55">
+                שאלה אחת בכל פעם — כל מה שנכתב נשמר אוטומטית
+              </p>
+            </div>
+            <ViewToggle
+              full={false}
+              onChange={(full) => changeView(full ? "full" : "slides")}
+              status={viewStatus}
+            />
+          </div>
+
+          {slideIdx < slides.length ? (
+            <SlideView
+              key={slideIdx}
+              slide={slides[slideIdx]}
+              index={slideIdx}
+              count={slides.length}
+              answers={answers}
+              canAdvance={Boolean(canReset) || readOnly}
+              readOnly={readOnly}
+              renderBlock={renderBlock}
+              onPrev={() => gotoSlide(slideIdx - 1)}
+              onNext={() => gotoSlide(slideIdx + 1)}
+              onSkip={() => gotoSlide(slideIdx + 1)}
+            />
+          ) : (
+            <SlidesSummary
+              slides={slides}
+              answers={answers}
+              onJump={gotoSlide}
+              onBack={() => gotoSlide(slides.length - 1)}
+            >
+              <ThinkingCard
+                plenary={plenary}
+                contentRef={content.ref}
+                canEdit={Boolean(canEditContent)}
+              />
+              {submitCard}
+            </SlidesSummary>
+          )}
+        </div>
+      )}
+
+      {stage === 8 && view === "full" && (
+        <div className="scroll-mt-40 space-y-8" ref={partBRef}>
           <div className="rounded-2xl border-2 border-[color:var(--primary)]/25 bg-[color:var(--card)] p-6 text-center">
+            <div className="mb-3 flex justify-end">
+              <ViewToggle
+                full
+                onChange={(full) => changeView(full ? "full" : "slides")}
+                status={viewStatus}
+              />
+            </div>
             <p className="mb-1 text-[11px] font-semibold tracking-[0.3em] text-[color:var(--accent)]">
               חלק ב
             </p>
@@ -1084,17 +1278,7 @@ export default function TaskRunner({
                 </div>
                 <div className="space-y-5">
                   {section.blocks.map((block) => (
-                    <BlockView
-                      key={block.key}
-                      block={block}
-                      answers={answers}
-                      setAnswer={setAnswer}
-                      markOf={markOf}
-                      setMenu={setMenu}
-                      readOnly={readOnly}
-                      askClaude={askClaude}
-                      onAskQuestion={openPassageQuestion}
-                    />
+                    <div key={block.key}>{renderBlock(block)}</div>
                   ))}
                 </div>
 
@@ -1137,25 +1321,7 @@ export default function TaskRunner({
             />
           )}
 
-          {/* submit */}
-          {!submitted && (
-            <div className="rounded-2xl border-2 border-[color:var(--accent)]/40 bg-[color:var(--card)] p-6 text-center">
-              <p className="mb-1 font-display text-lg font-bold text-[color:var(--primary)]">
-                מסיימים? זמן להגיש 🎉
-              </p>
-              <p className="mb-4 text-xs text-[color:var(--primary)]/60">
-                ענית על {answeredCount} מתוך {totalUnits} חלקים ({progressPct}%).
-                אפשר לבטל הגשה ולתקן עד המועד האחרון.
-              </p>
-              <button
-                onClick={() => doSubmit("submit")}
-                disabled={submitBusy}
-                className="rounded-full bg-[color:var(--primary-fill)] px-10 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] disabled:opacity-50"
-              >
-                {submitBusy ? "שולחים..." : "הגשת המשימה ✨"}
-              </button>
-            </div>
-          )}
+          {submitCard}
         </div>
       )}
 
@@ -1512,6 +1678,8 @@ function DecodeStage(props: {
   canEditContent?: boolean;
   editableCheck?: { check: CheckQuestion[]; open: CheckOpenQuestion | null } | null;
   guard: AnswerGuard;
+  // the comprehension check one question at a time (the slides view)
+  stepped?: boolean;
 }) {
   const {
     stage,
@@ -1540,6 +1708,7 @@ function DecodeStage(props: {
     canEditContent,
     editableCheck,
     guard,
+    stepped,
   } = props;
   const hasCheck = Boolean(check && check.length > 0);
   const [editingCheck, setEditingCheck] = useState(false);
@@ -1912,6 +2081,7 @@ function DecodeStage(props: {
           preview={checkPreview}
           onResult={setCheckResult}
           guard={guard}
+          stepped={stepped}
         />
       </StageCard>
     ) : (
