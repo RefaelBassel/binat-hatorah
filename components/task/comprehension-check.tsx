@@ -22,6 +22,7 @@ export default function ComprehensionCheck({
   preview,
   onResult,
   guard,
+  stepped = false,
 }: {
   taskId: number;
   questions: PublicCheckQuestion[];
@@ -31,8 +32,12 @@ export default function ComprehensionCheck({
   preview: boolean;
   onResult: (o: CheckOutcome) => void;
   guard?: AnswerGuard;
+  // one question at a time with a summary before "לבדוק" (issue #21)
+  stepped?: boolean;
 }) {
   const [given, setGiven] = useState<Given>({});
+  const [step, setStep] = useState(0);
+  const [furthest, setFurthest] = useState(0);
   const [openAnswer, setOpenAnswer] = useState("");
   const [result, setResult] = useState<CheckOutcome | null>(initial);
   const [busy, setBusy] = useState(false);
@@ -91,9 +96,7 @@ export default function ComprehensionCheck({
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {questions.map((q, i) => {
+  const questionCard = (q: PublicCheckQuestion, i: number) => {
         const verdict = result ? result.results[q.key] : undefined;
         return (
           <div
@@ -168,9 +171,9 @@ export default function ComprehensionCheck({
             )}
           </div>
         );
-      })}
+  };
 
-      {open && (
+  const openCard = open && (
         <div className="rounded-2xl border border-dashed border-[color:var(--border)] bg-[color:var(--card)] p-4">
           <p className="mb-1 text-xs font-bold text-[color:var(--primary)]/60">
             שאלה פתוחה · לגיוון — לא נכנסת למספר
@@ -188,8 +191,10 @@ export default function ComprehensionCheck({
             className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-sm leading-6 outline-none focus:border-[color:var(--accent)] disabled:opacity-70"
           />
         </div>
-      )}
+  );
 
+  const resultOrSubmit = (
+    <>
       {result ? (
         <div className="check-pop flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color:var(--success)]/40 bg-[color:var(--success)]/8 px-5 py-4">
           <div>
@@ -227,6 +232,213 @@ export default function ComprehensionCheck({
         </div>
       )}
       {error && <p className="text-xs font-semibold text-[color:var(--danger)]">{error}</p>}
+    </>
+  );
+
+  // ----- stepped: one question at a time, then a summary with "לבדוק" -----
+  // Only while answering; the result screen shows every question with its
+  // verdict, as before.
+  if (stepped && !locked && questions.length > 0) {
+    const stepCount = questions.length + (open ? 1 : 0);
+    const isDone = (i: number) =>
+      i < questions.length
+        ? (() => {
+            const q = questions[i];
+            const g = given[q.key];
+            return q.kind === "order"
+              ? Array.isArray(g) && g.length === q.options.length
+              : typeof g === "number";
+          })()
+        : openAnswer.trim().length >= 2;
+    const go = (i: number) => {
+      const next = Math.max(0, Math.min(stepCount, i));
+      setStep(next);
+      setFurthest((f) => Math.max(f, next));
+    };
+    const onSummary = step >= stepCount;
+    const done = isDone(step);
+    const openSteps = Array.from({ length: stepCount }, (_, i) => i).filter(
+      (i) => !isDone(i) && i < questions.length
+    );
+    const labelOf = (i: number) =>
+      i < questions.length ? questions[i].prompt : open!.prompt;
+
+    return (
+      <div className="space-y-4">
+        {/* mini progress: "שאלה 2 מתוך 6" + a dot per question */}
+        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2">
+          <div className="mb-1 flex items-center justify-between text-xs">
+            <span className="font-bold text-[color:var(--primary)]">
+              {onSummary ? "🏁 סיכום — לפני הבדיקה" : `שאלה ${step + 1} מתוך ${stepCount}`}
+            </span>
+            <span className="text-[11px] text-[color:var(--primary)]/55">
+              נענו {Array.from({ length: stepCount }, (_, i) => i).filter(isDone).length} מתוך{" "}
+              {stepCount}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--border)]/50">
+            <div
+              className="h-full rounded-full bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--primary)] transition-all duration-500"
+              style={{ width: `${Math.round(((onSummary ? stepCount : step + 1) / stepCount) * 100)}%` }}
+            />
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {Array.from({ length: stepCount }, (_, i) => {
+              const d = isDone(i);
+              const o = !d && i < furthest;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => go(i)}
+                  aria-label={`שאלה ${i + 1}${d ? " — נענתה" : o ? " — פתוחה" : ""}`}
+                  aria-current={i === step ? "step" : undefined}
+                  className="flex h-6 w-6 items-center justify-center rounded-full transition hover:scale-110"
+                >
+                  <span
+                    className={[
+                      "block rounded-full",
+                      i === step
+                        ? "h-3.5 w-3.5 bg-[color:var(--primary-fill)] ring-2 ring-[color:var(--accent)] ring-offset-1 ring-offset-[color:var(--background)]"
+                        : d
+                          ? "h-2.5 w-2.5 bg-[color:var(--success)]"
+                          : o
+                            ? "h-2.5 w-2.5 border-2 border-[color:var(--warning)] bg-[color:var(--warning)]/20"
+                            : "h-2.5 w-2.5 border border-[color:var(--primary)]/35",
+                    ].join(" ")}
+                  />
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => go(stepCount)}
+              className={[
+                "ms-1 rounded-full px-2 py-0.5 text-[10px] font-bold transition",
+                onSummary
+                  ? "bg-[color:var(--primary-fill)] text-white"
+                  : "border border-[color:var(--border)] text-[color:var(--primary)]/60 hover:border-[color:var(--accent)]",
+              ].join(" ")}
+            >
+              🏁 סיכום
+            </button>
+          </div>
+        </div>
+
+        {onSummary ? (
+          <div className="slide-in space-y-3">
+            {openSteps.length > 0 && (
+              <p className="rounded-xl border border-[color:var(--warning)]/45 bg-[color:var(--warning)]/10 px-3 py-2 text-xs font-bold text-[color:var(--warning)]">
+                {openSteps.length === 1
+                  ? "נשארה שאלה אחת פתוחה"
+                  : `נשארו ${openSteps.length} שאלות פתוחות`}{" "}
+                — צריך לענות על כולן לפני הבדיקה
+              </p>
+            )}
+            <ul className="space-y-1.5">
+              {Array.from({ length: stepCount }, (_, i) => {
+                const d = isDone(i);
+                const short = labelOf(i);
+                return (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={() => go(i)}
+                      className="flex w-full items-start gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2 text-start text-xs transition hover:border-[color:var(--accent)]"
+                    >
+                      <span
+                        className={[
+                          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                          d
+                            ? "bg-[color:var(--success)] text-white"
+                            : "border-2 border-[color:var(--warning)] text-[color:var(--warning)]",
+                        ].join(" ")}
+                      >
+                        {d ? "✓" : i + 1}
+                      </span>
+                      <span className="flex-1 text-[color:var(--foreground)]/85">
+                        {short.length > 90 ? `${short.slice(0, 90)}…` : short}
+                        {i >= questions.length && (
+                          <span className="ms-1 text-[10px] text-[color:var(--primary)]/50">
+                            (שאלה פתוחה, לא חובה)
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className={[
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                          d
+                            ? "bg-[color:var(--success)]/12 text-[color:var(--success)]"
+                            : "bg-[color:var(--warning)]/15 text-[color:var(--warning)]",
+                        ].join(" ")}
+                      >
+                        {d ? "נענתה" : "פתוחה"}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <button
+              type="button"
+              onClick={() => go(stepCount - 1)}
+              className="rounded-full border border-[color:var(--border)] px-4 py-1.5 text-xs font-bold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
+            >
+              → חזרה לשאלה האחרונה
+            </button>
+            {resultOrSubmit}
+          </div>
+        ) : (
+          <div key={step} className="slide-in space-y-3">
+            {step < questions.length ? questionCard(questions[step], step) : openCard}
+            <div className="flex items-center justify-between gap-3">
+              {step > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => go(step - 1)}
+                  className="rounded-full border border-[color:var(--border)] px-5 py-2 text-xs font-bold text-[color:var(--primary)] transition hover:border-[color:var(--accent)]"
+                >
+                  → הקודם
+                </button>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                onClick={() => go(step + 1)}
+                disabled={!done && !preview}
+                className="rounded-full bg-[color:var(--primary-fill)] px-7 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+              >
+                {step === stepCount - 1 ? "לסיכום ולבדיקה ←" : "הבא ←"}
+              </button>
+            </div>
+            {!done && (
+              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-end">
+                {!preview && (
+                  <span className="text-[11px] text-[color:var(--primary)]/55">
+                    ״הבא״ ייפתח אחרי שתענו
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => go(step + 1)}
+                  className="text-[11px] font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline"
+                >
+                  אחזור לזה אחר כך ↩
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {questions.map((q, i) => questionCard(q, i))}
+      {openCard}
+      {resultOrSubmit}
     </div>
   );
 }

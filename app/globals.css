@@ -193,8 +193,17 @@ body {
 .check-pop {
   animation: check-pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+/* worksheet slides (components/task/worksheet-slides.tsx) — one question at
+   a time; each new slide eases in */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.slide-in {
+  animation: slide-in 0.3s ease-out both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .save-armed, .save-check, .save-fade, .check-pop {
+  .save-armed, .save-check, .save-fade, .check-pop, .slide-in {
     animation: none;
     stroke-dashoffset: 0;
   }
