@@ -11,8 +11,10 @@ import {
 import {
   SEED_EXAM_DURATION,
   SEED_EXAM_TITLE,
+  SEED_GUIDE_TITLE,
   SEED_PREP_TITLE,
   seedExamBody,
+  seedGuideBody,
   seedPrepBody,
 } from "./exam-seed";
 
@@ -78,6 +80,12 @@ let ready = false;
 export async function ensureExamTables() {
   if (ready) return;
   for (const stmt of DDL) await db().execute(stmt);
+  // additive column: a general study guide's link to an exam (migration 0018)
+  try {
+    await db().execute("ALTER TABLE exam_docs ADD COLUMN linked_exam_id INTEGER");
+  } catch {
+    // already there
+  }
   await seedOnce();
   ready = true;
 }
@@ -85,7 +93,7 @@ export async function ensureExamTables() {
 async function seedOnce() {
   const t = now();
   const existing = await db().execute(
-    "SELECT seed_key, id FROM exam_docs WHERE seed_key IN ('bamidbar-9-14-prep', 'bamidbar-9-14-exam')"
+    "SELECT seed_key, id FROM exam_docs WHERE seed_key IN ('bamidbar-9-14-prep', 'bamidbar-9-14-exam', 'study-guide-how-to-study')"
   );
   const have = new Map(existing.rows.map((r) => [String(r.seed_key), Number(r.id)]));
   let prepId = have.get("bamidbar-9-14-prep");
@@ -105,6 +113,17 @@ async function seedOnce() {
       args: [SEED_EXAM_TITLE, SEED_EXAM_DURATION, JSON.stringify(seedExamBody()), prepId, t, t],
     });
   }
+  // the general "how to study for the exam" sheet (issue #27): a draft,
+  // linked by default to the first exam
+  if (!have.has("study-guide-how-to-study")) {
+    const ex = await db().execute("SELECT id FROM exam_docs WHERE seed_key = 'bamidbar-9-14-exam'");
+    const examId = ex.rows[0] ? Number(ex.rows[0].id) : null;
+    await db().execute({
+      sql: `INSERT OR IGNORE INTO exam_docs (kind, title, body_json, linked_exam_id, seed_key, created_at, updated_at)
+            VALUES ('prep', ?, ?, ?, 'study-guide-how-to-study', ?, ?)`,
+      args: [SEED_GUIDE_TITLE, JSON.stringify(seedGuideBody()), examId, t, t],
+    });
+  }
 }
 
 export interface DocRow {
@@ -113,6 +132,7 @@ export interface DocRow {
   title: string;
   durationMin: number | null;
   prepId: number | null;
+  linkedExamId: number | null; // general guides: the exam they are shown under
   publishedAt: number | null;
   opensAt: number | null;
   updatedAt: number;
@@ -126,6 +146,7 @@ function toDoc(r: Record<string, unknown>): DocRow {
     title: String(r.title ?? ""),
     durationMin: r.duration_min == null ? null : Number(r.duration_min),
     prepId: r.prep_id == null ? null : Number(r.prep_id),
+    linkedExamId: r.linked_exam_id == null ? null : Number(r.linked_exam_id),
     publishedAt: r.published_at == null ? null : Number(r.published_at),
     opensAt: r.opens_at == null ? null : Number(r.opens_at),
     updatedAt: Number(r.updated_at),
@@ -262,6 +283,14 @@ export async function setPrepLink(examId: number, prepId: number | null) {
   await db().execute({
     sql: "UPDATE exam_docs SET prep_id = ?, updated_at = ? WHERE id = ? AND kind = 'exam'",
     args: [prepId, now(), examId],
+  });
+}
+
+export async function setGuideExamLink(prepId: number, examId: number | null) {
+  await ensureExamTables();
+  await db().execute({
+    sql: "UPDATE exam_docs SET linked_exam_id = ?, updated_at = ? WHERE id = ? AND kind = 'prep'",
+    args: [examId, now(), prepId],
   });
 }
 

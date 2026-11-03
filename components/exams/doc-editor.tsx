@@ -35,6 +35,9 @@ export interface EditorDoc {
   prepId: number | null;
   prepTitle: string | null;
   linkedExamId: number | null;
+  guideExamId: number | null; // a general sheet's linked exam (not its own prep pair)
+  isGeneral: boolean; // a prep sheet that is not an exam's own prep
+  examOptions: { id: number; title: string }[];
   attemptCount: number;
 }
 
@@ -146,6 +149,7 @@ export default function DocEditor({ doc }: { doc: EditorDoc }) {
             <PrepLink doc={doc} />
           </div>
         )}
+        {!isExam && doc.isGeneral && <GuideLink doc={doc} />}
         {!isExam && doc.linkedExamId != null && (
           <p className="text-sm">
             מקושר למבחן ·{" "}
@@ -256,6 +260,49 @@ function TotalBadge({ body }: { body: ExamBody }) {
     >
       סך הכול: {Number.isInteger(total) ? total : total.toFixed(1)} נקודות {ok ? "✓" : "⚠ לא 100"}
     </span>
+  );
+}
+
+function GuideLink({ doc }: { doc: EditorDoc }) {
+  const [value, setValue] = useState<number | null>(doc.guideExamId);
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const change = async (next: number | null) => {
+    const prev = value;
+    setValue(next);
+    setState("saving");
+    try {
+      const res = await fetch("/api/exams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "linkGuide", id: doc.id, examId: next }),
+      });
+      if (!res.ok) throw new Error();
+      setState("saved");
+    } catch {
+      setValue(prev);
+      setState("error");
+    }
+  };
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-sm">
+      <span>קישור למבחן (דף כללי):</span>
+      <select
+        value={value ?? ""}
+        disabled={state === "saving"}
+        onChange={(e) => change(e.target.value ? Number(e.target.value) : null)}
+        className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1"
+      >
+        <option value="">ללא קישור</option>
+        {doc.examOptions.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.title}
+          </option>
+        ))}
+      </select>
+      {state === "saving" && <span className="text-xs">שומר…</span>}
+      {state === "saved" && <span className="text-xs text-[color:var(--success)]">הקישור נשמר ✓</span>}
+      {state === "error" && <span className="text-xs text-[color:var(--danger)]">לא נשמר. נסו שוב.</span>}
+    </label>
   );
 }
 

@@ -22,7 +22,12 @@ export default async function ExamsDashboardPage() {
   const exams = docs.filter((d) => d.kind === "exam");
   const byId = new Map(docs.map((d) => [d.id, d]));
   const linkedPreps = new Set(exams.map((e) => e.prepId).filter((x): x is number => x != null));
-  const loosePreps = docs.filter((d) => d.kind === "prep" && !linkedPreps.has(d.id));
+  const examIds = new Set(exams.map((e) => e.id));
+  // general guides (issue #27) are listed under the exam they are linked to
+  const isGuide = (d: DocRow) =>
+    d.kind === "prep" && !linkedPreps.has(d.id) && d.linkedExamId != null && examIds.has(d.linkedExamId);
+  const guidesOf = (examId: number) => docs.filter((d) => isGuide(d) && d.linkedExamId === examId);
+  const loosePreps = docs.filter((d) => d.kind === "prep" && !linkedPreps.has(d.id) && !isGuide(d));
 
   return (
     <PageShell title="מבחנים" subtitle="מבחנים ודפי הכנה: עריכה, הדפסה, פרסום לתלמידים ובדיקת הגשות">
@@ -54,6 +59,11 @@ export default async function ExamsDashboardPage() {
                 ) : (
                   <p className="text-sm text-[color:var(--foreground)]/60">אין דף הכנה מקושר (אפשר ליצור מתוך עריכת המבחן).</p>
                 )}
+                {guidesOf(e.id).map((g) => (
+                  <div key={g.id} className="mt-3">
+                    <DocLine doc={g} icon="📘" small />
+                  </div>
+                ))}
               </div>
             </div>
           );
