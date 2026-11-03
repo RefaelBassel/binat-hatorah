@@ -190,6 +190,12 @@ export default async function DashboardPage() {
           ✨ הצ׳אט עם קלוד — לשנות כל דבר באתר
         </Link>
         <Link
+          href="/dashboard/exams"
+          className="rounded-full border-2 border-[color:var(--accent)]/60 px-5 py-2 text-sm font-bold text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/10"
+        >
+          📋 מבחנים ודפי הכנה
+        </Link>
+        <Link
           href="/dashboard/content"
           className="rounded-full border-2 border-[color:var(--primary)]/50 px-5 py-2 text-sm font-bold text-[color:var(--primary)] transition hover:bg-[color:var(--primary)]/10"
         >
