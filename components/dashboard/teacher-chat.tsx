@@ -32,7 +32,7 @@ const STATUS_HE: Record<string, { label: string; tone: string }> = {
   preview: { label: "נבנה — ממתין למיזוג אוטומטי", tone: "var(--primary-fill)" },
   merged: { label: "עלה לאתר ✓", tone: "var(--success-fill)" },
   failed: { label: "הבנייה נכשלה — רפאל קיבל הודעה", tone: "var(--danger-fill)" },
-  paused: { label: "ממתינה לקרדיט בחשבון Claude — תיבנה מעצמה כשיחזור", tone: "var(--warning-fill)" },
+  paused: { label: "ממתינה בתור לבנייה — תצא מעצמה, בקשה אחת בכל פעם", tone: "var(--warning-fill)" },
   closed: { label: "נסגר", tone: "var(--primary-fill)" },
 };
 

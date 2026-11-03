@@ -820,7 +820,7 @@ export function describeCodeRequest(cr: CodeRequestRow): string {
   if (cr.status === "open" && cr.issueUrl) return `נשלחה לבנייה האוטומטית (${cr.issueUrl}); בדרך כלל עולה לאתר תוך 10–30 דקות`;
   if (cr.status === "queued" && cr.note === QUEUE_NOTE) return "נרשמה וממתינה בתור — בקשה קודמת עדיין בבנייה; תישלח מעצמה כשתסתיים";
   if (cr.status === "queued" && cr.note) return `השליחה ל-GitHub נכשלה (${cr.note}); המערכת תנסה שוב מעצמה`;
-  if (cr.status === "paused") return "ממתינה: נגמר הקרדיט בחשבון ה-API של Claude, ורפאל קיבל הודעה. הבקשה שמורה ותיבנה מעצמה כשהקרדיט יחזור";
+  if (cr.status === "paused") return "ממתינה בתור לבנייה: הבקשה שמורה ותצא מעצמה כשיגיע תורה (בקשה אחת בכל פעם; אם חסר קרדיט בחשבון Claude, רפאל מקבל הודעה)";
   if (cr.status === "failed") return "הבנייה נעצרה ולא הושלמה; רפאל קיבל הודעה";
   return `סטטוס: ${cr.status}`;
 }
