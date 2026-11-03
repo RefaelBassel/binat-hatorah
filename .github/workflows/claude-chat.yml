@@ -78,12 +78,13 @@ jobs:
             1. Create and switch to a branch named claude/issue-${{ github.event.issue.number }} (append a short suffix if it exists).
             2. Make the change. Keep it focused; do not refactor unrelated code.
             3. Run `npm ci` and `npm run build`. Fix every error until the build passes.
+            Your number of turns is limited: commit and push the branch as soon as the main change builds, then keep refining in further commits, so work is never lost.
             4. Commit with a clear English message, push the branch, and open a pull request with `gh pr create` whose body starts with "Closes #${{ github.event.issue.number }}" and then explains, in Hebrew, what changed from the teacher's point of view (two or three sentences). Do not merge it.
             5. Finally comment on the issue, in Hebrew, with one or two sentences for the teacher: what was built and that it goes live automatically once the build passes.
             If the request is unclear or impossible, do not guess: comment on the issue in Hebrew with one focused question and stop.
           claude_args: |
             --model ${{ contains(github.event.issue.labels.*.name, 'large') && 'claude-opus-5-5' || 'claude-sonnet-5-5' }}
-            --max-turns 60
+            --max-turns ${{ contains(github.event.issue.labels.*.name, 'large') && '200' || '80' }}
             --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh issue comment:*),Bash(npm ci),Bash(npm install:*),Bash(npm run build),Bash(npm run lint:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(cat:*)"
 
       # What this build cost (from Claude's own result; no conversation text).
