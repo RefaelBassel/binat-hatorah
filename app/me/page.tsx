@@ -19,6 +19,7 @@ interface ReflectionPoint {
 }
 import { db } from "@/lib/db";
 import { tasksForStudent, STATUS_META } from "@/lib/tasks";
+import { COMPLETION_META } from "@/lib/completion-meta";
 import { unreadFor, markAllRead } from "@/lib/notify";
 import { formatHebDate, formatWorkTime } from "@/lib/hebrew";
 
@@ -93,11 +94,8 @@ export default async function MePage() {
     tasks.find((t) => t.status === "not_started");
   const done = tasks.filter((t) => t.status === "graded" || t.status === "submitted").length;
   const totalWork = tasks.reduce((s, t) => s + t.workSeconds, 0);
-  const avg = (() => {
-    const scored = tasks.filter((t) => t.score != null);
-    if (scored.length === 0) return null;
-    return Math.round(scored.reduce((s, t) => s + (t.score ?? 0), 0) / scored.length);
-  })();
+  // tasks whose completion status the teacher approved (#24 — no numbers)
+  const checked = tasks.filter((t) => t.completion != null);
 
   return (
     <>
@@ -157,7 +155,11 @@ export default async function MePage() {
           <StatTile emoji="📚" value={`${done}/${tasks.length || 0}`} label="משימות הושלמו" />
           <StatTile emoji="⏱" value={totalWork > 0 ? formatWorkTime(totalWork) : "—"} label="זמן למידה בפועל" />
           <StatTile emoji="❓" value={String(questions.length)} label="שאלות במאגר שלי" />
-          <StatTile emoji="🏅" value={avg != null ? String(avg) : "—"} label="ממוצע ציונים" />
+          <StatTile
+            emoji="🏅"
+            value={checked.length > 0 ? `${checked.filter((t) => t.completion === "done").length}/${checked.length}` : "—"}
+            label="בוצעו במלואן (מתוך שנבדקו)"
+          />
         </div>
 
         {/* current task */}
@@ -244,7 +246,17 @@ export default async function MePage() {
                           {meta.label}
                         </span>
                         <span>📅 {formatHebDate(t.dueAt)}</span>
-                        {t.score != null && <b className="text-[color:var(--success)]">ציון: {t.score}</b>}
+                        {t.completion && (
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                            style={{
+                              background: COMPLETION_META[t.completion].bg,
+                              color: COMPLETION_META[t.completion].color,
+                            }}
+                          >
+                            {COMPLETION_META[t.completion].label}
+                          </span>
+                        )}
                       </p>
                       {t.feedback && (
                         <p className="mt-1 rounded-lg bg-[color:var(--success)]/10 px-3 py-1.5 text-xs leading-5 text-[color:var(--foreground)]/75">

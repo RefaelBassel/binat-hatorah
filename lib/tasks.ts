@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { MISSION_WORD_COUNT } from "@/content/tasks/lesson-05";
+import { ensureCompletionColumns, isCompletionStatus } from "./completion";
 
 export type StudentTaskStatus =
   | "not_started" // טרם נלמדה (teacher-only label)
@@ -64,6 +65,7 @@ async function ensureMerges() {
 
 export async function tasksForStudent(userId: number, allPublished = false) {
   await ensureMerges();
+  await ensureCompletionColumns();
   // allPublished: teacher in "מצב תלמיד" — sees every published task as if
   // assigned, with her own progress rows (cancelled tasks excluded, as for
   // students, whose assignments are deleted on cancel).
@@ -72,7 +74,7 @@ export async function tasksForStudent(userId: number, allPublished = false) {
     sql: allPublished
       ? `SELECT t.id, t.content_ref, t.title, t.published_at, t.due_at,
                 p.opened_at, p.work_seconds, p.progress_pct, p.stage, p.submitted_at,
-                g.score, g.feedback, g.approved_at
+                g.feedback, g.approved_at, g.status AS completion, g.status_approved_at
          FROM tasks t
          LEFT JOIN task_progress p ON p.task_id = t.id AND p.user_id = ?
          LEFT JOIN grades g ON g.task_id = t.id AND g.user_id = ?
@@ -81,7 +83,7 @@ export async function tasksForStudent(userId: number, allPublished = false) {
          ORDER BY t.due_at ASC`
       : `SELECT t.id, t.content_ref, t.title, t.published_at, t.due_at,
                 p.opened_at, p.work_seconds, p.progress_pct, p.stage, p.submitted_at,
-                g.score, g.feedback, g.approved_at
+                g.feedback, g.approved_at, g.status AS completion, g.status_approved_at
          FROM task_assignments a
          JOIN tasks t ON t.id = a.task_id
          LEFT JOIN task_progress p ON p.task_id = t.id AND p.user_id = a.user_id
@@ -113,7 +115,10 @@ export async function tasksForStudent(userId: number, allPublished = false) {
       workSeconds: Number(r.work_seconds ?? 0),
       stage: Number(r.stage ?? 1),
       submittedAt: r.submitted_at as number | null,
-      score: graded ? Number(r.score) : null,
+      // the completion status only once the teacher approved it (#24); old
+      // numeric scores stay in the DB and are never shown to students
+      completion:
+        r.status_approved_at != null && isCompletionStatus(r.completion) ? r.completion : null,
       feedback: graded ? ((r.feedback as string | null) ?? null) : null,
       status: deriveStatus(progress, Number(r.due_at), graded),
     };
@@ -520,12 +525,13 @@ export async function focusStatsFor(
 
 export async function allTasksWithStats() {
   await ensureMerges();
+  await ensureCompletionColumns();
   await ensureCancellationsTable();
   const res = await db().execute({
     sql: `SELECT t.id, t.content_ref, t.title, t.published_at, t.due_at,
             (SELECT COUNT(*) FROM task_assignments a WHERE a.task_id = t.id) AS assigned,
             (SELECT COUNT(*) FROM task_progress p WHERE p.task_id = t.id AND p.submitted_at IS NOT NULL) AS submitted,
-            (SELECT COUNT(*) FROM grades g WHERE g.task_id = t.id AND g.approved_at IS NOT NULL) AS graded,
+            (SELECT COUNT(*) FROM grades g WHERE g.task_id = t.id AND g.status_approved_at IS NOT NULL) AS graded,
             EXISTS(SELECT 1 FROM task_cancellations c WHERE c.task_id = t.id) AS cancelled
           FROM tasks t ORDER BY t.due_at ASC`,
     args: [],
@@ -545,10 +551,12 @@ export async function allTasksWithStats() {
 
 export async function taskRoster(taskId: number) {
   await ensureMerges();
+  await ensureCompletionColumns();
   const res = await db().execute({
     sql: `SELECT u.id AS user_id, u.full_name, u.email,
                  p.opened_at, p.work_seconds, p.progress_pct, p.stage, p.submitted_at,
-                 g.score, g.claude_score, g.approved_at
+                 g.score, g.claude_score, g.approved_at,
+                 g.status AS completion, g.claude_status, g.status_approved_at
           FROM task_assignments a
           JOIN users u ON u.id = a.user_id
           LEFT JOIN task_progress p ON p.task_id = a.task_id AND p.user_id = u.id
@@ -578,6 +586,11 @@ export async function taskRoster(taskId: number) {
       submittedAt: r.submitted_at as number | null,
       score: r.score != null ? Number(r.score) : null,
       claudeScore: r.claude_score != null ? Number(r.claude_score) : null,
+      // completion status (#24): approved → final; otherwise the teacher's
+      // draft or the automatic proposal, shown as not yet approved
+      completion: isCompletionStatus(r.completion) ? r.completion : null,
+      claudeCompletion: isCompletionStatus(r.claude_status) ? r.claude_status : null,
+      completionApproved: r.status_approved_at != null,
       status: deriveStatus(progress, task?.due_at ?? 0, r.approved_at != null),
     };
   });

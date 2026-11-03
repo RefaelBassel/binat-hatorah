@@ -1,20 +1,31 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "./db";
-import { getAnthropicApiKey } from "./env";
-import { getTask, getAnswers, getMarkings, now } from "./tasks";
+import { getAnswers, getMarkings, getTask, now } from "./tasks";
 import { getTaskContent } from "@/content/tasks/registry";
+import { getAnthropicApiKey } from "./env";
 import { CLAUDE_MODEL } from "./claude";
 import { addressInstruction } from "./address-form";
-import { salvageGradeProposal } from "./grade-utils";
 import { notifyStudent } from "./notify";
+import {
+  COMPLETION_META,
+  ensureCompletionColumns,
+  gradableQuestions,
+  isAnswerMark,
+  relevantCount,
+  statusFromCounts,
+  type CompletionStatus,
+  type Marks,
+} from "./completion";
 
-// Claude proposes a score + feedback for a submission. The teacher edits and
-// approves — nothing reaches the student without teacher approval.
+// The automatic check proposes a completion status (בוצע / בוצע חלקית / לא
+// בוצע) and a mark + short note for every answer — no numeric score (#24).
+// The teacher edits and approves; nothing reaches the student before that.
 //
 // Runs automatically when a student submits (see the submit route), from the
-// grade-proposals cron (older submissions, and runs that never finished), and
-// on demand from the submission page. A failed run is retried once right
-// away. Failures never throw: they are stored on the grades row
+// grade-proposals cron (older submissions — including ones approved under
+// the old numeric grade, which get a new-style proposal — and runs that never
+// finished), and on demand from the submission page. A failed run is retried
+// once right away. Failures never throw: they are stored on the grades row
 // (claude_error) so the teacher sees a clear message and a retry button
 // instead of an empty panel.
 
@@ -35,11 +46,12 @@ export async function ensureGradeAssistColumns() {
   if (!cols.has("claude_submitted_at")) {
     await db().execute("ALTER TABLE grades ADD COLUMN claude_submitted_at INTEGER");
   }
+  await ensureCompletionColumns();
   columnsReady = true;
 }
 
 export type GradeProposal =
-  | { ok: true; score: number | null; feedback: string }
+  | { ok: true; status: CompletionStatus; marks: Marks; feedback: string }
   | { ok: false; error: string };
 
 // An error a second try cannot fix (missing API key, task or student).
@@ -69,19 +81,22 @@ export async function proposeGrade(taskId: number, studentId: number): Promise<G
 
   const t = now();
   if (result.ok) {
+    // claude_score is left as it was: an old numeric proposal stays in the
+    // DB, a new run never writes one
     await db().execute({
-      sql: `INSERT INTO grades (task_id, user_id, claude_score, claude_feedback, claude_error, claude_error_at,
-                                claude_attempts, claude_submitted_at, updated_at)
-            VALUES (?, ?, ?, ?, NULL, NULL, 0, ?, ?)
+      sql: `INSERT INTO grades (task_id, user_id, claude_status, claude_marks, claude_feedback,
+                                claude_error, claude_error_at, claude_attempts, claude_submitted_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, NULL, NULL, 0, ?, ?)
             ON CONFLICT(task_id, user_id) DO UPDATE SET
-              claude_score = excluded.claude_score,
+              claude_status = excluded.claude_status,
+              claude_marks = excluded.claude_marks,
               claude_feedback = excluded.claude_feedback,
               claude_error = NULL,
               claude_error_at = NULL,
               claude_attempts = 0,
               claude_submitted_at = excluded.claude_submitted_at,
               updated_at = excluded.updated_at`,
-      args: [taskId, studentId, result.score, result.feedback, submittedAt, t],
+      args: [taskId, studentId, result.status, JSON.stringify(result.marks), result.feedback, submittedAt, t],
     });
   } else {
     // keep any earlier good proposal; only record the failure
@@ -99,12 +114,14 @@ export async function proposeGrade(taskId: number, studentId: number): Promise<G
   return result;
 }
 
-// A submitted, unapproved work needs a proposal when it has none, or when the
-// one it has was written for an earlier submission (un-submit → re-submit).
-const NEEDS_PROPOSAL = `p.submitted_at IS NOT NULL
-            AND g.approved_at IS NULL
-            AND (g.claude_feedback IS NULL OR TRIM(g.claude_feedback) = ''
-                 OR (g.claude_submitted_at IS NOT NULL AND g.claude_submitted_at <> p.submitted_at))`;
+// Work that needs a (new-style) proposal: submitted — or approved under the
+// old numeric grade — and not yet approved with a status, with no status
+// proposal, or one written for an earlier submission (un-submit → re-submit).
+const NEEDS_PROPOSAL = `(p.submitted_at IS NOT NULL OR g.approved_at IS NOT NULL)
+            AND g.status_approved_at IS NULL
+            AND (g.claude_status IS NULL
+                 OR (g.claude_submitted_at IS NOT NULL AND p.submitted_at IS NOT NULL
+                     AND g.claude_submitted_at <> p.submitted_at))`;
 
 // Submitted work that still has no proposal (for the bulk re-run).
 export async function submissionsMissingProposal(taskId: number): Promise<number[]> {
@@ -132,7 +149,7 @@ export async function pendingProposalsForCron(
     sql: `SELECT p.task_id, p.user_id FROM task_progress p
           LEFT JOIN grades g ON g.task_id = p.task_id AND g.user_id = p.user_id
           WHERE ${NEEDS_PROPOSAL}
-            AND p.submitted_at < ?
+            AND COALESCE(p.submitted_at, 0) < ?
             AND COALESCE(g.claude_attempts, 0) < 3
             AND (g.claude_error_at IS NULL OR g.claude_error_at < ?)
           ORDER BY p.submitted_at
@@ -144,6 +161,16 @@ export async function pendingProposalsForCron(
 
 export type ReviewState = "approved" | "pending_approval" | "preparing" | "failed";
 
+// A status proposal counts only if it was written for the current submission.
+export function hasFreshProposal(r: Record<string, unknown>): boolean {
+  return (
+    r.claude_status != null &&
+    (r.claude_submitted_at == null ||
+      r.submitted_at == null ||
+      Number(r.claude_submitted_at) === Number(r.submitted_at))
+  );
+}
+
 // Where each submitted work of a task stands in the review flow, in
 // submission order: approved / proposal waiting for the teacher / proposal
 // still being prepared / automatic check failed (teacher must retry).
@@ -152,7 +179,7 @@ export async function reviewStates(
 ): Promise<{ userId: number; state: ReviewState }[]> {
   await ensureGradeAssistColumns();
   const res = await db().execute({
-    sql: `SELECT p.user_id, g.approved_at, g.claude_feedback, g.claude_error,
+    sql: `SELECT p.user_id, g.approved_at, g.status_approved_at, g.claude_status, g.claude_error,
                  g.claude_submitted_at, p.submitted_at
           FROM task_progress p
           LEFT JOIN grades g ON g.task_id = p.task_id AND g.user_id = p.user_id
@@ -161,16 +188,10 @@ export async function reviewStates(
     args: [taskId],
   });
   return res.rows.map((r) => {
-    const hasProposal =
-      r.claude_feedback != null &&
-      String(r.claude_feedback).trim() !== "" &&
-      (r.claude_submitted_at == null ||
-        r.submitted_at == null ||
-        Number(r.claude_submitted_at) === Number(r.submitted_at));
     const state: ReviewState =
-      r.approved_at != null
+      r.status_approved_at != null
         ? "approved"
-        : hasProposal
+        : hasFreshProposal(r)
           ? "pending_approval"
           : r.claude_error != null
             ? "failed"
@@ -179,33 +200,40 @@ export async function reviewStates(
   });
 }
 
-// The teacher's final approval: only now does the grade become visible to
-// the student, who is notified by bell + email.
+// The teacher's final approval: only now do the status and the marks become
+// visible to the student, who is notified by bell + email.
 export async function approveGrade(opts: {
   taskId: number;
   studentId: number;
-  score: number;
+  status: CompletionStatus;
+  marks: Marks;
   feedback: string;
   teacherId: number;
 }) {
-  const { taskId, studentId, score, feedback, teacherId } = opts;
+  const { taskId, studentId, status, marks, feedback, teacherId } = opts;
+  await ensureGradeAssistColumns();
   const t = now();
   await db().execute({
-    sql: `INSERT INTO grades (task_id, user_id, score, feedback, graded_by, approved_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO grades (task_id, user_id, status, marks, feedback, graded_by,
+                              approved_at, status_approved_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(task_id, user_id) DO UPDATE SET
-            score = excluded.score,
+            status = excluded.status,
+            marks = excluded.marks,
             feedback = excluded.feedback,
             graded_by = excluded.graded_by,
             approved_at = COALESCE(grades.approved_at, excluded.approved_at),
+            status_approved_at = COALESCE(grades.status_approved_at, excluded.status_approved_at),
             updated_at = excluded.updated_at`,
-    args: [taskId, studentId, score, feedback, teacherId, t, t],
+    args: [taskId, studentId, status, JSON.stringify(marks), feedback, teacherId, t, t, t],
   });
   const task = await getTask(taskId);
   await notifyStudent(studentId, {
     kind: `graded:${taskId}:${studentId}`,
-    title: `המשימה ״${task?.title ?? ""}״ נבדקה — הציון: ${score}`,
-    body: feedback ? `הערכת המורה: ${feedback.slice(0, 500)}` : undefined,
+    title: `המשימה ״${task?.title ?? ""}״ נבדקה — ${COMPLETION_META[status].label}`,
+    body: feedback
+      ? `הערת המורה: ${feedback.slice(0, 500)}`
+      : "ליד כל תשובה במשימה מחכה לך סימון של המורה.",
     link: `/tasks/${taskId}`,
   });
 }
@@ -240,6 +268,18 @@ function describeError(err: unknown): string {
 class NoProposalError extends Error {}
 
 async function runProposal(taskId: number, studentId: number): Promise<GradeProposal> {
+  const task = await getTask(taskId);
+  if (!task) throw new FinalError("המשימה לא נמצאה.");
+  const reg = getTaskContent(task.content_ref);
+  const questions = await gradableQuestions(task.content_ref);
+  const answers = await getAnswers(taskId, studentId);
+  const answered = questions.filter((q) => (answers[q.key] ?? "").trim() !== "");
+
+  // nothing answered: "לא בוצע" needs no model run
+  if (answered.length === 0) {
+    return { ok: true, status: statusFromCounts(0, questions.length), marks: {}, feedback: "" };
+  }
+
   const apiKey = getAnthropicApiKey();
   if (!apiKey) {
     throw new FinalError(
@@ -247,10 +287,6 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
     );
   }
 
-  const task = await getTask(taskId);
-  if (!task) throw new FinalError("המשימה לא נמצאה.");
-  const reg = getTaskContent(task.content_ref);
-  const answers = await getAnswers(taskId, studentId);
   const markings = await getMarkings(taskId, studentId);
   const studentRow = await db().execute({
     sql: "SELECT full_name, email, address_form FROM users WHERE id = ?",
@@ -262,80 +298,58 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
     (studentRow.rows[0]?.email as string | undefined) ??
     "התלמידה";
 
-  // Build a compact questions+answers transcript.
-  const qa: string[] = [];
-  if (reg) {
-    for (const section of reg.content.sections) {
-      for (const block of section.blocks) {
-        if (block.type !== "question") continue;
-        if (block.fields) {
-          for (const f of block.fields) {
-            qa.push(
-              `שאלה [${block.label} — ${f.label}]: ${block.prompt}\nתשובה: ${
-                answers[`${block.key}:${f.key}`] || "(לא נענתה)"
-              }`
-            );
-          }
-        } else {
-          qa.push(
-            `שאלה [${block.label}]: ${block.prompt}\nתשובה: ${
-              answers[block.key] || "(לא נענתה)"
-            }`
-          );
-        }
-      }
-    }
-  }
-  const decodeAnswers = Object.entries(answers)
-    .filter(([k]) => k.startsWith("decode:"))
-    .map(([k, v]) => `${k}: ${v}`)
-    .join("\n");
+  const qa = answered.map(
+    (q) => `[מזהה: ${q.key}] ${q.label}\nשאלה: ${q.prompt}\nתשובה: ${answers[q.key]}`
+  );
   const markingsText = markings
     .map((m) => `${m.kind}: ${m.wordText}${m.note ? ` (${m.note})` : ""}`)
     .join(", ");
+  const passage = reg ? reg.mainPassage.verses.map((v) => v.text).join("\n") : "";
 
-  // Structured output through the submit_grade tool. Claude Opus 5.5 rejects
-  // a FORCED tool choice (400 — this was the "שגיאה בחיבור" the teacher saw),
-  // so the choice is "auto" with a strict schema and an instruction to use
-  // the tool; the text fallback below covers the rare prose answer.
+  // Structured output through the submit_review tool. Claude Opus 5.5
+  // rejects a FORCED tool choice (400), so the choice is "auto" with a
+  // strict schema and an instruction to use the tool.
   const client = new Anthropic({ apiKey, timeout: 100_000, maxRetries: 2 });
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
-    // a detailed Hebrew evaluation easily passes 1200 tokens; when it did,
-    // the tool call was cut off mid-way and no proposal was saved
-    max_tokens: 4000,
-    system: reg?.content.writing
-      ? `את/ה עוזר/ת הערכה למורה באתר "בינת התורה" (כיתה י — בנים ובנות, תיכון שחרית). ההגשה היא תרגול כתיבה טיעונית של כ-40 דקות: קריאת טקסט, פירוק הטיעון שבו, עמדה, נימוקים וראיות, הצד השני, ופסקה שלמה.
-הערך/כי בעברית: ציון 0-100 והערכה מילולית חמה, מפורטת ובונה. מחוון: (1) טענה ברורה וחד-משמעית; (2) שני נימוקים שבאמת תומכים בטענה; (3) ראיה מהטקסט מדויקת (ציטוט נכון ושימוש נכון בו) וראיה מהחיים ספציפית; (4) הצד השני מוצג בכנות ובחוזקו, והתשובה לו עניינית; (5) הפסקה השלמה בנויה — פתיחה בטענה, נימוקים, הצד השני, סיום — ובלשון ברורה. ציינ/י לכל קריטריון במשפט מה טוב ומה הצעד הבא, עם ציטוט מדויק ממה שנכתב.
-בהירות מוחלטת — המשוב מגיע לתלמיד/ה בכיתה י; טקסט רגיל בלבד, בלי Markdown; להדגשה מירכאות.
-הטקסט שנקרא: ${reg.mainPassage.verses.map((v) => v.text).join("\n")}
-שפה: ${addressInstruction(studentRow.rows[0]?.address_form as string | null)} מותר לפנות בשם הפרטי.
-זו הצעה בלבד — המורה עורך/ת ומאשר/ת. הגש/הגישי את ההערכה דרך הכלי submit_grade.`
-      : `את/ה עוזר/ת הערכה למורה באתר "בינת התורה" (תנ"ך, כיתה י — בנים ובנות, תיכון שחרית).
-הערך/כי את ההגשה בעברית: ציון 0-100 והערכה מילולית חמה, מפורטת ובונה (מה חוזק, מה לשפר, דוגמה אחת קונקרטית).
-בהירות מוחלטת — המשוב מגיע לתלמיד/ה בכיתה י: בלי ניסוחים עמומים; כשמתייחסים למילה מהקטע או ממה שנכתב — צטט/י אותה במדויק; שיהיה ברור בדיוק מה היה טוב ולמה, ומה הצעד הבא.
-המשוב הוא טקסט רגיל בלבד — בלי Markdown, בלי כוכביות ובלי כותרות; להדגשה השתמש/י במירכאות.
-שים/י לב במיוחד ל: הבנת הפשט, איכות פירוק הטיעון (טענה/נימוק/ביסוס), עומק השאלות שנשאלו, ואיכות הסימונים (מילה מנחה, מילים קשות).
-שפה: ${addressInstruction(studentRow.rows[0]?.address_form as string | null)} מותר לפנות בשם הפרטי.
-זו הצעה בלבד — המורה עורך/ת ומאשר/ת. הגש/הגישי את ההערכה דרך הכלי submit_grade.`,
+    max_tokens: 6000,
+    system: `את/ה עוזר/ת בדיקה למורה באתר "בינת התורה" (${
+      reg?.content.writing ? "תרגול כתיבה טיעונית" : 'תנ"ך'
+    }, כיתה י — בנים ובנות, תיכון שחרית). אין ציונים מספריים — בשום מקום.
+לכל תשובה ברשימה תן/תני סימון אחד:
+- "correct" — נכונה.
+- "partial" — תשובה פתוחה שנכונה רק בחלקה.
+- "incorrect" — מתייחסת לשאלה אבל לא נכונה.
+- "irrelevant" — לא נחשבת תשובה: גיבוב אותיות, תווים אקראיים, העתקה של השאלה עצמה, או טקסט שלא קשור לשאלה.
+${reg?.content.writing ? 'בתרגול כתיבה "נכון" פירושו שהתשובה עונה היטב על מה שהשלב מבקש (טענה ברורה, נימוק שתומך בה, ראיה מדויקת, הצד השני בכנות וכו\').\n' : ""}לכל תשובה גם הערה קצרה (משפט אחד, עד 20 מילים) — מה טוב או מה חסר, בלי לגלות את התשובה המלאה; מותר להשאיר ריק כשהתשובה נכונה ואין מה להוסיף.
+בנוסף, הערה כללית קצרה (2–3 משפטים) — חמה, עניינית ובונה.
+טקסט רגיל בלבד, בלי Markdown. שפה: ${addressInstruction(
+      studentRow.rows[0]?.address_form as string | null
+    )} מותר לפנות בשם הפרטי.
+${passage ? `הטקסט הנלמד:\n${passage}\n` : ""}זו הצעה בלבד — המורה עורך/ת ומאשר/ת. הגש/הגישי דרך הכלי submit_review, עם סימון לכל מזהה ברשימה.`,
     tools: [
       {
-        name: "submit_grade",
-        description: "הגשת הצעת הציון והמשוב למורה",
+        name: "submit_review",
+        description: "הגשת הצעת הבדיקה למורה: סימון והערה לכל תשובה, והערה כללית",
         input_schema: {
           type: "object" as const,
           properties: {
-            score: {
-              type: "integer",
-              description: "הציון המוצע, מספר שלם בין 0 ל-100",
+            answers: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  key: { type: "string", description: "המזהה של השאלה, בדיוק כפי שנמסר" },
+                  mark: { type: "string", enum: ["correct", "incorrect", "partial", "irrelevant"] },
+                  note: { type: "string", description: "הערה קצרה, או מחרוזת ריקה" },
+                },
+                required: ["key", "mark", "note"],
+                additionalProperties: false,
+              },
             },
-            feedback: {
-              type: "string",
-              description:
-                "ההערכה המילולית לתלמיד/ה — טקסט רגיל בלבד, בלי Markdown",
-            },
+            feedback: { type: "string", description: "הערה כללית קצרה לתלמיד/ה" },
           },
-          required: ["score", "feedback"],
+          required: ["answers", "feedback"],
           additionalProperties: false,
         },
         strict: true,
@@ -349,42 +363,38 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
 
 המשימה: ${task.title}
 
-סימוני פענוח הפשט של התלמידה: ${markingsText || "(אין)"}
+סימוני פענוח הפשט (רקע בלבד): ${markingsText || "(אין)"}
 
-תשובות שלבי הפענוח:
-${decodeAnswers || "(אין)"}
-
-שאלות ותשובות:
+התשובות לבדיקה:
 ${qa.join("\n\n")}`,
       },
     ],
   });
 
-  let score: number | null = null;
-  let feedback = "";
   const toolUse = msg.content.find((c) => c.type === "tool_use");
-  if (toolUse && toolUse.type === "tool_use") {
-    const input = (toolUse.input ?? {}) as { score?: unknown; feedback?: unknown };
-    if (input.score != null && Number.isFinite(Number(input.score))) {
-      score = Math.min(100, Math.max(0, Math.round(Number(input.score))));
-    }
-    feedback = String(input.feedback ?? "")
-      .replace(/\*\*/g, "")
-      .trim();
-  }
-  if (!feedback) {
-    // extremely defensive: if no tool call came back, salvage whatever text did
-    const text = msg.content.find((c) => c.type === "text")?.text ?? "";
-    const rescued = salvageGradeProposal(text, score);
-    score = rescued.score;
-    feedback = rescued.feedback;
-  }
-  if (!feedback) {
+  if (!toolUse || toolUse.type !== "tool_use") {
     throw new NoProposalError(
-      msg.stop_reason === "max_tokens"
-        ? "ההערכה נקטעה באמצע."
-        : "לא התקבלה הצעה מהמודל."
+      msg.stop_reason === "max_tokens" ? "הבדיקה נקטעה באמצע." : "לא התקבלה הצעה מהמודל."
     );
   }
-  return { ok: true, score, feedback };
+  const input = (toolUse.input ?? {}) as { answers?: unknown; feedback?: unknown };
+  const valid = new Set(answered.map((q) => q.key));
+  const marks: Marks = {};
+  if (Array.isArray(input.answers)) {
+    for (const a of input.answers) {
+      const o = (a ?? {}) as Record<string, unknown>;
+      const key = String(o.key ?? "");
+      if (!valid.has(key) || !isAnswerMark(o.mark)) continue;
+      marks[key] = {
+        mark: o.mark,
+        note: String(o.note ?? "").replace(/\*\*/g, "").trim().slice(0, 600),
+      };
+    }
+  }
+  if (Object.keys(marks).length === 0) {
+    throw new NoProposalError("לא התקבלו סימונים לתשובות.");
+  }
+  const feedback = String(input.feedback ?? "").replace(/\*\*/g, "").trim();
+  const status = statusFromCounts(relevantCount(questions, answers, marks), questions.length);
+  return { ok: true, status, marks, feedback };
 }

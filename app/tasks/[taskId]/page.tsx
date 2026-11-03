@@ -7,6 +7,8 @@ import TaskRunner from "@/components/task/task-runner";
 import EssayRunner from "@/components/writing/essay-runner";
 import EssayEditor from "@/components/writing/essay-editor";
 import TeacherEditPanel from "@/components/task/teacher-edit-panel";
+import ReviewFeedback from "@/components/task/review-feedback";
+import type { CompletionStatus, Marks } from "@/lib/completion-meta";
 import {
   getTask,
   isAssigned,
@@ -88,6 +90,36 @@ export default async function TaskPage({
       });
   const initialQuestions = bankRows.rows.map((r) => String(r.question));
 
+  // the approved review (#24): status + a mark beside each answer — only
+  // after the teacher's approval, and never the old numeric score
+  let review: {
+    status: CompletionStatus;
+    marks: Marks;
+    feedback: string | null;
+    questions: { key: string; section: string; label: string; prompt: string; answer: string }[];
+  } | null = null;
+  if (!guest && !canEditContent) {
+    const { ensureCompletionColumns, gradableQuestions, isCompletionStatus, parseMarks } =
+      await import("@/lib/completion");
+    await ensureCompletionColumns();
+    const g = (
+      await db().execute({
+        sql: `SELECT status, marks, feedback FROM grades
+              WHERE task_id = ? AND user_id = ? AND status_approved_at IS NOT NULL`,
+        args: [taskId, userId],
+      })
+    ).rows[0];
+    if (g && isCompletionStatus(g.status)) {
+      const qs = await gradableQuestions(task.content_ref);
+      review = {
+        status: g.status,
+        marks: parseMarks(g.marks ?? null),
+        feedback: (g.feedback as string | null) ?? null,
+        questions: qs.map((q) => ({ ...q, answer: answers[q.key] ?? "" })),
+      };
+    }
+  }
+
   // Part B layout (slides by default), saved per account
   const { getUserTaskView } = await import("@/lib/task-view");
   const initialView = guest ? "slides" : await getUserTaskView(userId);
@@ -135,6 +167,8 @@ export default async function TaskPage({
             📅 להגשה עד: {formatFullDate(task.due_at)} בשעה {formatHebTime(task.due_at)}
           </p>
         </div>
+
+        {review && <ReviewFeedback {...review} />}
 
         {reg.content.writing && baseReg.content.writing ? (
           <>

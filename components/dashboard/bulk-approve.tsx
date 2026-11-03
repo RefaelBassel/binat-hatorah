@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-type Row = { userId: number; name: string; score: number | null };
+import { COMPLETION_META, type CompletionStatus } from "@/lib/completion-meta";
+
+type Row = { userId: number; name: string; completion: CompletionStatus | null };
 
 // Approve several reviewed proposals at once. Each student gets the
 // teacher's saved draft if there is one, otherwise Claude's proposal as is —
@@ -42,8 +44,8 @@ export default function BulkApprove({ taskId, rows }: { taskId: number; rows: Ro
         setNote({
           ok: true,
           text:
-            `✅ ${data.approved} ציונים אושרו והוחזרו לתלמידים.` +
-            (data.skipped > 0 ? ` ${data.skipped} דולגו (אין ציון לאישור).` : ""),
+            `✅ ${data.approved} בדיקות אושרו והוחזרו לתלמידים.` +
+            (data.skipped > 0 ? ` ${data.skipped} דולגו (אין סטטוס לאישור).` : ""),
         });
         setSelected(new Set());
         router.refresh();
@@ -97,7 +99,7 @@ export default function BulkApprove({ taskId, rows }: { taskId: number; rows: Ro
                   />
                   <span className="font-semibold text-[color:var(--primary)]">{r.name}</span>
                   <span className="ms-auto text-xs font-bold text-[color:var(--primary)]/70">
-                    {r.score != null ? `ציון: ${r.score}` : "אין ציון"}
+                    {r.completion ? COMPLETION_META[r.completion].label : "אין סטטוס"}
                   </span>
                 </label>
               </li>

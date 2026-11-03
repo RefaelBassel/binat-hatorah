@@ -51,7 +51,7 @@ export default function BulkGradeAssist({
   return (
     <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[color:var(--accent)]/40 bg-[color:var(--card)] p-5">
       <div>
-        <p className="text-sm font-bold text-[color:var(--primary)]">✨ הצעות ציון של קלוד</p>
+        <p className="text-sm font-bold text-[color:var(--primary)]">✨ הצעות בדיקה אוטומטיות (סטטוס וסימון תשובות)</p>
         <p className="mt-1 text-sm text-[color:var(--foreground)]/70">
           {running
             ? `קלוד בודק הגשות... ${done} מתוך ${total}`
@@ -59,7 +59,7 @@ export default function BulkGradeAssist({
               ? failed > 0
                 ? `הבדיקה הסתיימה: ${done - failed} הצעות הופקו, ${failed} נכשלו — אפשר ללחוץ שוב כדי לנסות אותן מחדש.`
                 : `✅ הבדיקה הסתיימה: הופקו הצעות לכל ${done} ההגשות.`
-              : `ל-${total} הגשות עוד אין הצעת ציון והערכה. הן מופקות אוטומטית ברקע תוך דקות — ואפשר גם להפיק אותן עכשיו.`}
+              : `ל-${total} הגשות עוד אין הצעת בדיקה בשיטה החדשה (סטטוס ביצוע וסימון לכל תשובה). הן מופקות אוטומטית ברקע תוך דקות — ואפשר גם להפיק אותן עכשיו.`}
         </p>
       </div>
       {total > 0 && (
