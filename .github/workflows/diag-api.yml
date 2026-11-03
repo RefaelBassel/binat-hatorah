@@ -1,0 +1,16 @@
+name: diag-api
+on: workflow_dispatch
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the API with the repository secret (prints the response, never the key)
+        env:
+          K: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "key length: ${#K}, prefix: ${K:0:10}"
+          for m in claude-opus-5-5 claude-sonnet-5-5; do
+            echo "== $m"
+            curl -s https://api.anthropic.com/v1/messages -H "x-api-key: $K" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
+              -d "{\"model\":\"$m\",\"max_tokens\":8,\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" | head -c 400; echo
+          done
