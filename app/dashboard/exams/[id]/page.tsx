@@ -12,7 +12,9 @@ export default async function ExamEditPage({ params }: { params: Promise<{ id: s
   const doc = await getDoc(Number(id));
   if (!doc) notFound();
   const prep = doc.prepId != null ? await getDoc(doc.prepId) : null;
-  const linkedExam = doc.kind === "prep" ? (await listDocs()).find((d) => d.kind === "exam" && d.prepId === doc.id) : undefined;
+  const all = doc.kind === "prep" ? await listDocs() : [];
+  const pairedExam = all.find((d) => d.kind === "exam" && d.prepId === doc.id);
+  const linkedExam = pairedExam ?? all.find((d) => d.kind === "exam" && d.id === doc.linkedExamId);
   const counts = doc.kind === "exam" ? await attemptCounts() : null;
 
   return (
@@ -29,6 +31,9 @@ export default async function ExamEditPage({ params }: { params: Promise<{ id: s
           prepId: prep?.id ?? null,
           prepTitle: prep?.title ?? null,
           linkedExamId: linkedExam?.id ?? null,
+          guideExamId: pairedExam ? null : (linkedExam?.id ?? null),
+          isGeneral: doc.kind === "prep" && !pairedExam,
+          examOptions: all.filter((d) => d.kind === "exam").map((d) => ({ id: d.id, title: d.title || "מבחן ללא כותרת" })),
           attemptCount: counts?.get(doc.id)?.total ?? 0,
         }}
       />

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireTeacher } from "@/lib/api-auth";
-import { createDoc, duplicateDoc, getDoc, setPrepLink } from "@/lib/exams";
+import { createDoc, duplicateDoc, getDoc, setGuideExamLink, setPrepLink } from "@/lib/exams";
 
 // Teacher: new exam, duplicate, or a new prep sheet linked to an exam.
 export async function POST(req: Request) {
@@ -29,7 +29,19 @@ export async function POST(req: Request) {
       await setPrepLink(exam.id, id);
       return NextResponse.json({ ok: true, id });
     }
-    return NextResponse.json({ error: "פעולה לא מוכרת." }, { status: 400 });
+    if (action === "linkGuide") {
+      const prep = await getDoc(Number(body?.id));
+      if (!prep || prep.kind !== "prep") return NextResponse.json({ error: "הדף לא נמצא." }, { status: 404 });
+      let examId: number | null = null;
+      if (body?.examId != null) {
+        const exam = await getDoc(Number(body.examId));
+        if (!exam || exam.kind !== "exam") return NextResponse.json({ error: "המבחן לא נמצא." }, { status: 404 });
+        examId = exam.id;
+      }
+      await setGuideExamLink(prep.id, examId);
+      return NextResponse.json({ ok: true });
+    }
+    return NextResponse.json({ error: "פעולה לא מוכרת."}, { status: 400 });
   } catch (e) {
     console.error("exams POST failed", e);
     return NextResponse.json({ error: "שגיאה בחיבור. נסו שוב." }, { status: 500 });
