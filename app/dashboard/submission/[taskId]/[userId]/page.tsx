@@ -15,6 +15,7 @@ import { getTaskContent } from "@/content/tasks/registry";
 import { formatWorkTime } from "@/lib/hebrew";
 import { salvageGradeProposal } from "@/lib/grade-utils";
 import { ensureGradeAssistColumns, reviewStates } from "@/lib/grade-assist";
+import { gradableQuestions, isCompletionStatus, parseMarks } from "@/lib/completion";
 import ConfirmButton from "@/components/confirm-button";
 import { DECODE_STAGES } from "@/content/tasks/registry";
 
@@ -94,12 +95,14 @@ export default async function SubmissionPage({
 
   await ensureGradeAssistColumns();
   const gradeRes = await db().execute({
-    sql: `SELECT claude_score, claude_feedback, claude_error, claude_submitted_at,
-                 score, feedback, approved_at
+    sql: `SELECT claude_status, claude_marks, claude_feedback, claude_error, claude_submitted_at,
+                 status, marks, feedback, approved_at, status_approved_at
           FROM grades WHERE task_id = ? AND user_id = ?`,
     args: [taskId, studentId],
   });
   const grade = gradeRes.rows[0];
+  // the counted questions: hidden ones out, teacher-added ones in
+  const questions = await gradableQuestions(task.content_ref);
   // a proposal written before an un-submit → re-submit is out of date
   const proposalStale =
     grade?.claude_submitted_at != null &&
@@ -116,18 +119,11 @@ export default async function SubmissionPage({
     waitingIds.find((id) => id !== studentId) ??
     null;
 
-  // legacy rows may hold the proposal as a raw JSON blob — clean for display
-  const salvageIfBlob = (raw: string | null, score: number | null) => {
+  // legacy rows may hold feedback as a raw JSON blob — clean for display
+  const salvageIfBlob = (raw: string | null) => {
     if (raw == null) return null;
-    return salvageGradeProposal(raw, score).feedback;
+    return salvageGradeProposal(raw, null).feedback;
   };
-  const salvaged =
-    grade?.claude_feedback != null
-      ? salvageGradeProposal(
-          String(grade.claude_feedback),
-          grade.claude_score != null ? Number(grade.claude_score) : null
-        )
-      : null;
 
   return (
     <PageShell
@@ -198,38 +194,8 @@ export default async function SubmissionPage({
           </div>
         </section>
 
-        {/* worksheet answers */}
-        <section className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
-          <h2 className="mb-3 font-display text-base font-bold text-[color:var(--primary)]">
-            📝 תשובות המשימה
-          </h2>
-          <div className="space-y-4">
-            {reg.content.sections.map((section) => (
-              <div key={section.key}>
-                <h3 className="mb-2 text-xs font-bold text-[color:var(--accent)]">
-                  {section.title}
-                </h3>
-                <div className="space-y-3">
-                  {section.blocks.map((block) => {
-                    if (block.type !== "question") return null;
-                    if (block.fields) {
-                      return block.fields.map((f) => (
-                        <AnswerRow
-                          key={`${block.key}:${f.key}`}
-                          label={`${block.prompt} — ${f.label}`}
-                          value={answers[`${block.key}:${f.key}`]}
-                        />
-                      ));
-                    }
-                    return (
-                      <AnswerRow key={block.key} label={block.prompt} value={answers[block.key]} />
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* the worksheet answers are in the review panel below, each with
+            its mark */}
 
         {/* focus picture — context for the teacher, never an automatic verdict */}
         {(focus.exits > 0 || blockedInserts > 0 || focus.copyBlocked > 0 || typingSuspect) && (
@@ -265,7 +231,7 @@ export default async function SubmissionPage({
             )}
             <p className="mt-1 text-[11px] text-[color:var(--primary)]/50">
               נתון רקע לשיקול דעת ולשיחה — יציאה יכולה להיות גם התראת מערכת או
-              מעבר תמים. אין לכך השפעה אוטומטית על הציון.
+              מעבר תמים. אין לכך השפעה אוטומטית על הבדיקה.
             </p>
           </div>
         )}
@@ -288,23 +254,33 @@ export default async function SubmissionPage({
           </div>
         )}
 
-        {/* grading — stored proposals pass through the salvage cleaner, so
-            drafts written by the old raw-JSON path display properly */}
+        {/* review: status + a mark beside every answer. The teacher's old
+            feedback text passes through the salvage cleaner, so drafts
+            written by the old raw-JSON path display properly. */}
         <GradePanel
           taskId={taskId}
           studentId={studentId}
           studentName={studentName}
-          initialClaudeScore={salvaged?.score ?? null}
-          initialClaudeFeedback={salvaged?.feedback ?? null}
-          initialScore={grade?.score != null ? Number(grade.score) : null}
-          initialFeedback={
-            salvageIfBlob((grade?.feedback as string | null) ?? null, null)
+          questions={questions.map((q) => ({ ...q, answer: answers[q.key] ?? "" }))}
+          initialProposal={
+            isCompletionStatus(grade?.claude_status)
+              ? {
+                  status: grade.claude_status,
+                  marks: parseMarks(grade.claude_marks ?? null),
+                  feedback: String(grade.claude_feedback ?? ""),
+                }
+              : null
           }
+          initialDraft={{
+            status: isCompletionStatus(grade?.status) ? grade.status : null,
+            marks: parseMarks(grade?.marks ?? null),
+            feedback: salvageIfBlob((grade?.feedback as string | null) ?? null) ?? "",
+          }}
           initialClaudeError={(grade?.claude_error as string | null) ?? null}
           initialStale={proposalStale}
-          submitted={progress?.submitted_at != null}
+          needsReview={progress?.submitted_at != null || grade?.approved_at != null}
           submittedAt={progress?.submitted_at != null ? Number(progress.submitted_at) : null}
-          approved={grade?.approved_at != null}
+          approved={grade?.status_approved_at != null}
           nextPendingHref={
             nextPending != null ? `/dashboard/submission/${taskId}/${nextPending}` : null
           }

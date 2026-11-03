@@ -8,6 +8,7 @@ import {
   STATUS_META,
 } from "@/lib/tasks";
 import { sweepOverdue } from "@/lib/notify";
+import { COMPLETION_META } from "@/lib/completion-meta";
 import { isStudentMode } from "@/lib/student-mode";
 import { formatHebDate, formatWorkTime } from "@/lib/hebrew";
 
@@ -87,9 +88,15 @@ async function StudentView({
               >
                 {meta.label}
               </span>
-              {t.score != null && (
-                <span className="rounded-full bg-[color:var(--success)]/15 px-3 py-1 text-[11px] font-bold text-[color:var(--success)]">
-                  ציון: {t.score}
+              {t.completion && (
+                <span
+                  className="rounded-full px-3 py-1 text-[11px] font-bold"
+                  style={{
+                    background: COMPLETION_META[t.completion].bg,
+                    color: COMPLETION_META[t.completion].color,
+                  }}
+                >
+                  {COMPLETION_META[t.completion].label}
                 </span>
               )}
             </div>

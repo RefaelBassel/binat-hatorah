@@ -166,6 +166,12 @@ export default async function DashboardPage() {
       {/* roster + approvals */}
       <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
         <Link
+          href="/dashboard/grades"
+          className="rounded-full bg-[color:var(--success-fill)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+        >
+          📊 דוח ציונים — בוצע / בוצע חלקית / לא בוצע
+        </Link>
+        <Link
           href="/dashboard/students"
           className={`rounded-full px-5 py-2 text-sm font-bold shadow transition hover:scale-[1.02] ${
             pendingCount > 0

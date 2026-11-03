@@ -21,6 +21,7 @@ import {
   republishTask,
   updateTaskDueDate,
 } from "@/lib/tasks";
+import { COMPLETION_META } from "@/lib/completion-meta";
 import {
   formatHebDate,
   formatHebTime,
@@ -108,7 +109,7 @@ export default async function DashboardTaskPage({
     .filter(([, state]) => state === "pending_approval")
     .map(([userId]) => roster.find((r) => r.userId === userId))
     .filter((r) => r != null)
-    .map((r) => ({ userId: r.userId, name: r.fullName, score: r.score ?? r.claudeScore }));
+    .map((r) => ({ userId: r.userId, name: r.fullName, completion: r.completion ?? r.claudeCompletion }));
   const groups = {
     submitted: roster.filter((r) => r.status === "submitted"),
     graded: roster.filter((r) => r.status === "graded"),
@@ -252,7 +253,7 @@ export default async function DashboardTaskPage({
                     <th className="px-4 py-2.5 font-semibold">סטטוס</th>
                     <th className="px-4 py-2.5 font-semibold">התקדמות</th>
                     <th className="px-4 py-2.5 font-semibold">זמן עבודה</th>
-                    <th className="px-4 py-2.5 font-semibold">ציון</th>
+                    <th className="px-4 py-2.5 font-semibold">סטטוס ביצוע</th>
                     <th className="px-4 py-2.5"></th>
                   </tr>
                 </thead>
@@ -301,8 +302,24 @@ export default async function DashboardTaskPage({
                         <td className="px-4 py-2.5 tabular-nums text-[color:var(--primary)]/70">
                           {r.workSeconds > 0 ? formatWorkTime(r.workSeconds) : "—"}
                         </td>
-                        <td className="px-4 py-2.5 font-bold text-[color:var(--primary)]">
-                          {r.score ?? (r.claudeScore != null ? `(${r.claudeScore})` : "—")}
+                        <td className="px-4 py-2.5">
+                          {r.completionApproved && r.completion ? (
+                            <span
+                              className="rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                              style={{
+                                background: COMPLETION_META[r.completion].bg,
+                                color: COMPLETION_META[r.completion].color,
+                              }}
+                            >
+                              {COMPLETION_META[r.completion].label}
+                            </span>
+                          ) : r.completion ?? r.claudeCompletion ? (
+                            <span className="text-[11px] font-semibold text-[color:var(--foreground)]/50">
+                              ({COMPLETION_META[(r.completion ?? r.claudeCompletion)!].label} · טרם אושר)
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="px-4 py-2.5">
                           <Link

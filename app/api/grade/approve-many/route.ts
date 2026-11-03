@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireTeacher } from "@/lib/api-auth";
 import { db } from "@/lib/db";
-import { approveGrade, ensureGradeAssistColumns } from "@/lib/grade-assist";
+import { approveGrade, ensureGradeAssistColumns, hasFreshProposal } from "@/lib/grade-assist";
+import { isCompletionStatus, parseMarks } from "@/lib/completion";
 import { salvageGradeProposal } from "@/lib/grade-utils";
 
 // Bulk approval of reviewed proposals on one task. For each student the
-// teacher's saved draft wins; otherwise Claude's proposal is approved as is.
-// Submissions without a score to approve are skipped and reported back.
+// teacher's saved draft (status + marks) wins; otherwise the automatic
+// proposal is approved as is. Work without a status to approve is skipped
+// and reported back.
 export async function POST(req: Request) {
   const guard = await requireTeacher();
   if (!guard.ok) return guard.res;
@@ -25,34 +27,35 @@ export async function POST(req: Request) {
   let skipped = 0;
   for (const studentId of userIds) {
     const res = await db().execute({
-      sql: `SELECT g.score, g.feedback, g.claude_score, g.claude_feedback, g.approved_at, p.submitted_at
+      sql: `SELECT g.status, g.marks, g.feedback, g.claude_status, g.claude_marks, g.claude_feedback,
+                   g.claude_submitted_at, g.approved_at, g.status_approved_at, p.submitted_at
             FROM grades g
             LEFT JOIN task_progress p ON p.task_id = g.task_id AND p.user_id = g.user_id
             WHERE g.task_id = ? AND g.user_id = ?`,
       args: [taskId, studentId],
     });
     const g = res.rows[0];
-    if (!g || g.approved_at != null || g.submitted_at == null) {
+    if (!g || g.status_approved_at != null || (g.submitted_at == null && g.approved_at == null)) {
       skipped += 1;
       continue;
     }
-    const proposal =
-      g.claude_feedback != null
-        ? salvageGradeProposal(
-            String(g.claude_feedback),
-            g.claude_score != null ? Number(g.claude_score) : null
-          )
-        : null;
-    const score = g.score != null ? Number(g.score) : proposal?.score ?? null;
+    const draft = isCompletionStatus(g.status);
+    const fresh = hasFreshProposal(g) && isCompletionStatus(g.claude_status);
+    if (!draft && !fresh) {
+      skipped += 1;
+      continue;
+    }
+    const status = draft ? g.status : g.claude_status;
+    const marks = parseMarks(draft ? g.marks : g.claude_marks);
     const feedback =
       g.feedback != null && String(g.feedback).trim()
-        ? String(g.feedback)
-        : proposal?.feedback ?? "";
-    if (score == null) {
+        ? salvageGradeProposal(String(g.feedback), null).feedback
+        : String(g.claude_feedback ?? "");
+    if (!isCompletionStatus(status)) {
       skipped += 1;
       continue;
     }
-    await approveGrade({ taskId, studentId, score, feedback, teacherId: guard.userId });
+    await approveGrade({ taskId, studentId, status, marks, feedback, teacherId: guard.userId });
     approved += 1;
   }
   return NextResponse.json({ ok: true, approved, skipped });

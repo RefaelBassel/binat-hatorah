@@ -17,6 +17,7 @@ import {
 } from "./content-overrides";
 import { allTasksWithStats, cancelTaskAssignment, getTask, isTaskCancelled, keptTaskWork, now, publishTaskForClass, republishTask, taskRoster, updateTaskDueDate } from "./tasks";
 import { approveUser, blockUser, listAccounts, preApproveEmail, unblockUser } from "./approval";
+import { COMPLETION_META } from "./completion-meta";
 import { sendGroupMessage, sendMessage } from "./messages";
 import { formatHebDate, formatHebTime, israelWallTimeToUnix } from "./hebrew";
 
@@ -404,7 +405,7 @@ async function runReadTool(name: string, input: Record<string, unknown>, userId:
       const kept = await keptTaskWork(taskId);
       return {
         cancelled: await isTaskCancelled(taskId),
-        assigned: roster.map((r) => ({ userId: r.userId, name: r.fullName, status: r.status, progressPct: r.progressPct, workMinutes: Math.round(r.workSeconds / 60), score: r.score, submittedAt: r.submittedAt ? formatHebDateTime(r.submittedAt) : null })),
+        assigned: roster.map((r) => ({ userId: r.userId, name: r.fullName, status: r.status, progressPct: r.progressPct, workMinutes: Math.round(r.workSeconds / 60), completion: r.completion ? `${COMPLETION_META[r.completion].label}${r.completionApproved ? "" : " (טרם אושר)"}` : null, submittedAt: r.submittedAt ? formatHebDateTime(r.submittedAt) : null })),
         // saved work of students no longer assigned (cancelled task / merged duplicate) — still stored
         keptWorkNotAssigned: kept.map((r) => ({ userId: r.userId, name: r.fullName, progressPct: r.progressPct, workMinutes: Math.round(r.workSeconds / 60), stage: r.stage, answers: r.answers, markings: r.markings, submittedAt: r.submittedAt ? formatHebDateTime(r.submittedAt) : null })),
       };
