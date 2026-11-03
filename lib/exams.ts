@@ -133,6 +133,7 @@ export interface DocRow {
   durationMin: number | null;
   prepId: number | null;
   linkedExamId: number | null; // general guides: the exam they are shown under
+  seedKey: string | null;
   publishedAt: number | null;
   opensAt: number | null;
   updatedAt: number;
@@ -147,6 +148,7 @@ function toDoc(r: Record<string, unknown>): DocRow {
     durationMin: r.duration_min == null ? null : Number(r.duration_min),
     prepId: r.prep_id == null ? null : Number(r.prep_id),
     linkedExamId: r.linked_exam_id == null ? null : Number(r.linked_exam_id),
+    seedKey: r.seed_key == null ? null : String(r.seed_key),
     publishedAt: r.published_at == null ? null : Number(r.published_at),
     opensAt: r.opens_at == null ? null : Number(r.opens_at),
     updatedAt: Number(r.updated_at),

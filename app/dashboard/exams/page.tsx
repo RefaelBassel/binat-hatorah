@@ -2,6 +2,8 @@ import Link from "next/link";
 import PageShell from "@/components/page-shell";
 import { requireTeacherPage } from "@/lib/exam-page-guard";
 import { attemptCounts, listDocs, type DocRow } from "@/lib/exams";
+import { summaryStarterCounts } from "@/lib/exam-summaries";
+import { summaryUnitsFor } from "@/lib/exam-summary-types";
 import { formatHebDate, formatHebTime } from "@/lib/hebrew";
 import { CreateButton, DuplicateButton } from "@/components/exams/list-actions";
 
@@ -11,10 +13,12 @@ export default async function ExamsDashboardPage() {
   await requireTeacherPage();
   let docs: DocRow[] = [];
   let counts = new Map<number, { total: number; submitted: number; approved: number }>();
+  let starters = new Map<number, number>();
   let failed = false;
   try {
     docs = await listDocs();
     counts = await attemptCounts();
+    starters = await summaryStarterCounts();
   } catch (e) {
     console.error("exams list failed", e);
     failed = true;
@@ -50,6 +54,13 @@ export default async function ExamsDashboardPage() {
                 <p className="mt-1 text-sm">
                   <Link href={`/dashboard/exams/${e.id}/submissions`} className="font-semibold text-[color:var(--primary)] underline">
                     הגשות: {c.submitted} הוגשו · {c.approved} נבדקו
+                  </Link>
+                </p>
+              )}
+              {summaryUnitsFor(e.seedKey).length > 0 && (
+                <p className="mt-1 text-sm">
+                  <Link href={`/dashboard/exams/${e.id}/summaries`} className="font-semibold text-[color:var(--primary)] underline">
+                    סיכומי התלמידות: {starters.get(e.id) ?? 0} התחילו לסכם
                   </Link>
                 </p>
               )}
