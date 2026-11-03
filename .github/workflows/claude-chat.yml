@@ -54,6 +54,7 @@ jobs:
             --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(npm ci),Bash(npm install:*),Bash(npm run build),Bash(npm run lint:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(cat:*)"
 
       - name: Claude Code — build what the issue asks
+        id: build
         if: github.event_name == 'issues' || !github.event.issue.pull_request
         uses: anthropics/claude-code-action@v1
         with:
@@ -81,3 +82,20 @@ jobs:
             --model claude-opus-5-5
             --max-turns 120
             --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh issue comment:*),Bash(npm ci),Bash(npm install:*),Bash(npm run build),Bash(npm run lint:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(cat:*)"
+
+      # The action hides Claude's output (this repository is public). When a
+      # run fails, print only the final result's error text — never the
+      # conversation — so the cause is visible in the log.
+      - name: Why did Claude stop? (error text only)
+        if: failure() && steps.build.outcome == 'failure'
+        run: |
+          f="${{ steps.build.outputs.execution_file }}"
+          [ -f "$f" ] || f=/home/runner/work/_temp/claude-execution-output.json
+          if [ -f "$f" ]; then
+            jq -r '[.[] | select(.type == "result")] | last | "subtype=\(.subtype) is_error=\(.is_error) turns=\(.num_turns)
+result: \(.result // "-" | tostring | .[0:600])"' "$f" || true
+            jq -r '[.[] | select(.type == "assistant")] | last | .message.content[]? | select(.type == "text") | .text | .[0:600]' "$f" 2>/dev/null | tail -5 || true
+          else
+            echo "no execution file"
+          fi
+
