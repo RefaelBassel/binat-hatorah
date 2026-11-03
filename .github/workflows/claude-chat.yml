@@ -83,6 +83,14 @@ jobs:
             --max-turns 120
             --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh issue comment:*),Bash(npm ci),Bash(npm install:*),Bash(npm run build),Bash(npm run lint:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(cat:*)"
 
+      # What this build cost (from Claude's own result; no conversation text).
+      - name: Cost of this build
+        if: always() && steps.build.outcome != 'skipped'
+        run: |
+          f="${{ steps.build.outputs.execution_file }}"
+          [ -f "$f" ] || f=/home/runner/work/_temp/claude-execution-output.json
+          [ -f "$f" ] && jq -r '[.[] | select(.type == "result")] | last | "cost_usd=\(.total_cost_usd) turns=\(.num_turns) duration_min=\((.duration_ms // 0) / 60000 | floor)"' "$f" || echo "no execution file"
+
       # The action hides Claude's output (this repository is public). When a
       # run fails, print only the final result's error text, never the
       # conversation, so the cause is visible in the log.
