@@ -8,6 +8,8 @@ import QuestionBank from "@/components/question-bank";
 import AddressFormPicker from "@/components/address-form-picker";
 import MeReflections from "@/components/me-reflections";
 import ThemeToggle from "@/components/theme-toggle";
+import TaskViewPicker from "@/components/task-view-picker";
+import { getUserTaskView } from "@/lib/task-view";
 import { currentTheme } from "@/lib/theme-store";
 
 // row shape for the archive list + the trend chart's initial points
@@ -88,6 +90,7 @@ export default async function MePage() {
   }
 
   const theme = await currentTheme();
+  const taskView = user.guest ? null : await getUserTaskView(userId);
   const overdue = tasks.filter((t) => t.status === "overdue");
   const current =
     tasks.find((t) => t.status === "in_progress") ??
@@ -125,6 +128,9 @@ export default async function MePage() {
             <AddressFormPicker initial={user.addressForm ?? null} />
             <div className="mt-4 border-t border-[color:var(--border)] pt-4">
               <ThemeToggle initial={theme} persist variant="panel" />
+            </div>
+            <div className="mt-4 border-t border-[color:var(--border)] pt-4">
+              <TaskViewPicker initial={taskView} />
             </div>
           </div>
         )}
