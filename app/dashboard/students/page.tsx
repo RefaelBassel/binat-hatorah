@@ -37,6 +37,7 @@ export default async function StudentsPage() {
         students={students}
         merges={merges}
         similar={similar}
+        english={[...(await (await import("@/lib/task-lang")).englishUserIds())]}
       />
     </PageShell>
   );

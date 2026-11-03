@@ -20,6 +20,10 @@ import {
 import { getTaskContent, countTaskUnits } from "@/content/tasks/registry";
 import { isStudentMode } from "@/lib/student-mode";
 import { formatFullDate, formatHebTime } from "@/lib/hebrew";
+import UiTranslate from "@/components/task/ui-translate";
+
+// the first visit of an English-language student translates the task (then cached)
+export const maxDuration = 300;
 
 export default async function TaskPage({
   params,
@@ -49,7 +53,14 @@ export default async function TaskPage({
   // file defaults + the teacher's in-place edits
   const { applyOverrides, getOverrides, EMPTY_EDITS, EMPTY_UNIT } = await import("@/lib/content-overrides");
   const overrides = await getOverrides(baseReg.content.ref);
-  const reg = { ...baseReg, content: applyOverrides(baseReg.content, overrides) };
+  const regHe = { ...baseReg, content: applyOverrides(baseReg.content, overrides) };
+  // a student whose task language is English gets the task in English (the
+  // Bible and the commentators stay Hebrew with the translation beside them);
+  // teachers always see the Hebrew
+  const { getTaskLang, translateTask, uiDictionary } = await import("@/lib/task-lang");
+  const lang = !isTeacher && !guest ? await getTaskLang(userId) : "he";
+  const reg = lang === "en" ? { ...regHe, ...(await translateTask(regHe.content, regHe.mainPassage)) } : regHe;
+  const uiDict = lang === "en" ? await uiDictionary((await import("@/lib/task-ui-strings")).TASK_UI_STRINGS) : null;
 
   // comprehension check: the browser gets the questions without their
   // answer key (order options pre-shuffled per student); the editor — only
@@ -152,7 +163,8 @@ export default async function TaskPage({
           mode={canEditContent ? "teacher" : "student"}
         />
       )}
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6" {...(lang === "en" ? { dir: "ltr", "data-lang": "en" } : {})}>
+        {uiDict && <UiTranslate dict={uiDict} />}
         <div className="mb-6 text-center">
           <p className="mb-1 text-[11px] font-semibold tracking-[0.25em] text-[color:var(--accent)]">
             {reg.content.bookRef}

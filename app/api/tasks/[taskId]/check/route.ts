@@ -25,7 +25,11 @@ export async function POST(
 
   const reg = getTaskContent(guard.task.content_ref);
   if (!reg) return NextResponse.json({ error: "תוכן המשימה לא נמצא." }, { status: 404 });
-  const content = await effectiveContent(reg.content);
+  const contentHe = await effectiveContent(reg.content);
+  // an English-language student answered the translated check (its "order"
+  // options are compared by text), so it is scored against the same translation
+  const { getTaskLang, translateContent } = await import("@/lib/task-lang");
+  const content = !guard.isTeacher && (await getTaskLang(guard.userId)) === "en" ? await translateContent(contentHe) : contentHe;
   const questions = content.check ?? [];
   if (questions.length === 0) {
     return NextResponse.json({ error: "למשימה זו אין בדיקת הבנה." }, { status: 400 });

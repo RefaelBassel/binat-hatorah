@@ -8,6 +8,8 @@ import type { EssayExercise } from "../writing/essays";
 export interface PassageVerse {
   num: string; // Hebrew verse number, e.g. "ו"
   text: string; // full verse text with nikud; split to words at runtime
+  // English translation, set only for a student whose task language is English
+  en?: string;
 }
 
 export type BlockType =
@@ -44,6 +46,8 @@ export interface SourceBlock {
   key: string;
   title: string; // e.g. 'רש"י (פסוק א׳)'
   text: string;
+  // English translation "(translation)", only for an English-language student
+  textEn?: string;
   // Sefaria ref for hyper-linking (curriculum commentators only),
   // e.g. 'Rashi_on_Numbers.9.1.1'
   sefariaRef?: string;

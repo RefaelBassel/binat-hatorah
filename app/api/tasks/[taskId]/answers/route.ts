@@ -30,7 +30,7 @@ export async function POST(
       args: [guard.task.id, guard.userId, questionKey],
     });
     const prev = String(prevRes.rows[0]?.answer ?? "");
-    const corpus = await taskCorpus(guard.task.content_ref);
+    const corpus = await taskCorpus(guard.task.content_ref, guard.userId);
     await recordTelemetry(guard.task.id, guard.userId, body?.telemetry);
     const verdict = await checkAnswerSave({
       taskId: guard.task.id,

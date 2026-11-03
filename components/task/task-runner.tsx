@@ -2387,6 +2387,7 @@ function InteractivePassage({
           );
         })}
       </div>
+      <EnglishVerses verses={passage.verses} />
       {!readOnly && (
         <p className="mt-3 pb-2 text-[11px] text-[color:var(--primary)]/45">
           💡 לחצו על מילה לסימון 📌 מילה מנחה או 🤔 מילה קשה · יש שאלה? לחצו על הבועית 💭 שמתחת לקטע
@@ -2486,6 +2487,11 @@ function BlockView({
         <p className="text-[15px] leading-8 text-[color:var(--foreground)]/85" style={{ fontStyle: "italic" }}>
           {block.text}
         </p>
+        {block.textEn && (
+          <p dir="ltr" className="mt-2 border-t border-[color:var(--border)] pt-2 text-left text-[14px] leading-7 text-[color:var(--foreground)]/80" data-no-translate>
+            {block.textEn}
+          </p>
+        )}
         {!readOnly && (
           <button
             onClick={() =>
@@ -2566,6 +2572,27 @@ function BlockView({
 
 // "📖 הפסוקים" toggle next to an analysis question — the verses are always a
 // click away, so no question is ever answered from memory (rule 10).
+// For a student whose task language is English: the verses stay in Hebrew
+// (above) and the JPS 1917 translation follows, verse by verse.
+function EnglishVerses({ verses }: { verses: PassageVerse[] }) {
+  if (!verses.some((v) => v.en)) return null;
+  return (
+    <div dir="ltr" className="mt-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-left" data-no-translate>
+      <p className="mb-1.5 text-[11px] font-bold tracking-wide text-[color:var(--accent)]">English translation · JPS 1917</p>
+      <div className="space-y-1 text-[15px] leading-7 text-[color:var(--foreground)]/85">
+        {verses.map((v, i) =>
+          v.en ? (
+            <p key={`${v.num}-${i}`}>
+              <span className="me-1 text-xs font-bold text-[color:var(--accent)]">({v.num})</span>
+              {v.en}
+            </p>
+          ) : null
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HelpVerses({
   refText,
   verses,
@@ -2638,6 +2665,7 @@ function HelpVerses({
               );
             })}
           </p>
+          <EnglishVerses verses={verses} />
           {anyPlayable && (
             <p className="mt-2 text-[10px] text-[color:var(--primary)]/40">
               🔊 לחיצה על פסוק משמיעה אותו · {NARRATION_CREDIT}

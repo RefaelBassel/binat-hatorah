@@ -138,7 +138,30 @@ async function ensureRow(taskId: number, userId: number) {
 
 // ---------- the task's free text (verses, sources, help verses, essay source) ----------
 const corpusCache = new Map<string, { at: number; text: string }>();
-export async function taskCorpus(contentRef: string): Promise<string> {
+export async function taskCorpus(contentRef: string, userId?: number): Promise<string> {
+  // an English-language student sees the translated task: its English text
+  // (and the verse translations) is free to quote as well
+  if (userId) {
+    const { getTaskLang, translateTask } = await import("./task-lang");
+    if ((await getTaskLang(userId)) === "en") {
+      const he = await taskCorpusHe(contentRef);
+      const reg = getTaskContent(contentRef);
+      if (!reg) return he;
+      const en = await translateTask(await effectiveContent(reg.content), reg.mainPassage);
+      const parts: string[] = [];
+      const walk = (n: unknown) => {
+        if (typeof n === "string") parts.push(n);
+        else if (Array.isArray(n)) n.forEach(walk);
+        else if (n && typeof n === "object") Object.values(n).forEach(walk);
+      };
+      walk(en);
+      return he + normalizeForPaste(parts.join(" "));
+    }
+  }
+  return taskCorpusHe(contentRef);
+}
+
+async function taskCorpusHe(contentRef: string): Promise<string> {
   const hit = corpusCache.get(contentRef);
   if (hit && Date.now() - hit.at < 5 * 60_000) return hit.text;
   const reg = getTaskContent(contentRef);

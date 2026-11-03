@@ -310,6 +310,7 @@ async function runProposal(taskId: number, studentId: number): Promise<GradeProp
   // rejects a FORCED tool choice (400), so the choice is "auto" with a
   // strict schema and an instruction to use the tool.
   const client = new Anthropic({ apiKey, timeout: 100_000, maxRetries: 2 });
+  const studentEnglish = (await (await import("./task-lang")).getTaskLang(studentId)) === "en";
   const msg = await client.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 6000,
@@ -326,7 +327,7 @@ ${reg?.content.writing ? 'בתרגול כתיבה "נכון" פירושו שהת
 טקסט רגיל בלבד, בלי Markdown. שפה: ${addressInstruction(
       studentRow.rows[0]?.address_form as string | null
     )} מותר לפנות בשם הפרטי.
-${passage ? `הטקסט הנלמד:\n${passage}\n` : ""}זו הצעה בלבד — המורה עורך/ת ומאשר/ת. הגש/הגישי דרך הכלי submit_review, עם סימון לכל מזהה ברשימה.`,
+${passage ? `הטקסט הנלמד:\n${passage}\n` : ""}${studentEnglish ? "התלמידה עובדת באנגלית: היא עשויה לענות באנגלית או בעברית — בדוק/בדקי תשובות באנגלית כרגיל. את ההערות לכל תשובה ואת ההערה הכללית כתוב/כתבי באנגלית (הן מגיעות אליה).\n" : ""}זו הצעה בלבד — המורה עורך/ת ומאשר/ת. הגש/הגישי דרך הכלי submit_review, עם סימון לכל מזהה ברשימה.`,
     tools: [
       {
         name: "submit_review",

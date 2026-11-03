@@ -269,3 +269,21 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* English-language student's task page (lib/task-lang.ts): the page reads
+   left-to-right; the Bible and the commentators keep their Hebrew direction;
+   answers follow whatever language she types */
+[data-lang="en"] [dir="rtl"]:not([data-copy-free="true"]) {
+  direction: ltr;
+}
+[data-lang="en"] [data-copy-free="true"] {
+  direction: rtl;
+}
+[data-lang="en"] [data-copy-free="true"] [data-no-translate] {
+  direction: ltr;
+}
+[data-lang="en"] textarea,
+[data-lang="en"] input[type="text"] {
+  unicode-bidi: plaintext;
+  text-align: start;
+}

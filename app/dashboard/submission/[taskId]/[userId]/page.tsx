@@ -1,6 +1,7 @@
 import { typingStatsFor, EMPTY_TYPING, typedShare } from "@/lib/typing-guard";
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
+import TranslateAnswer from "@/components/dashboard/translate-answer";
 import PageShell from "@/components/page-shell";
 import GradePanel from "@/components/dashboard/grade-panel";
 import { db } from "@/lib/db";
@@ -295,9 +296,12 @@ function AnswerRow({ label, value }: { label: string; value?: string }) {
     <div className="rounded-xl bg-[color:var(--background)] px-4 py-3">
       <p className="mb-1 text-xs font-semibold text-[color:var(--primary)]/65">{label}</p>
       {value?.trim() ? (
-        <p className="whitespace-pre-wrap text-sm leading-6 text-[color:var(--foreground)]">
-          {value}
-        </p>
+        <>
+          <p className="whitespace-pre-wrap text-sm leading-6 text-[color:var(--foreground)]" dir="auto">
+            {value}
+          </p>
+          <TranslateAnswer text={value} />
+        </>
       ) : (
         <p className="text-sm text-[color:var(--danger)]/70">(לא נענתה)</p>
       )}

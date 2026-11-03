@@ -20,6 +20,7 @@ interface MergeCtx {
   students: AccountRow[];
   merges: ActiveMerge[];
   similar: Record<number, number[]>;
+  english: number[];
 }
 
 // The roster UI. Every row shows the Hebrew name (if onboarded), the Google
@@ -45,6 +46,7 @@ export default function StudentsAdmin({
   students,
   merges,
   similar,
+  english = [],
 }: {
   pending: AccountRow[];
   approved: AccountRow[];
@@ -53,8 +55,9 @@ export default function StudentsAdmin({
   students: AccountRow[];
   merges: ActiveMerge[];
   similar: Record<number, number[]>;
+  english?: number[];
 }) {
-  const ctx: MergeCtx = { students, merges, similar };
+  const ctx: MergeCtx = { students, merges, similar, english };
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <PreApprove />
@@ -316,6 +319,7 @@ function RowTools({ account, ctx }: { account: AccountRow; ctx: MergeCtx }) {
         <button type="button" onClick={() => toggle("merge")} className={btn(open === "merge")}>
           🔗 איחוד עם תלמיד אחר
         </button>
+        {account.role !== "teacher" && <LangSelect account={account} initial={ctx.english.includes(account.id) ? "en" : "he"} />}
       </div>
       {open === "rename" && <RenameForm account={account} onDone={() => setOpen(null)} />}
       {open === "merge" && <MergePicker account={account} ctx={ctx} />}
@@ -458,5 +462,48 @@ function PreApprove() {
         {msg && <span className="text-xs font-semibold text-[color:var(--success)]">{msg}</span>}
       </div>
     </section>
+  );
+}
+
+// The student's task language (Reut, request #12): English shows every task in
+// English, with the Bible and the commentators in Hebrew and translated beside
+// them. Saves on change, with a visible state.
+function LangSelect({ account, initial }: { account: AccountRow; initial: "he" | "en" }) {
+  const [lang, setLang] = useState<"he" | "en">(initial);
+  const [phase, setPhase] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const change = async (next: "he" | "en") => {
+    const prev = lang;
+    setLang(next);
+    setPhase("saving");
+    try {
+      const r = await fetch("/api/student-lang", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: account.id, lang: next }),
+      });
+      if (!r.ok) throw new Error();
+      setPhase("saved");
+      setTimeout(() => setPhase("idle"), 2000);
+    } catch {
+      setLang(prev);
+      setPhase("error");
+    }
+  };
+  return (
+    <label className="flex items-center gap-1.5 rounded-full border border-[color:var(--border)] px-3 py-1 text-xs font-bold text-[color:var(--primary)]/75">
+      🌐 שפת המשימות:
+      <select
+        value={lang}
+        disabled={phase === "saving"}
+        onChange={(e) => change(e.target.value === "en" ? "en" : "he")}
+        className="bg-transparent font-bold outline-none"
+      >
+        <option value="he">עברית</option>
+        <option value="en">English</option>
+      </select>
+      {phase === "saving" && <span className="text-[color:var(--primary)]/50">שומר…</span>}
+      {phase === "saved" && <span className="text-[color:var(--success)]">✓ נשמר</span>}
+      {phase === "error" && <span className="text-[color:var(--danger)]">לא נשמר</span>}
+    </label>
   );
 }

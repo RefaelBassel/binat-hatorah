@@ -181,6 +181,10 @@ ${context}
       text: SYSTEM_PROMPT.replace("{ADDRESS_RULE}", addressInstruction(user.addressForm)),
       cache_control: { type: "ephemeral" as const },
     },
+    // a student whose task language is English gets her help in English
+    ...((await (await import("@/lib/task-lang")).getTaskLang(userId)) === "en"
+      ? [{ type: "text" as const, text: (await import("@/lib/task-lang")).ENGLISH_REPLY_RULE }]
+      : []),
   ];
   const client = new Anthropic({ apiKey });
   const msg = await client.messages.create({
