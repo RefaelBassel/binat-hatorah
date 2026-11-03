@@ -195,6 +195,12 @@ export default async function DashboardPage() {
         >
           📝 תוכן השיעורים — צ'ק, מליאה, פתיחה
         </Link>
+        <Link
+          href="/dashboard/exams"
+          className="rounded-full bg-[color:var(--accent-fill)] px-5 py-2 text-sm font-bold text-white shadow transition hover:scale-[1.02]"
+        >
+          🗂 מבחנים
+        </Link>
       </div>
 
       {/* stats */}
