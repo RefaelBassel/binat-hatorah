@@ -122,7 +122,7 @@ export default async function TaskPage({
 
   // Part B layout (slides by default), saved per account
   const { getUserTaskView } = await import("@/lib/task-view");
-  const initialView = guest ? "slides" : await getUserTaskView(userId);
+  const initialView = guest ? ("slides" as const) : await getUserTaskView(userId);
 
   // focus counter continuity: exits already recorded in the current lesson
   // window (last 90 minutes), so a page refresh doesn't reset the counter

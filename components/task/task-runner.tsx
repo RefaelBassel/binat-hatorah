@@ -87,9 +87,10 @@ interface Props {
   editableCheck?: { check: CheckQuestion[]; open: CheckOpenQuestion | null } | null;
   // the plenary question, shown after Part B as "שאלה למחשבה" (inert)
   plenary?: PlenaryQuestion | null;
-  // Part B layout: one question per slide (default) or the whole sub-task;
-  // saved per account when `canSaveView` (not for guests)
-  initialView?: TaskView;
+  // Part B layout: one question per slide or the whole sub-task; null = the
+  // student has not chosen yet (asked on first visit). Saved per account when
+  // `canSaveView` (not for guests)
+  initialView?: TaskView | null;
   canSaveView?: boolean;
 }
 
@@ -100,7 +101,9 @@ import {
   SlideBanner,
   SlideView,
   SlidesSummary,
-  ViewToggle,
+  ViewSwitch,
+  ViewChooser,
+  MiniProgress,
 } from "./worksheet-slides";
 import type { TaskView } from "@/lib/task-view";
 
@@ -188,7 +191,11 @@ export default function TaskRunner({
   };
 
   // ----- Part B slides: one question at a time (issue #21) -----
-  const [view, setView] = useState<TaskView>(initialView);
+  const [view, setView] = useState<TaskView | null>(initialView ?? null);
+  // the question the student last worked on in the continuous layout, and a
+  // pending scroll target for after a layout switch
+  const lastQKeyRef = useRef<string | null>(null);
+  const [scrollToKey, setScrollToKey] = useState<string | null>(null);
   const [viewStatus, setViewStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const slides = useMemo(() => buildSlides(content.sections), [content.sections]);
   // index into `slides`; slides.length = the summary screen. Opens on the
@@ -544,18 +551,30 @@ export default function TaskRunner({
 
   const changeView = async (next: TaskView) => {
     if (next === view) return;
-    if (next === "full") {
+    if (view === "slides" && next === "full") {
       for (const k of slides[slideIdx]?.keys ?? []) {
         if (answerTimers.current[k] || answerHardTimers.current[k]) flushAnswer(k);
       }
+      // stay on the same question: open its sub-task and scroll to it
       const at = slides[Math.min(slideIdx, slides.length - 1)];
-      if (at) setActiveSection(at.sectionIndex);
-    } else {
-      // land on the first open question of the sub-task that was on screen
+      if (at) {
+        setActiveSection(at.sectionIndex);
+        if (slideIdx < slides.length && at.question) setScrollToKey(at.question.key);
+      }
+    } else if (view === "full" && next === "slides") {
+      for (const k of Object.keys(answerTimers.current)) {
+        if (answerTimers.current[k] || answerHardTimers.current[k]) flushAnswer(k);
+      }
+      // open the slide of the question last worked on; else the first open
+      // question of the sub-task that was on screen
       const inSection = slides
         .map((s, i) => ({ s, i }))
         .filter(({ s }) => s.sectionIndex === activeSection);
+      const focused = lastQKeyRef.current
+        ? inSection.find(({ s }) => s.question?.key === lastQKeyRef.current)
+        : undefined;
       const target =
+        focused ??
         inSection.find(({ s }) => s.question && !slideAnswered(s, answersRef.current)) ??
         inSection[0];
       if (target) {
@@ -577,6 +596,14 @@ export default function TaskRunner({
       setViewStatus("error");
     }
   };
+  useEffect(() => {
+    if (!scrollToKey || view !== "full") return;
+    const el = Array.from(document.querySelectorAll<HTMLElement>("[data-qkey]")).find(
+      (e) => e.dataset.qkey === scrollToKey
+    );
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setScrollToKey(null);
+  }, [scrollToKey, view, activeSection]);
   useEffect(() => {
     if (viewStatus !== "saved") return;
     const t = setTimeout(() => setViewStatus("idle"), 2000);
@@ -839,7 +866,20 @@ export default function TaskRunner({
   const overdue = Date.now() / 1000 > dueAt && !submitted;
 
   // one worksheet block, shared by the slides and the full-page view
-  const renderBlock = (block: TaskBlock) => (
+  const renderBlock = (block: TaskBlock) =>
+    block.type === "question" ? (
+      <div
+        data-qkey={block.key}
+        onFocusCapture={() => {
+          lastQKeyRef.current = block.key;
+        }}
+      >
+        {renderBlockInner(block)}
+      </div>
+    ) : (
+      renderBlockInner(block)
+    );
+  const renderBlockInner = (block: TaskBlock) => (
     <BlockView
       block={block}
       answers={answers}
@@ -1146,6 +1186,12 @@ export default function TaskRunner({
           Part B is paginated: a sub-task navigator + only the active
           section in the DOM. Answers auto-save, so switching is free. */}
       {/* ===== Part B as slides (the default): one question at a time ===== */}
+      {stage === 8 && view === null && (
+        <div className="scroll-mt-40" ref={partBRef}>
+          <ViewChooser onChoose={changeView} status={viewStatus} />
+        </div>
+      )}
+
       {stage === 8 && view === "slides" && (
         <div className="scroll-mt-56 space-y-6" ref={partBRef}>
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3">
@@ -1160,11 +1206,7 @@ export default function TaskRunner({
                 שאלה אחת בכל פעם — כל מה שנכתב נשמר אוטומטית
               </p>
             </div>
-            <ViewToggle
-              full={false}
-              onChange={(full) => changeView(full ? "full" : "slides")}
-              status={viewStatus}
-            />
+            <ViewSwitch view="slides" onChange={changeView} status={viewStatus} />
           </div>
 
           {slideIdx < slides.length ? (
@@ -1202,12 +1244,9 @@ export default function TaskRunner({
       {stage === 8 && view === "full" && (
         <div className="scroll-mt-40 space-y-8" ref={partBRef}>
           <div className="rounded-2xl border-2 border-[color:var(--primary)]/25 bg-[color:var(--card)] p-6 text-center">
-            <div className="mb-3 flex justify-end">
-              <ViewToggle
-                full
-                onChange={(full) => changeView(full ? "full" : "slides")}
-                status={viewStatus}
-              />
+            <div className="mb-3 space-y-2 text-start">
+              <ViewSwitch view="full" onChange={changeView} status={viewStatus} />
+              <MiniProgress slides={slides} answers={answers} />
             </div>
             <p className="mb-1 text-[11px] font-semibold tracking-[0.3em] text-[color:var(--accent)]">
               חלק ב

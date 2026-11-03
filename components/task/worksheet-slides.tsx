@@ -399,52 +399,157 @@ export function SlidesSummary({
   );
 }
 
-// ----- "הצג את כל הדף" switch -----
-export function ViewToggle({
-  full,
+// ----- layout choice (issue #26): both layouts are equal options -----
+export type SaveStatus = "idle" | "saving" | "saved" | "error";
+type LayoutValue = "full" | "slides";
+
+const LAYOUT_OPTIONS: { value: LayoutValue; label: string }[] = [
+  { value: "full", label: "רציף" },
+  { value: "slides", label: "שאלה אחרי שאלה" },
+];
+
+export function SaveStatusNote({ status }: { status: SaveStatus }) {
+  if (status === "saving")
+    return <span className="text-[10px] text-[color:var(--primary)]/50">שומר…</span>;
+  if (status === "saved")
+    return (
+      <span className="save-fade text-[10px] font-semibold text-[color:var(--success)]">
+        ✓ נשמר
+      </span>
+    );
+  if (status === "error")
+    return (
+      <span className="text-[10px] font-semibold text-[color:var(--danger)]">
+        לא נשמר — נסו שוב
+      </span>
+    );
+  return null;
+}
+
+// Always-visible "תצוגה: רציף | שאלה אחרי שאלה" switch.
+export function ViewSwitch({
+  view,
   onChange,
   status,
 }: {
-  full: boolean;
-  onChange: (full: boolean) => void;
-  status: "idle" | "saving" | "saved" | "error";
+  view: LayoutValue | null; // null = not chosen yet: neither side is lit
+  onChange: (v: LayoutValue) => void;
+  status: SaveStatus;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <label className="flex cursor-pointer items-center gap-2 text-[11px] font-semibold text-[color:var(--primary)]/70">
-        <span>הצג את כל הדף</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={full}
-          onClick={() => onChange(!full)}
-          disabled={status === "saving"}
-          className={[
-            "relative h-5 w-9 shrink-0 rounded-full transition disabled:opacity-60",
-            full ? "bg-[color:var(--primary-fill)]" : "bg-[color:var(--border)]",
-          ].join(" ")}
-        >
-          <span
-            className={[
-              "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all",
-              full ? "start-[1.125rem]" : "start-0.5",
-            ].join(" ")}
-          />
-        </button>
-      </label>
-      {status === "saving" && (
-        <span className="text-[10px] text-[color:var(--primary)]/50">שומר…</span>
-      )}
-      {status === "saved" && (
-        <span className="save-fade text-[10px] font-semibold text-[color:var(--success)]">
-          ✓ נשמר
-        </span>
-      )}
-      {status === "error" && (
-        <span className="text-[10px] font-semibold text-[color:var(--danger)]">
-          לא נשמר — נסו שוב
-        </span>
-      )}
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[11px] font-semibold text-[color:var(--primary)]/70">תצוגה:</span>
+      <div
+        role="radiogroup"
+        aria-label="תצוגת דף העבודה"
+        className="inline-flex overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--background)]"
+      >
+        {LAYOUT_OPTIONS.map((o) => {
+          const on = o.value === view;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(o.value)}
+              disabled={status === "saving"}
+              className={[
+                "px-3 py-1 text-[11px] font-bold transition disabled:opacity-60",
+                on
+                  ? "bg-[color:var(--primary-fill)] text-white"
+                  : "text-[color:var(--primary)] hover:bg-[color:var(--border)]/40",
+              ].join(" ")}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      <SaveStatusNote status={status} />
+    </div>
+  );
+}
+
+// First-visit choice: two equal cards, neither pre-selected.
+export function ViewChooser({
+  onChoose,
+  status,
+}: {
+  onChoose: (v: LayoutValue) => void;
+  status: SaveStatus;
+}) {
+  const cards: { value: LayoutValue; title: string; text: string }[] = [
+    { value: "full", title: "📄 דף עבודה רציף", text: "כל השאלות בדף אחד" },
+    {
+      value: "slides",
+      title: "➡️ שאלה אחרי שאלה",
+      text: "שאלה אחת בכל פעם, עם מד התקדמות",
+    },
+  ];
+  return (
+    <div className="rounded-2xl border-2 border-[color:var(--primary)]/25 bg-[color:var(--card)] p-5 text-center">
+      <p className="font-display text-lg font-extrabold text-[color:var(--primary)]">
+        איך נוח לך לעבוד על דף העבודה?
+      </p>
+      <p className="mt-1 text-xs text-[color:var(--primary)]/60">
+        אפשר להחליף בכל רגע, בלי לאבד תשובות — והבחירה תישמר לכל המשימות.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {cards.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            onClick={() => onChoose(c.value)}
+            disabled={status === "saving"}
+            className="rounded-2xl border-2 border-[color:var(--border)] bg-[color:var(--background)] p-4 text-start transition hover:border-[color:var(--accent)] disabled:opacity-60"
+          >
+            <span className="block font-display text-base font-bold text-[color:var(--primary)]">
+              {c.title}
+            </span>
+            <span className="mt-1 block text-xs text-[color:var(--foreground)]/70">
+              {c.text}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 min-h-4">
+        <SaveStatusNote status={status} />
+      </div>
+    </div>
+  );
+}
+
+// Small progress meter for the continuous layout ("נענו 4 מתוך 9").
+export function MiniProgress({
+  slides,
+  answers,
+}: {
+  slides: Slide[];
+  answers: Record<string, string>;
+}) {
+  const qs = slides.filter((s) => s.question);
+  const total = qs.length;
+  const done = qs.filter((s) => slideAnswered(s, answers)).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="whitespace-nowrap text-[11px] font-semibold text-[color:var(--primary)]/70">
+        נענו {done} מתוך {total}
+      </span>
+      <div
+        className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]/50"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-label="ההתקדמות בדף העבודה"
+      >
+        <div
+          className="h-full rounded-full bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--primary)] transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { db } from "./db";
 
-// How a student sees the Part B worksheet: one question per slide (default)
-// or the whole sub-task at once. Stored per account in users.task_view
+// How a student sees the Part B worksheet: one question per slide or the
+// whole sub-task at once; neither is a default (the task page asks first). Stored per account in users.task_view
 // (migrations/0015_user_task_view.sql).
 export type TaskView = "slides" | "full";
 
@@ -21,7 +21,8 @@ async function ensureTaskViewColumn() {
   columnReady = true;
 }
 
-export async function getUserTaskView(userId: number): Promise<TaskView> {
+// null = the student has not chosen yet (neither layout is a hidden default)
+export async function getUserTaskView(userId: number): Promise<TaskView | null> {
   try {
     await ensureTaskViewColumn();
     const res = await db().execute({
@@ -29,9 +30,9 @@ export async function getUserTaskView(userId: number): Promise<TaskView> {
       args: [userId],
     });
     const v = res.rows[0]?.task_view;
-    return isTaskView(v) ? v : "slides";
+    return isTaskView(v) ? v : null;
   } catch {
-    return "slides"; // a missing preference must never break the task page
+    return null; // a missing preference must never break the task page
   }
 }
 
