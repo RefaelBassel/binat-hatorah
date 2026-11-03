@@ -57,6 +57,11 @@ export function partLabel(i: number): string {
   return `חלק ${HEB_LETTERS[i] ?? String(i + 1)}׳`;
 }
 
+// 10 → "10", 3.3333 → "3.3"
+export function fmtPoints(n: number): string {
+  return Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toString();
+}
+
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -160,7 +165,7 @@ export function answerItems(body: ExamBody): AnswerItem[] {
           label: `שאלה ${num} סעיף ${subLabel(i)}`,
           prompt: s.text,
           questionText: q.text,
-          maxPoints: s.points ?? Math.round(share * 10) / 10,
+          maxPoints: s.points ?? share,
           rubric: [q.rubric, s.rubric].filter(Boolean).join("\n"),
         });
       });
@@ -178,7 +183,11 @@ export function scoreFromItems(body: ExamBody, points: Record<string, number>): 
     const perQ = p.questions.map((q) => {
       const got = items
         .filter((it) => it.questionId === q.id)
-        .map((it) => Math.min(it.maxPoints, Math.max(0, points[it.key] ?? 0)))
+        .map((it) => {
+          const v = Math.min(it.maxPoints, Math.max(0, points[it.key] ?? 0));
+          // 3.3 of a 3.333… share is full marks
+          return v >= it.maxPoints - 0.05 ? it.maxPoints : v;
+        })
         .sort((a, b) => b - a);
       const n = q.chooseSubs != null && q.chooseSubs > 0 ? Math.min(q.chooseSubs, got.length) : got.length;
       return got.slice(0, n).reduce((s, x) => s + x, 0);

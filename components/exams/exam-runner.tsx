@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { type ExamBody, partLabel, questionNumbers, questionPoints, subLabel } from "@/lib/exam-types";
+import { type ExamBody, fmtPoints, partLabel, questionNumbers, questionPoints, subLabel } from "@/lib/exam-types";
 import { pointsText } from "./doc-view";
 
 interface AttemptInfo {
@@ -359,7 +359,7 @@ function AnswerBox({
       {result && (
         <p className="text-sm">
           <span className="font-bold text-[color:var(--primary)]">
-            {result.points} / {max ?? "?"}
+            {fmtPoints(result.points)} / {max != null ? fmtPoints(max) : "?"}
           </span>
           {result.note && <span> · {result.note}</span>}
         </p>

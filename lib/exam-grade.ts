@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db } from "./db";
 import { CLAUDE_MODEL } from "./claude";
 import { getAnthropicApiKey } from "./env";
-import { answerItems, scoreFromItems } from "./exam-types";
+import { answerItems, fmtPoints, scoreFromItems } from "./exam-types";
 import { examBodyOf, getAttempt, getDoc, now } from "./exams";
 import { notifyStudent } from "./notify";
 
@@ -51,7 +51,7 @@ async function runProposal(examId: number, userId: number) {
     const client = new Anthropic({ apiKey, timeout: 120_000, maxRetries: 2 });
     const qa = answered.map(
       (it) =>
-        `[מזהה: ${it.key}] ${it.label} (עד ${it.maxPoints} נקודות)\nשאלה: ${it.questionText}${
+        `[מזהה: ${it.key}] ${it.label} (עד ${fmtPoints(it.maxPoints)} נקודות)\nשאלה: ${it.questionText}${
           it.prompt !== it.questionText ? `\nסעיף: ${it.prompt}` : ""
         }\nמחוון / תשובה לדוגמה: ${it.rubric.trim() || "(אין מחוון — יש לבדוק לפי הבנת השאלה והחומר)"}\nתשובת התלמיד/ה: ${attempt.answers[it.key]}`
     );
@@ -104,7 +104,7 @@ async function runProposal(examId: number, userId: number) {
         if (m == null) continue;
         const p = Number(o.points);
         points[key] = {
-          points: Number.isFinite(p) ? Math.max(0, Math.min(m, Math.round(p * 2) / 2)) : 0,
+          points: Number.isFinite(p) ? Math.max(0, Math.min(m, Math.round(p * 10) / 10)) : 0,
           note: String(o.note ?? ""),
         };
       }

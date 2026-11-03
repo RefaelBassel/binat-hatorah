@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { type AnswerItem, type ExamBody, partLabel, scoreFromItems } from "@/lib/exam-types";
+import { type AnswerItem, type ExamBody, fmtPoints, partLabel, scoreFromItems } from "@/lib/exam-types";
 
 type PointsMap = Record<string, { points: number; note: string }>;
 type Phase = "idle" | "busy" | "done" | "error";
@@ -163,14 +163,14 @@ export default function ExamGrader({
                     type="number"
                     min={0}
                     max={it.maxPoints}
-                    step={0.5}
+                    step="any"
                     value={p.points}
                     onChange={(e) =>
                       setPoints((m) => ({ ...m, [it.key]: { ...p, points: Math.max(0, Math.min(it.maxPoints, Number(e.target.value) || 0)) } }))
                     }
                     className="w-20 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-2 py-1"
                   />
-                  / {it.maxPoints}
+                  / {fmtPoints(it.maxPoints)}
                 </label>
                 {proposal && (
                   <span className="text-xs text-[color:var(--foreground)]/60">הצעה אוטומטית: {proposal.points}</span>
