@@ -89,6 +89,12 @@ export async function ensureChatTables() {
        updated_at INTEGER NOT NULL
      )`
   );
+  // older tables: "large" requests are built with Opus, the rest with Sonnet
+  try {
+    await db().execute("ALTER TABLE code_requests ADD COLUMN size TEXT");
+  } catch {
+    /* column exists */
+  }
   // older tables: when a paused request was last re-triggered
   try {
     await db().execute("ALTER TABLE code_requests ADD COLUMN retried_at INTEGER");
@@ -371,7 +377,7 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "request_code_change",
     description: "For anything that needs a change to the site itself (a new button, screen, behaviour, design, a feature no other tool covers): a precise request for the developer pipeline. title: short Hebrew title. body: full Hebrew spec — where in the site, what exactly, why, what students vs. the teacher should see. The pipeline implements, builds and publishes it by itself; the teacher sees the status in the chat.",
-    input_schema: { type: "object", properties: { title: { type: "string" }, body: { type: "string" }, targets: { type: "array", items: { type: "string", enum: ["this", "kedoshim-tihyu"] }, description: "Where to send it: \"this\" = this site (default); \"kedoshim-tihyu\" = the sister site קדושים תהיו. Both when the teacher wants it in both sites." } }, required: ["title", "body"], additionalProperties: false },
+    input_schema: { type: "object", properties: { title: { type: "string" }, body: { type: "string" }, size: { type: "string", enum: ["small", "large"], description: "small (default): a focused change — a button, a field, a print view, a fix, a small screen. large: a new feature spanning several screens or data model changes. Large is built with a stronger, twice-as-expensive model." }, targets: { type: "array", items: { type: "string", enum: ["this", "kedoshim-tihyu"] }, description: "Where to send it: \"this\" = this site (default); \"kedoshim-tihyu\" = the sister site קדושים תהיו. Both when the teacher wants it in both sites." } }, required: ["title", "body"], additionalProperties: false },
   },
 ];
 
@@ -665,8 +671,10 @@ export async function applyAction(actionId: number, userId: number): Promise<Act
         if (targets.length === 0) targets.push("this");
         const made: { site: string; codeRequestId: number; status: string; issueUrl: string | null; message: string }[] = [];
         for (const k of targets) {
-          const cr = await createCodeRequest(userId, title, body, k === "this" ? SITE.repo : SITE.sisters[k].repo);
-          made.push({ site: k === "this" ? SITE.name : SITE.sisters[k].name, codeRequestId: cr.id, status: cr.status, issueUrl: cr.issueUrl, message: describeCodeRequest(cr) });
+          const size = input.size === "large" ? "large" : "small";
+          const cr = await createCodeRequest(userId, title, body, k === "this" ? SITE.repo : SITE.sisters[k].repo, size);
+          const message = cr.mergedInto ? `צורפה לבקשה שעוד ממתינה בתור (״${cr.title}״), כדי שהכול ייבנה יחד בבנייה אחת` : describeCodeRequest(cr);
+          made.push({ site: k === "this" ? SITE.name : SITE.sisters[k].name, codeRequestId: cr.id, status: cr.status, issueUrl: cr.issueUrl, message });
         }
         const first = made[0];
         result = { codeRequestId: first.codeRequestId, status: first.status, issueUrl: first.issueUrl, message: first.message, requests: made };
@@ -758,17 +766,36 @@ const gh = async (path: string, init?: RequestInit) => {
   return (await r.json()) as unknown;
 };
 
-export async function createCodeRequest(userId: number, title: string, body: string, repo: string = SITE.repo): Promise<CodeRequestRow> {
+export async function createCodeRequest(userId: number, title: string, body: string, repo: string = SITE.repo, size: "small" | "large" = "small"): Promise<CodeRequestRow & { mergedInto?: boolean }> {
   await ensureChatTables();
   await refreshCodeRequests(userId);
   const t = now();
+  // a request that has not left yet (waiting in the queue for this repo)
+  // absorbs a new one: one build instead of two — Reut often sends an
+  // addition while the first is still waiting
+  const waiting = (
+    await db().execute({
+      sql: "SELECT id, title, body, size FROM code_requests WHERE user_id = ? AND COALESCE(repo, ?) = ? AND status = 'queued' AND issue_number IS NULL ORDER BY id DESC LIMIT 1",
+      args: [userId, SITE.repo, repo],
+    })
+  ).rows[0];
+  if (waiting) {
+    const merged = `${String(waiting.body)}\n\n---\nתוספת מאותה מורה, לבנות יחד עם הבקשה שלמעלה: ${title}\n\n${body}`.slice(0, 12000);
+    const mergedSize = size === "large" || String(waiting.size ?? "") === "large" ? "large" : "small";
+    await db().execute({
+      sql: "UPDATE code_requests SET body = ?, size = ?, updated_at = ? WHERE id = ?",
+      args: [merged, mergedSize, t, Number(waiting.id)],
+    });
+    const row = (await listCodeRequests(userId)).find((c) => c.id === Number(waiting.id))!;
+    return { ...row, mergedInto: true };
+  }
   // a request for a sister site is marked in its title so the teacher sees
   // where it went; the issue itself gets the plain title
   const sister = Object.values(SITE.sisters).find((s) => s.repo === repo);
   const shownTitle = sister ? `[${sister.name}] ${title}` : title;
   const ins = await db().execute({
-    sql: "INSERT INTO code_requests (user_id, title, body, status, repo, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?, ?)",
-    args: [userId, shownTitle, body, repo, t, t],
+    sql: "INSERT INTO code_requests (user_id, title, body, status, repo, size, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?, ?, ?)",
+    args: [userId, shownTitle, body, repo, size, t, t],
   });
   const id = Number(ins.lastInsertRowid);
   // one request at a time per repository: parallel branches on the same code
@@ -776,7 +803,7 @@ export async function createCodeRequest(userId: number, title: string, body: str
   // another is still being built waits in the queue and is sent by itself
   // the moment the previous one is merged or closed (see refreshCodeRequests).
   const inFlight = await db().execute({
-    sql: "SELECT COUNT(*) AS n FROM code_requests WHERE COALESCE(repo, ?) = ? AND status IN ('open','working','preview') AND created_at > CAST(strftime('%s','now') AS INTEGER) - 10800",
+    sql: "SELECT COUNT(*) AS n FROM code_requests WHERE COALESCE(repo, ?) = ? AND status IN ('open','working','preview') AND COALESCE(retried_at, created_at) > CAST(strftime('%s','now') AS INTEGER) - 10800",
     args: [SITE.repo, repo],
   });
   if (Number(inFlight.rows[0]?.n ?? 0) > 0) {
@@ -802,7 +829,7 @@ const QUEUE_NOTE = "ממתינה בתור — בקשה קודמת עדיין ב�
 // open the GitHub issue of a stored request — in this site's repository or,
 // for a cross-site request, in the sister site's
 async function openIssueFor(id: number) {
-  const row = (await db().execute({ sql: "SELECT title, body, repo FROM code_requests WHERE id = ?", args: [id] })).rows[0];
+  const row = (await db().execute({ sql: "SELECT title, body, repo, size FROM code_requests WHERE id = ?", args: [id] })).rows[0];
   if (!row) return;
   const repo = (row.repo as string | null) ?? SITE.repo;
   const sister = Object.values(SITE.sisters).find((s) => s.repo === repo);
@@ -814,7 +841,7 @@ async function openIssueFor(id: number) {
   try {
     const issue = (await gh(`/repos/${repo}/issues`, {
       method: "POST",
-      body: JSON.stringify({ title, labels: ["claude-chat"], body: `@claude\n\n${body}\n\n---\n${footer}` }),
+      body: JSON.stringify({ title, labels: String(row.size ?? "") === "large" ? ["claude-chat", "large"] : ["claude-chat"], body: `@claude\n\n${body}\n\n---\n${footer}` }),
     })) as { number: number; html_url: string } | null;
     if (issue) await db().execute({ sql: "UPDATE code_requests SET issue_number = ?, issue_url = ?, status = 'open', note = NULL, updated_at = ? WHERE id = ?", args: [issue.number, issue.html_url, now(), id] });
   } catch (e) {
@@ -879,7 +906,7 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
   // per repository: nothing in flight any more? send the oldest waiting request
   for (const repo of [SITE.repo, ...Object.values(SITE.sisters).map((s) => s.repo)]) {
     const still = await db().execute({
-      sql: "SELECT COUNT(*) AS n FROM code_requests WHERE COALESCE(repo, ?) = ? AND status IN ('open','working','preview') AND created_at > CAST(strftime('%s','now') AS INTEGER) - 10800",
+      sql: "SELECT COUNT(*) AS n FROM code_requests WHERE COALESCE(repo, ?) = ? AND status IN ('open','working','preview') AND COALESCE(retried_at, created_at) > CAST(strftime('%s','now') AS INTEGER) - 10800",
       args: [SITE.repo, repo],
     });
     if (Number(still.rows[0]?.n ?? 0) === 0) {
@@ -918,7 +945,7 @@ const SYSTEM = `אתה קלוד — העוזר של המורה באתר "${SITE.
 - ביטול משימה (cancel_task) לעולם לא מוחק עבודה של תלמידים — רק מוריד את המשימה מהרשימה שלהם. לכן במשימה מבוטלת class_progress מחזיר את העבודה השמורה ב-keptWorkNotAssigned (אחוז התקדמות, זמן עבודה, מספר תשובות); אל תאמר שעבודה אבדה בלי לבדוק שם.
 - לפני עריכת טקסט ביחידה — תמיד get_unit קודם, כדי לערוך את הנוסח הנוכחי ולהשתמש במפתחות (key) הנכונים של השאלות והבלוקים.
 - בדיקת ההבנה (check) נערכת בעמוד המשימה עצמו (״בדיקת ההבנה״ בלוח העריכה) — אם מבקשים לשנות שאלה סגורה, הפנה לשם, או השתמש ב-request_code_change אם זה שינוי מבני.
-- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה.
+- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה. בקשת קוד עולה דולרים, ועבודה בכלים שלך עולה אגורות: לפני request_code_change בדוק אם אחד הכלים שלך עושה את זה (נוסח, שאלות, תוכן יחידה, מועדים, פרסום, ביטול, הודעות, חשבונות) — אם כן, עשה זאת בכלי ואל תשלח בקשת קוד. בקשת קוד רק כשצריך באמת קוד חדש: מסך, כפתור, התנהגות או מבנה נתונים שאין להם כלי. בכל בקשת קוד ציין size: small לשינוי ממוקד (רוב הבקשות), large רק לפיצ׳ר חדש שנוגע בכמה מסכים או במבנה הנתונים. בקשה חדשה בזמן שקודמת עוד ממתינה בתור מצורפת אליה אוטומטית — אמור לה זאת לפי message.
 - שאלות על "איך עושים X באתר" — ענה ישירות מהידע שלך על האתר (למטה).
 
 סגנון: עברית, חם, קצר ופשוט. בלי Markdown (בלי כוכביות וכותרות); רשימות עם מקפים אם צריך. במבט אחד מבינים. כשמציעים ניסוח חדש — כתוב אותו במלואו. אל תמציא תוכן לימודי שהיא לא ביקשה; כשהיא מבקשת "לשפר" — הצע נוסח והסבר במשפט מה שונה.
