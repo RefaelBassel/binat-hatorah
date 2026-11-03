@@ -926,6 +926,9 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
             method: "POST",
             body: JSON.stringify({ body: "@claude ניסיון חוזר אוטומטי — בודקים אם הקרדיט חזר. יש לבנות את הבקשה כפי שהיא." }),
           });
+          // the label goes, so the next refresh sees it as in flight (not paused)
+          // and starts nothing beside it; a new failure puts the label back
+          await gh(`/repos/${repo}/issues/${Number(paused.rows[0].issue_number)}/labels/waiting-credit`, { method: "DELETE" }).catch(() => null);
           await db().execute({ sql: "UPDATE code_requests SET retried_at = ?, status = 'working', updated_at = ? WHERE id = ?", args: [now(), now(), pid] });
         } catch (e) {
           await db().execute({ sql: "UPDATE code_requests SET retried_at = ?, note = ? WHERE id = ?", args: [now(), e instanceof Error ? e.message : String(e), pid] });

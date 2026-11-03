@@ -125,6 +125,9 @@ jobs:
           [ -f "$f" ] || f=/home/runner/work/_temp/claude-execution-output.json
           why=$( [ -f "$f" ] && jq -r '[.[] | select(.type == "result")] | last | (.result // "") | tostring' "$f" 2>/dev/null || echo "")
           have=$(gh issue view "$N" --repo "$GITHUB_REPOSITORY" --json labels --jq '[.labels[].name] | join(",")')
+          # retries remove the label, so "already told" is read from the comments
+          told=$(gh issue view "$N" --repo "$GITHUB_REPOSITORY" --json comments --jq '[.comments[].body | select(startswith("⏸️ הבנייה ממתינה"))] | length')
+          [ "$told" -gt 0 ] && have="$have,waiting-credit"
           if echo "$why" | grep -qi "credit balance"; then
             gh label create waiting-credit --repo "$GITHUB_REPOSITORY" --color FBCA04 --description "API account needs credit; the site retries" 2>/dev/null || true
             gh issue edit "$N" --repo "$GITHUB_REPOSITORY" --add-label waiting-credit --remove-label build-failed 2>/dev/null || true
