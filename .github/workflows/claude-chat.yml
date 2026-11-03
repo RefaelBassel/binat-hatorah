@@ -98,3 +98,33 @@ jobs:
           else
             echo "no execution file"
           fi
+
+      # Tell the teacher at once (in the chat card and on the issue) instead of
+      # leaving the request looking "in progress". Labels drive the site's
+      # status: waiting-credit = the API account needs credit (the site
+      # retries by itself); build-failed = something else, Rafael looks.
+      # Never write "@claude" here — that would trigger another run.
+      - name: Report the failure to the teacher
+        if: failure() && steps.build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          N: ${{ github.event.issue.number }}
+        run: |
+          f="${{ steps.build.outputs.execution_file }}"
+          [ -f "$f" ] || f=/home/runner/work/_temp/claude-execution-output.json
+          why=$( [ -f "$f" ] && jq -r '[.[] | select(.type == "result")] | last | (.result // "") | tostring' "$f" 2>/dev/null || echo "")
+          have=$(gh issue view "$N" --repo "$GITHUB_REPOSITORY" --json labels --jq '[.labels[].name] | join(",")')
+          if echo "$why" | grep -qi "credit balance"; then
+            gh label create waiting-credit --repo "$GITHUB_REPOSITORY" --color FBCA04 --description "API account needs credit; the site retries" 2>/dev/null || true
+            gh issue edit "$N" --repo "$GITHUB_REPOSITORY" --add-label waiting-credit --remove-label build-failed 2>/dev/null || true
+            case ",$have," in *,waiting-credit,*) ;; *)
+              gh issue comment "$N" --repo "$GITHUB_REPOSITORY" --body "⏸️ הבנייה ממתינה: נגמר הקרדיט בחשבון ה-API של Claude (console.anthropic.com ← Plans & Billing). @RefaelBassel — צריך להוסיף קרדיט. הבקשה לא אבדה: האתר ינסה שוב מעצמו כל שעה, והיא תיבנה ברגע שהקרדיט יחזור." ;;
+            esac
+          else
+            gh label create build-failed --repo "$GITHUB_REPOSITORY" --color D93F0B --description "the build did not finish" 2>/dev/null || true
+            gh issue edit "$N" --repo "$GITHUB_REPOSITORY" --add-label build-failed 2>/dev/null || true
+            case ",$have," in *,build-failed,*) ;; *)
+              gh issue comment "$N" --repo "$GITHUB_REPOSITORY" --body "❌ הבנייה נעצרה ולא הושלמה. @RefaelBassel — צריך מבט. יומן הריצה: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" ;;
+            esac
+          fi
+

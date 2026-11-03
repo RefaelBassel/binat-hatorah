@@ -89,6 +89,12 @@ export async function ensureChatTables() {
        updated_at INTEGER NOT NULL
      )`
   );
+  // older tables: when a paused request was last re-triggered
+  try {
+    await db().execute("ALTER TABLE code_requests ADD COLUMN retried_at INTEGER");
+  } catch {
+    /* column exists */
+  }
   // older tables: the target repository of a request (cross-site requests)
   try {
     await db().execute("ALTER TABLE code_requests ADD COLUMN repo TEXT");
@@ -786,6 +792,8 @@ export function describeCodeRequest(cr: CodeRequestRow): string {
   if (cr.status === "open" && cr.issueUrl) return `נשלחה לבנייה האוטומטית (${cr.issueUrl}); בדרך כלל עולה לאתר תוך 10–30 דקות`;
   if (cr.status === "queued" && cr.note === QUEUE_NOTE) return "נרשמה וממתינה בתור — בקשה קודמת עדיין בבנייה; תישלח מעצמה כשתסתיים";
   if (cr.status === "queued" && cr.note) return `השליחה ל-GitHub נכשלה (${cr.note}); המערכת תנסה שוב מעצמה`;
+  if (cr.status === "paused") return "ממתינה: נגמר הקרדיט בחשבון ה-API של Claude, ורפאל קיבל הודעה. הבקשה שמורה ותיבנה מעצמה כשהקרדיט יחזור";
+  if (cr.status === "failed") return "הבנייה נעצרה ולא הושלמה; רפאל קיבל הודעה";
   return `סטטוס: ${cr.status}`;
 }
 
@@ -841,23 +849,28 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
   await ensureChatTables();
   if (!process.env.GITHUB_TOKEN) return listCodeRequests(userId);
   const open = await db().execute({
-    sql: "SELECT id, issue_number, repo FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview') AND updated_at < ?",
+    sql: "SELECT id, issue_number, repo FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview','paused','failed') AND updated_at < ?",
     args: [now() - 60],
   });
   for (const row of open.rows) {
     const n = Number(row.issue_number);
     const repo = (row.repo as string | null) ?? SITE.repo;
     try {
-      const issue = (await gh(`/repos/${repo}/issues/${n}`)) as { state: string } | null;
+      const issue = (await gh(`/repos/${repo}/issues/${n}`)) as { state: string; labels?: { name: string }[] } | null;
       const prs = (await gh(`/repos/${repo}/pulls?state=all&per_page=50&sort=created&direction=desc`)) as { html_url: string; state: string; merged_at: string | null; head: { ref: string }; body: string | null; title: string }[] | null;
       const pr = prs?.find((p) => p.head.ref.includes(`issue-${n}`) || (p.body ?? "").includes(`#${n}`) || p.title.includes(`#${n}`));
       // a closed issue ends the request whether or not a PR exists — a PR
       // closed without merge used to leave the request "working" for ever,
       // and every later request waited in the queue behind it
+      // the build workflow labels a failed run: waiting-credit (the API
+      // account needs credit — retried below) or build-failed (Rafael looks)
+      const labels = new Set((issue?.labels ?? []).map((l) => l.name));
       let status = "working";
       if (pr?.merged_at) status = "merged";
       else if (pr && pr.state === "open") status = "preview";
       else if (issue?.state === "closed") status = "closed";
+      else if (labels.has("waiting-credit")) status = "paused";
+      else if (labels.has("build-failed")) status = "failed";
       await db().execute({ sql: "UPDATE code_requests SET status = ?, pr_url = ?, branch = ?, updated_at = ? WHERE id = ?", args: [status, pr?.html_url ?? null, pr?.head.ref ?? null, now(), Number(row.id)] });
     } catch (e) {
       await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), Number(row.id)] });
@@ -872,6 +885,25 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
     if (Number(still.rows[0]?.n ?? 0) === 0) {
       const nextUp = await db().execute({ sql: "SELECT id FROM code_requests WHERE COALESCE(repo, ?) = ? AND status = 'queued' AND issue_number IS NULL ORDER BY id LIMIT 1", args: [SITE.repo, repo] });
       if (nextUp.rows[0]) await openIssueFor(Number(nextUp.rows[0].id));
+      // a request paused for API credit is re-triggered by itself (an
+      // "@claude" comment starts the build again); a failed attempt costs
+      // nothing, so once credit is back the request simply goes through
+      const paused = await db().execute({
+        sql: "SELECT id, issue_number FROM code_requests WHERE COALESCE(repo, ?) = ? AND status = 'paused' AND issue_number IS NOT NULL AND COALESCE(retried_at, 0) < ? ORDER BY id LIMIT 1",
+        args: [SITE.repo, repo, now() - 3600],
+      });
+      if (paused.rows[0]) {
+        const pid = Number(paused.rows[0].id);
+        try {
+          await gh(`/repos/${repo}/issues/${Number(paused.rows[0].issue_number)}/comments`, {
+            method: "POST",
+            body: JSON.stringify({ body: "@claude ניסיון חוזר אוטומטי — בודקים אם הקרדיט חזר. יש לבנות את הבקשה כפי שהיא." }),
+          });
+          await db().execute({ sql: "UPDATE code_requests SET retried_at = ?, status = 'working', updated_at = ? WHERE id = ?", args: [now(), now(), pid] });
+        } catch (e) {
+          await db().execute({ sql: "UPDATE code_requests SET retried_at = ?, note = ? WHERE id = ?", args: [now(), e instanceof Error ? e.message : String(e), pid] });
+        }
+      }
     }
   }
   return listCodeRequests(userId);
