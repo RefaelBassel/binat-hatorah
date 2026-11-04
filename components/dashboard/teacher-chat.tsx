@@ -47,13 +47,19 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  // the connection dropped while a reply was on its way: the server may still
+  // finish (and save) the turn, so we offer a reload instead of a resend
+  const [connLost, setConnLost] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const sendingRef = useRef(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
   const load = async (t?: number | null) => {
     const r = await fetch(`/api/teacher-chat${t ? `?thread=${t}` : ""}`, { cache: "no-store" });
     const d = await r.json();
-    if (!d.ok) return;
+    if (!d.ok) throw new Error(d.error ?? "טעינה נכשלה");
     setMsgs(flatten(d.messages));
     setActions(d.actions);
     setCodeRequests(d.codeRequests);
@@ -62,9 +68,21 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
     setThread(d.thread ?? null);
     setLoaded(true);
   };
+  const reload = async () => {
+    setReloading(true);
+    try {
+      await load();
+      setConnLost(false);
+      setError(null);
+    } catch {
+      setError("עדיין אין חיבור. נסי שוב בעוד רגע.");
+    } finally {
+      setReloading(false);
+    }
+  };
   const isLatest = thread == null || threads.length === 0 || thread === Math.max(...threads.map((t) => t.thread));
   useEffect(() => {
-    void load();
+    void load().catch(() => setLoaded(true));
     const iv = setInterval(() => {
       // code-request statuses move on their own — keep the cards live
       fetch("/api/teacher-chat", { cache: "no-store" })
@@ -78,22 +96,53 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
   }, []);
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [msgs.length, actions.length, busy]);
+  }, [msgs.length, actions.length, busy, connLost]);
+  // seconds counter next to the "working" indicator
+  useEffect(() => {
+    if (!busy) {
+      setElapsed(0);
+      return;
+    }
+    const t0 = Date.now();
+    const iv = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(iv);
+  }, [busy]);
+  // a question without an answer yet (turn still running on the server after
+  // a drop or a page reopen): keep checking so the reply appears by itself
+  const lastMsg = msgs[msgs.length - 1];
+  const awaitingReply = !busy && isLatest && !!lastMsg && lastMsg.role === "user" && !String(lastMsg.id).startsWith("tmp-") && Date.now() / 1000 - lastMsg.createdAt < 15 * 60;
+  useEffect(() => {
+    if (!awaitingReply) return;
+    const iv = setInterval(() => void load(thread).catch(() => {}), 5000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingReply, thread]);
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || busy) return;
+    if (!text || busy || sendingRef.current || !isLatest) return;
+    sendingRef.current = true;
     setBusy(true);
     setError(null);
+    setConnLost(false);
     setDraft("");
     const tempId = `tmp-${Date.now()}`;
     setMsgs((m) => [...m, { id: tempId, role: "user", text, createdAt: Date.now() / 1000 }]);
     try {
-      const r = await fetch("/api/teacher-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
-      const d = await r.json();
+      let d: { ok?: boolean; error?: string; messages: ChatMessageRow[]; newActions?: ActionRow[] };
+      try {
+        const r = await fetch("/api/teacher-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+        d = await r.json();
+      } catch {
+        // network drop / timeout / non-JSON gateway page: the turn may have
+        // completed on the server, so keep her message and offer a reload
+        setConnLost(true);
+        return;
+      }
       if (!d.ok) throw new Error(d.error ?? "משהו השתבש");
       setMsgs(flatten(d.messages));
-      if (d.newActions?.length) setActions((a) => [...a, ...d.newActions]);
+      const fresh = d.newActions ?? [];
+      if (fresh.length) setActions((a) => [...a, ...fresh]);
       const cr = await fetch("/api/teacher-chat", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
       if (cr?.ok) {
         setActions(cr.actions);
@@ -104,6 +153,7 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
       setDraft(text);
       setMsgs((m) => m.filter((x) => x.id !== tempId));
     } finally {
+      sendingRef.current = false;
       setBusy(false);
       taRef.current?.focus();
     }
@@ -122,14 +172,14 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "לא הצליח");
-      void load();
+      void load().catch(() => {});
     }
   };
 
   const restart = async () => {
     if (!window.confirm("להתחיל שיחה חדשה? השיחה הנוכחית נשמרת בארכיון.")) return;
     await fetch("/api/teacher-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newThread: true }) });
-    await load();
+    await load().catch(() => {});
   };
 
   // cards are shown right after the assistant message they belong to: we
@@ -213,11 +263,28 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
             ))}
           </div>
         ))}
-        {busy && (
-          <div className="flex justify-end">
-            <div className="rounded-2xl bg-[color:var(--background)] px-4 py-2.5 text-sm text-[color:var(--primary)]/60">
-              <span className="animate-pulse">קלוד עובד על זה…</span>
+        {(busy || awaitingReply) && (
+          <div className="flex justify-end" role="status" aria-live="polite">
+            <div className="rounded-2xl bg-[color:var(--background)] px-4 py-2.5 text-sm text-[color:var(--primary)]/70">
+              <span className="animate-pulse">
+                {busy ? (elapsed < 8 ? "קלוד חושב…" : "קלוד מבצע…") : "קלוד עדיין עונה…"}
+                {busy && elapsed >= 8 ? ` (${elapsed} שנ׳ — תשובות ארוכות לוקחות זמן)` : ""}
+              </span>
             </div>
+          </div>
+        )}
+        {connLost && (
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[color:var(--warning)]/50 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]" role="alert">
+            <span className="font-bold">החיבור נותק לפני שהתשובה הגיעה. ייתכן שקלוד כבר ענה ופעל — אל תשלחי שוב, טענו מחדש את השיחה.</span>
+            <button
+              type="button"
+              onClick={() => void reload()}
+              disabled={reloading}
+              className={`rounded-full px-4 py-1.5 text-xs font-extrabold text-white disabled:opacity-60 ${reloading ? "animate-pulse" : ""}`}
+              style={{ background: "var(--accent-fill)" }}
+            >
+              {reloading ? "טוען…" : "טען מחדש את השיחה"}
+            </button>
           </div>
         )}
         <div ref={endRef} />
@@ -242,11 +309,11 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
         <button
           type="button"
           onClick={send}
-          disabled={busy || !draft.trim()}
+          disabled={busy || reloading || !draft.trim() || !isLatest}
           className={`rounded-full px-5 py-3 text-sm font-extrabold text-white shadow transition active:scale-95 disabled:opacity-40 ${busy ? "animate-pulse" : ""}`}
           style={{ background: "var(--accent-fill)" }}
         >
-          {busy ? "…" : "שליחה"}
+          {busy ? "ממתין לתשובה…" : "שליחה"}
         </button>
       </div>
     </div>
