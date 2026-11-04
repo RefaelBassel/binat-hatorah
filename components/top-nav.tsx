@@ -54,6 +54,23 @@ export default async function TopNav() {
     { href: "/product-b", label: "תוצר ב" },
     { href: "/messages", label: "קשר" },
   ];
+  // students: a menu entry per exam whose practice the teacher opened (issue #34)
+  if (user && !isTeacher) {
+    try {
+      const { openPractices } = await import("@/lib/practice");
+      const practices = await openPractices();
+      links.splice(
+        5,
+        0,
+        ...practices.map((p) => ({
+          href: `/exams/practice/${p.id}`,
+          label: practices.length > 1 ? `📚 תרגול: ${p.title.replace(/^מבחן:\s*/, "")}` : "📚 תרגול למבחן",
+        }))
+      );
+    } catch {
+      // DB unavailable — the menu still renders
+    }
+  }
   if (isTeacher) {
     links.push({ href: "/dashboard", label: "דשבורד מורה" });
     links.push({ href: "/dashboard/chat", label: "הצ׳אט עם קלוד" });

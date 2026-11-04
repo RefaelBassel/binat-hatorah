@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import PageShell, { ComingSoon } from "@/components/page-shell";
+import PracticeCards from "@/components/exams/practice-cards";
 import { getAttempt, publishedDocs, type DocRow } from "@/lib/exams";
 import { formatHebDate, formatHebTime } from "@/lib/hebrew";
 
@@ -49,6 +50,7 @@ export default async function ExamsPage() {
           </Link>
         </div>
       )}
+      {!isTeacher && <PracticeCards className="mb-6" />}
       {docs.length === 0 ? (
         <ComingSoon note="דפי ההכנה והמבחנים יופיעו כאן כשהמורה תפרסם אותם." />
       ) : (

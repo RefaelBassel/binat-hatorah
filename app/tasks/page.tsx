@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import PageShell from "@/components/page-shell";
+import PracticeCards from "@/components/exams/practice-cards";
 import {
   tasksForStudent,
   allTasksWithStats,
@@ -37,7 +38,10 @@ export default async function TasksPage() {
       {isTeacher ? (
         <TeacherView />
       ) : (
-        <StudentView userId={Number(user.id)} allPublished={studentMode} />
+        <>
+          <PracticeCards className="mb-6" />
+          <StudentView userId={Number(user.id)} allPublished={studentMode} />
+        </>
       )}
     </PageShell>
   );
