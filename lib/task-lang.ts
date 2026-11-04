@@ -151,33 +151,67 @@ async function claudeTranslate(kind: Kind, items: string[]): Promise<string[]> {
 }
 
 // translate many strings; cached ones are free, the rest go out in chunks
+// (a few at a time). Never throws: a string whose translation failed is simply
+// missing from the map, and every caller falls back to the Hebrew (#36).
 export async function translate(kind: Kind, sources: string[]): Promise<Map<string, string>> {
-  const clean = sources.map((s) => s).filter((s) => s && /[֐-׿a-zA-Z]/.test(s));
-  const have = await cached(kind, clean);
+  const clean = sources.filter((s) => s && /[֐-׿a-zA-Z]/.test(s));
+  let have: Map<string, string>;
+  try {
+    have = await cached(kind, clean);
+  } catch (e) {
+    console.error("translation cache unavailable", e);
+    return new Map();
+  }
   const missing = [...new Set(clean.filter((s) => !have.has(s)))];
+  if (!missing.length) return have;
+  if (!getAnthropicApiKey()) return have;
+  const chunks: string[][] = [];
   let chunk: string[] = [];
   let size = 0;
-  const flush = async () => {
-    if (!chunk.length) return;
-    const done = await claudeTranslate(kind, chunk);
-    const pairs: [string, string][] = [];
-    chunk.forEach((s, i) => {
-      if (done[i]) {
-        have.set(s, done[i]);
-        pairs.push([s, done[i]]);
-      }
-    });
-    await store(kind, pairs);
-    chunk = [];
-    size = 0;
-  };
   for (const s of missing) {
-    if (size + s.length > 5000 && chunk.length) await flush();
+    if (size + s.length > 5000 && chunk.length) {
+      chunks.push(chunk);
+      chunk = [];
+      size = 0;
+    }
     chunk.push(s);
     size += s.length;
   }
-  await flush();
+  if (chunk.length) chunks.push(chunk);
+  const runOne = async (part: string[]) => {
+    try {
+      const done = await claudeTranslate(kind, part);
+      const pairs: [string, string][] = [];
+      part.forEach((s, i) => {
+        if (done[i]) {
+          have.set(s, done[i]);
+          pairs.push([s, done[i]]);
+        }
+      });
+      await store(kind, pairs);
+    } catch (e) {
+      console.error(`translation (${kind}) failed for ${part.length} strings`, e);
+    }
+  };
+  for (let i = 0; i < chunks.length; i += 4) await Promise.all(chunks.slice(i, i + 4).map(runOne));
   return have;
+}
+
+// Only what is already cached — for pages that must never wait on Claude;
+// the missing strings are translated after the response, for the next visit.
+export async function cachedOnly(kind: Kind, sources: string[]): Promise<Map<string, string>> {
+  const clean = sources.filter((s) => s && /[֐-׿a-zA-Z]/.test(s));
+  try {
+    const have = await cached(kind, clean);
+    if (clean.some((s) => !have.has(s))) {
+      const { after } = await import("next/server");
+      after(() => translate(kind, clean).then(() => undefined));
+    }
+    return have;
+  } catch (e) {
+    console.error("translation cache unavailable", e);
+    return new Map();
+  }
 }
 
 // ------------------------------------------------------------ the verses ----
@@ -194,13 +228,13 @@ function stripHtml(s: string): string {
 const jpsMemo = new Map<string, string[]>();
 async function jpsVerses(ref: string): Promise<string[] | null> {
   if (jpsMemo.has(ref)) return jpsMemo.get(ref)!;
-  const have = await cached("jps", [ref]);
-  if (have.has(ref)) {
-    const v = JSON.parse(have.get(ref)!) as string[];
-    jpsMemo.set(ref, v);
-    return v;
-  }
   try {
+    const have = await cached("jps", [ref]);
+    if (have.has(ref)) {
+      const v = JSON.parse(have.get(ref)!) as string[];
+      jpsMemo.set(ref, v);
+      return v;
+    }
     const r = await fetch(`https://www.sefaria.org/api/v3/texts/${encodeURIComponent(ref)}?version=${encodeURIComponent(`english|${JPS}`)}`, {
       signal: AbortSignal.timeout(20_000),
     });
@@ -323,8 +357,18 @@ export async function translateContent(content: TaskContent): Promise<TaskConten
   return apply(clone, null, false) as TaskContent;
 }
 
-// The task together with its main passage (the page gets them separately)
+// The task together with its main passage (the page gets them separately).
+// If anything goes wrong the Hebrew comes back — never an empty page.
 export async function translateTask(content: TaskContent, mainPassage: PassageBlock): Promise<{ content: TaskContent; mainPassage: PassageBlock }> {
+  try {
+    return await translateTaskInner(content, mainPassage);
+  } catch (e) {
+    console.error("task translation failed — showing the Hebrew", e);
+    return { content, mainPassage };
+  }
+}
+
+async function translateTaskInner(content: TaskContent, mainPassage: PassageBlock): Promise<{ content: TaskContent; mainPassage: PassageBlock }> {
   const both = (await translateContent({ ...(content as object), __main: mainPassage } as unknown as TaskContent)) as unknown as TaskContent & { __main: PassageBlock };
   const { __main, ...rest } = both;
   return { content: rest as TaskContent, mainPassage: __main };
@@ -336,10 +380,47 @@ export async function uiDictionary(strings: readonly string[]): Promise<Record<s
   return Object.fromEntries(map);
 }
 
+// Content alone (the check route); the Hebrew on failure
+export async function translateContentSafe(content: TaskContent): Promise<TaskContent> {
+  try {
+    return await translateContent(content);
+  } catch (e) {
+    console.error("content translation failed — using the Hebrew", e);
+    return content;
+  }
+}
+
+// The rest of the site's interface strings: only what is cached, so no page
+// ever waits (the rest is translated in the background for the next visit)
+export async function siteDictionary(strings: readonly string[]): Promise<Record<string, string>> {
+  return Object.fromEntries(await cachedOnly("ui", [...strings]));
+}
+
+// A few content strings (task titles, a review's notes): a lookup that falls
+// back to the Hebrew for anything untranslated
+export async function contentLookup(strings: string[], wait = true): Promise<(s: string) => string> {
+  const hebrew = strings.filter((s) => s && /[֐-׿]/.test(s));
+  const map = wait ? await translate("content", hebrew) : await cachedOnly("content", hebrew);
+  return (s: string) => map.get(s) ?? s;
+}
+
+// Is this signed-in user a student who reads the site in English? Teachers
+// (also in student mode) and guests never are.
+export async function isEnglishStudent(user: { id?: string | null; role?: string; guest?: boolean } | null | undefined): Promise<boolean> {
+  if (!user?.id || user.guest || user.role === "teacher") return false;
+  try {
+    return (await getTaskLang(Number(user.id))) === "en";
+  } catch {
+    return false;
+  }
+}
+
 // A student's English answer, in Hebrew for the teacher
 export async function answerToHebrew(text: string): Promise<string> {
   const map = await translate("to-he", [text]);
-  return map.get(text) ?? "";
+  const he = map.get(text);
+  if (!he) throw new Error("translation failed"); // the button shows "try again"
+  return he;
 }
 
 // one line for Claude prompts that talk to the student

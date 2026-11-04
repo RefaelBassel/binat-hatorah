@@ -4,6 +4,7 @@ import "./globals.css";
 import InstallPrompt from "@/components/pwa/install-prompt";
 import RememberLastPath from "@/components/pwa/remember-last-path";
 import ChatFab from "@/components/chat-fab";
+import UiTranslate from "@/components/task/ui-translate";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { currentTheme } from "@/lib/theme-store";
 
@@ -43,12 +44,21 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // the floating chat with Claude follows the TEACHER to every page — never
   // in student mode, never for students
   let teacher: { name: string | null } | null = null;
+  // a student set to English (#36) reads the site's interface in English;
+  // only already-translated strings are sent, so no page waits on Claude
+  let englishDict: Record<string, string> | null = null;
   try {
     const { auth } = await import("@/auth");
     const session = await auth();
     if (session?.user?.role === "teacher" && !session.user.guest) {
       const { isStudentMode } = await import("@/lib/student-mode");
       if (!(await isStudentMode())) teacher = { name: session.user.fullName ?? null };
+    } else {
+      const { isEnglishStudent, siteDictionary } = await import("@/lib/task-lang");
+      if (await isEnglishStudent(session?.user)) {
+        const { SITE_UI_STRINGS, TASK_UI_STRINGS } = await import("@/lib/task-ui-strings");
+        englishDict = await siteDictionary([...SITE_UI_STRINGS, ...TASK_UI_STRINGS]);
+      }
     }
   } catch {
     teacher = null;
@@ -69,7 +79,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <RememberLastPath />
-        {children}
+        {englishDict ? (
+          <div data-lang="en" dir="ltr" className="flex flex-1 flex-col">
+            <UiTranslate dict={englishDict} />
+            {children}
+          </div>
+        ) : (
+          children
+        )}
         {/* Footer: school name and copyright pushed to the edges, the three
             role credits grouped tightly in the middle. */}
         <footer className="no-print mt-auto border-t border-[color:var(--border)]/60 px-6 py-5 text-[11px] leading-5 text-[color:var(--primary)]/50">

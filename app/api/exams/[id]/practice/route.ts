@@ -16,6 +16,7 @@ import {
 } from "@/lib/practice";
 import { OPEN_ANSWER_MAX, type QuizAnswer } from "@/lib/practice-types";
 import { parseExamBody } from "@/lib/exam-types";
+import { isEnglishStudent } from "@/lib/task-lang";
 
 // Student practice actions (issue #34). Open only once the teacher opened the
 // practice; teachers may always try it out. Nothing here is graded.
@@ -71,7 +72,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const feedback = await openQuestionFeedback(
         q.text,
         answer,
-        [state.exam.title, unit ? `${unit.title} (${unit.chapters})` : ""].filter(Boolean).join(" · ")
+        [state.exam.title, unit ? `${unit.title} (${unit.chapters})` : ""].filter(Boolean).join(" · "),
+        await isEnglishStudent(user)
       );
       await recordEvent({ examId, userId, unitRef: q.unitRef, kind: "open", itemKey: q.id, correct: null, seconds });
       return NextResponse.json({ feedback });
@@ -91,7 +93,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       for (const [k, v] of Object.entries(raw).slice(0, 60)) {
         if (typeof v === "string") answers[k.slice(0, 40)] = v.slice(0, OPEN_ANSWER_MAX);
       }
-      const feedback = await mockExamFeedback(String(m.title ?? "מבחן לדוגמה").slice(0, 200), mockBody, answers);
+      const feedback = await mockExamFeedback(String(m.title ?? "מבחן לדוגמה").slice(0, 200), mockBody, answers, await isEnglishStudent(user));
       await recordEvent({ examId, userId, unitRef: "", kind: "mock", itemKey: "mock", correct: null, seconds });
       return NextResponse.json({ feedback });
     }

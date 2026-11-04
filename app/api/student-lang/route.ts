@@ -24,8 +24,8 @@ async function warmAll() {
   const { getTaskContent } = await import("@/content/tasks/registry");
   const { effectiveContent } = await import("@/lib/content-overrides");
   const { uiDictionary } = await import("@/lib/task-lang");
-  const { TASK_UI_STRINGS } = await import("@/lib/task-ui-strings");
-  await uiDictionary(TASK_UI_STRINGS);
+  const { TASK_UI_STRINGS, SITE_UI_STRINGS } = await import("@/lib/task-ui-strings");
+  await uiDictionary([...TASK_UI_STRINGS, ...SITE_UI_STRINGS]);
   const r = await db().execute("SELECT DISTINCT content_ref FROM tasks WHERE published_at IS NOT NULL");
   for (const row of r.rows) {
     const reg = getTaskContent(String(row.content_ref));

@@ -19,7 +19,7 @@ import {
 } from "@/lib/tasks";
 import { getTaskContent, countTaskUnits } from "@/content/tasks/registry";
 import { isStudentMode } from "@/lib/student-mode";
-import { formatFullDate, formatHebTime } from "@/lib/hebrew";
+import { formatFullDate, formatHebTime, formatEnDate } from "@/lib/hebrew";
 import UiTranslate from "@/components/task/ui-translate";
 
 // the first visit of an English-language student translates the task (then cached)
@@ -122,12 +122,32 @@ export default async function TaskPage({
     ).rows[0];
     if (g && isCompletionStatus(g.status)) {
       const qs = await gradableQuestions(task.content_ref);
-      review = {
-        status: g.status,
-        marks: parseMarks(g.marks ?? null),
-        feedback: (g.feedback as string | null) ?? null,
-        questions: qs.map((q) => ({ ...q, answer: answers[q.key] ?? "" })),
-      };
+      const marks = parseMarks(g.marks ?? null);
+      const feedback = (g.feedback as string | null) ?? null;
+      if (lang === "en") {
+        // the student set to English reads her review in English: the
+        // teacher's notes (whatever language she wrote them in) and the
+        // questions' labels; the Hebrew stays wherever translation failed
+        const { contentLookup } = await import("@/lib/task-lang");
+        const tr = await contentLookup([
+          ...(feedback ? [feedback] : []),
+          ...Object.values(marks).map((m) => m.note),
+          ...qs.flatMap((q) => [q.section, q.label, q.prompt]),
+        ]);
+        review = {
+          status: g.status,
+          marks: Object.fromEntries(Object.entries(marks).map(([k, m]) => [k, { ...m, note: m.note ? tr(m.note) : m.note }])),
+          feedback: feedback ? tr(feedback) : null,
+          questions: qs.map((q) => ({ ...q, section: tr(q.section), label: tr(q.label), prompt: tr(q.prompt), answer: answers[q.key] ?? "" })),
+        };
+      } else {
+        review = {
+          status: g.status,
+          marks,
+          feedback,
+          questions: qs.map((q) => ({ ...q, answer: answers[q.key] ?? "" })),
+        };
+      }
     }
   }
 
@@ -176,7 +196,9 @@ export default async function TaskPage({
             🎯 מיומנויות מרכזיות: {reg.content.skill}
           </p>
           <p className="mt-1 text-xs text-[color:var(--primary)]/55">
-            📅 להגשה עד: {formatFullDate(task.due_at)} בשעה {formatHebTime(task.due_at)}
+            {lang === "en"
+              ? `📅 Due: ${formatEnDate(task.due_at, true)} at ${formatHebTime(task.due_at)}`
+              : <>📅 להגשה עד: {formatFullDate(task.due_at)} בשעה {formatHebTime(task.due_at)}</>}
           </p>
         </div>
 
