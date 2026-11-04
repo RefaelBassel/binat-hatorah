@@ -3,6 +3,9 @@ import PageShell from "@/components/page-shell";
 import DocEditor from "@/components/exams/doc-editor";
 import { requireTeacherPage } from "@/lib/exam-page-guard";
 import { attemptCounts, examBodyOf, getDoc, listDocs, prepBodyOf } from "@/lib/exams";
+import PracticeEditor from "@/components/exams/practice-editor";
+import PracticeStats from "@/components/exams/practice-stats";
+import { allChapterUnits, classPractice, effectiveCards, effectiveOpenQuestions, getPracticeState } from "@/lib/practice";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +40,33 @@ export default async function ExamEditPage({ params }: { params: Promise<{ id: s
           attemptCount: counts?.get(doc.id)?.total ?? 0,
         }}
       />
+      {doc.kind === "exam" && <PracticeSection examId={doc.id} />}
     </PageShell>
+  );
+}
+
+// The students' practice area of this exam (issue #34): settings + who practiced.
+async function PracticeSection({ examId }: { examId: number }) {
+  const state = await getPracticeState(examId);
+  if (!state) return null;
+  const [cards, openQuestions, cls] = await Promise.all([
+    effectiveCards(state),
+    effectiveOpenQuestions(state),
+    classPractice(state),
+  ]);
+  return (
+    <>
+      <PracticeEditor
+        examId={examId}
+        allUnits={allChapterUnits()}
+        initialUnits={state.settings.units}
+        initialCards={cards}
+        cardsAuto={state.settings.cards == null}
+        initialOpen={openQuestions}
+        openAuto={state.settings.openQuestions == null}
+        openedAt={state.openedAt}
+      />
+      <PracticeStats students={cls.students} missed={cls.missed} />
+    </>
   );
 }
