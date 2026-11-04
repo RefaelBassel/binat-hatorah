@@ -592,6 +592,11 @@ const FEEDBACK_SYSTEM = `את/ה מלווה לימודי/ת באתר "בינת �
 - hint: רמז אחד לשיפור, שמכוון לפסוק, לפרשן או למושג (טענה / נימוק / הנחת יסוד / הפרכה) בלי לכתוב את התשובה המלאה.
 אם התשובה ריקה או לא קשורה, אמרי זאת בעדינות ותני רמז להתחלה. טקסט רגיל בלבד, בלי Markdown.`;
 
+// a student set to English (#36) may answer in English or Hebrew; she reads
+// the feedback in English
+const ENGLISH_FEEDBACK =
+  "The student reads the site in English: she may answer in English or in Hebrew — judge either as usual. Write good, missing and hint in clear English; when you quote a verse or a Hebrew phrase, keep it in Hebrew and add the English in parentheses.";
+
 function feedbackTool(withKey: boolean) {
   const item = {
     type: "object" as const,
@@ -620,12 +625,13 @@ function asFeedback(o: Record<string, unknown>): OpenFeedback {
 export async function openQuestionFeedback(
   question: string,
   answer: string,
-  context: string
+  context: string,
+  english = false
 ): Promise<OpenFeedback> {
   const msg = await client().messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 1200,
-    system: FEEDBACK_SYSTEM,
+    system: english ? `${FEEDBACK_SYSTEM}\n${ENGLISH_FEEDBACK}` : FEEDBACK_SYSTEM,
     tools: [{ name: "submit_feedback", description: "הגשת המשוב לתלמידה", input_schema: feedbackTool(false) }],
     tool_choice: { type: "tool", name: "submit_feedback" },
     messages: [
@@ -641,7 +647,8 @@ export async function openQuestionFeedback(
 export async function mockExamFeedback(
   title: string,
   body: ExamBody,
-  answers: Record<string, string>
+  answers: Record<string, string>,
+  english = false
 ): Promise<Record<string, OpenFeedback>> {
   const items = answerItems(body).filter((it) => (answers[it.key] ?? "").trim() !== "");
   if (items.length === 0) return {};
@@ -654,7 +661,7 @@ export async function mockExamFeedback(
   const msg = await client().messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 8000,
-    system: `${FEEDBACK_SYSTEM}\nזה מבחן לדוגמה לתרגול בלבד: תני משוב כזה לכל תשובה ברשימה, לפי המזהה שלה, דרך הכלי submit_feedback.`,
+    system: `${FEEDBACK_SYSTEM}\nזה מבחן לדוגמה לתרגול בלבד: תני משוב כזה לכל תשובה ברשימה, לפי המזהה שלה, דרך הכלי submit_feedback.${english ? `\n${ENGLISH_FEEDBACK}` : ""}`,
     tools: [
       {
         name: "submit_feedback",

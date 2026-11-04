@@ -491,7 +491,7 @@ function LangSelect({ account, initial }: { account: AccountRow; initial: "he" |
   };
   return (
     <label className="flex items-center gap-1.5 rounded-full border border-[color:var(--border)] px-3 py-1 text-xs font-bold text-[color:var(--primary)]/75">
-      🌐 שפת המשימות:
+      🌐 שפת האתר:
       <select
         value={lang}
         disabled={phase === "saving"}

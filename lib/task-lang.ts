@@ -418,7 +418,9 @@ export async function isEnglishStudent(user: { id?: string | null; role?: string
 // A student's English answer, in Hebrew for the teacher
 export async function answerToHebrew(text: string): Promise<string> {
   const map = await translate("to-he", [text]);
-  return map.get(text) ?? "";
+  const he = map.get(text);
+  if (!he) throw new Error("translation failed"); // the button shows "try again"
+  return he;
 }
 
 // one line for Claude prompts that talk to the student
