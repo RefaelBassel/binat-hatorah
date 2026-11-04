@@ -151,7 +151,7 @@ export default function Chat({
                         {m.fromRole === "teacher" && " · מורה"}
                       </p>
                     )}
-                    <p className="whitespace-pre-wrap">{m.body}</p>
+                    <p className="whitespace-pre-wrap" data-no-translate>{m.body}</p>
                     <p className={["mt-0.5 text-[9px]", mine ? "text-white/60" : "text-[color:var(--primary)]/40"].join(" ")}>
                       {new Intl.DateTimeFormat("he-IL", {
                         day: "numeric",

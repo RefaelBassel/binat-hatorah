@@ -23,7 +23,8 @@ import { db } from "@/lib/db";
 import { tasksForStudent, STATUS_META } from "@/lib/tasks";
 import { COMPLETION_META } from "@/lib/completion-meta";
 import { unreadFor, markAllRead } from "@/lib/notify";
-import { formatHebDate, formatWorkTime } from "@/lib/hebrew";
+import { formatHebDate, formatWorkTime, formatEnDate } from "@/lib/hebrew";
+import { contentLookup, isEnglishStudent } from "@/lib/task-lang";
 
 // Personal page — strongly visual learning status (in the spirit of the
 // אמונה site journey): overdue alerts, the current task + its due date,
@@ -89,6 +90,14 @@ export default async function MePage() {
     // DB not available
   }
 
+  // a student set to English (#36): task titles and dates in English
+  const english = await isEnglishStudent(user);
+  if (english && tasks.length) {
+    const tr = await contentLookup(tasks.map((t) => t.title));
+    tasks = tasks.map((t) => ({ ...t, title: tr(t.title) }));
+  }
+  const fmtDate = english ? (s: number) => formatEnDate(s) : formatHebDate;
+
   const theme = await currentTheme();
   const taskView = user.guest ? null : await getUserTaskView(userId);
   const overdue = tasks.filter((t) => t.status === "overdue");
@@ -148,7 +157,7 @@ export default async function MePage() {
                     href={`/tasks/${t.id}`}
                     className="text-sm font-semibold text-[color:var(--danger)] underline-offset-2 hover:underline"
                   >
-                    {t.title} — היה להגשה עד {formatHebDate(t.dueAt)} ←
+                    {t.title} — היה להגשה עד {fmtDate(t.dueAt)} ←
                   </Link>
                 </li>
               ))}
@@ -183,7 +192,7 @@ export default async function MePage() {
                   {current.title}
                 </h2>
                 <p className="mt-1 text-xs text-[color:var(--primary)]/60">
-                  📅 להגשה עד {formatHebDate(current.dueAt)} · שלב {current.stage}/8
+                  📅 להגשה עד {fmtDate(current.dueAt)} · שלב {current.stage}/8
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -251,7 +260,7 @@ export default async function MePage() {
                         >
                           {meta.label}
                         </span>
-                        <span>📅 {formatHebDate(t.dueAt)}</span>
+                        <span>📅 {fmtDate(t.dueAt)}</span>
                         {t.completion && (
                           <span
                             className="rounded-full px-2 py-0.5 text-[10px] font-bold"

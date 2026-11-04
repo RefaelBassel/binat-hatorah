@@ -59,6 +59,17 @@ export function formatFullDate(unixSeconds: number): string {
   return `יום ${day}, ${h.day} ב${h.month} ${h.year} · ${greg}`;
 }
 
+// For a student who reads the site in English (#36): "Tue, Nov 4"
+export function formatEnDate(unixSeconds: number, withYear = false): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(withYear ? { year: "numeric" as const } : {}),
+    timeZone: "Asia/Jerusalem",
+  }).format(new Date(unixSeconds * 1000));
+}
+
 export function formatHebTime(unixSeconds: number): string {
   return new Intl.DateTimeFormat("he-IL", {
     hour: "2-digit",

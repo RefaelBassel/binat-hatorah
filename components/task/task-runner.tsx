@@ -2574,16 +2574,32 @@ function BlockView({
 // click away, so no question is ever answered from memory (rule 10).
 // For a student whose task language is English: the verses stay in Hebrew
 // (above) and the JPS 1917 translation follows, verse by verse.
+const GEMATRIA: Record<string, number> = {
+  א: 1, ב: 2, ג: 3, ד: 4, ה: 5, ו: 6, ז: 7, ח: 8, ט: 9,
+  י: 10, כ: 20, ך: 20, ל: 30, מ: 40, ם: 40, נ: 50, ן: 50, ס: 60, ע: 70, פ: 80, ף: 80, צ: 90, ץ: 90,
+  ק: 100, ר: 200, ש: 300, ת: 400,
+};
+// "יז" → 17 (the English reader gets the verse number in digits); 0 if not a numeral
+function hebrewNumeral(s: string): number {
+  let n = 0;
+  for (const c of s) {
+    if (GEMATRIA[c]) n += GEMATRIA[c];
+    else if (!/[׳״'"\s]/.test(c)) return 0;
+  }
+  return n;
+}
+
 function EnglishVerses({ verses }: { verses: PassageVerse[] }) {
   if (!verses.some((v) => v.en)) return null;
   return (
     <div dir="ltr" className="mt-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-left" data-no-translate>
-      <p className="mb-1.5 text-[11px] font-bold tracking-wide text-[color:var(--accent)]">English translation · JPS 1917</p>
+      <p className="text-[11px] font-bold tracking-wide text-[color:var(--accent)]">English translation · JPS 1917</p>
+      <p className="mb-1.5 text-[10px] text-[color:var(--foreground)]/55">Verse numbers follow the Hebrew Bible.</p>
       <div className="space-y-1 text-[15px] leading-7 text-[color:var(--foreground)]/85">
         {verses.map((v, i) =>
           v.en ? (
             <p key={`${v.num}-${i}`}>
-              <span className="me-1 text-xs font-bold text-[color:var(--accent)]">({v.num})</span>
+              <span className="me-1 text-xs font-bold text-[color:var(--accent)]">({hebrewNumeral(v.num) || v.num})</span>
               {v.en}
             </p>
           ) : null

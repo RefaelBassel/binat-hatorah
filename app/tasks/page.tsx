@@ -11,7 +11,8 @@ import {
 import { sweepOverdue } from "@/lib/notify";
 import { COMPLETION_META } from "@/lib/completion-meta";
 import { isStudentMode } from "@/lib/student-mode";
-import { formatHebDate, formatWorkTime } from "@/lib/hebrew";
+import { formatHebDate, formatWorkTime, formatEnDate } from "@/lib/hebrew";
+import { contentLookup, isEnglishStudent } from "@/lib/task-lang";
 
 export default async function TasksPage() {
   const session = await auth();
@@ -40,7 +41,7 @@ export default async function TasksPage() {
       ) : (
         <>
           <PracticeCards className="mb-6" />
-          <StudentView userId={Number(user.id)} allPublished={studentMode} />
+          <StudentView userId={Number(user.id)} allPublished={studentMode} english={await isEnglishStudent(user)} />
         </>
       )}
     </PageShell>
@@ -50,9 +51,11 @@ export default async function TasksPage() {
 async function StudentView({
   userId,
   allPublished,
+  english,
 }: {
   userId: number;
   allPublished?: boolean;
+  english?: boolean;
 }) {
   let tasks: Awaited<ReturnType<typeof tasksForStudent>> = [];
   try {
@@ -60,6 +63,9 @@ async function StudentView({
   } catch {
     // guest/no DB
   }
+  // a student set to English (#36) gets the task titles in English (the
+  // Hebrew stays for any title whose translation failed)
+  const title = english ? await contentLookup(tasks.map((t) => t.title)) : (s: string) => s;
 
   if (tasks.length === 0) {
     return (
@@ -105,10 +111,10 @@ async function StudentView({
               )}
             </div>
             <h2 className="font-display text-lg font-bold leading-snug text-[color:var(--primary)]">
-              {t.title}
+              {title(t.title)}
             </h2>
             <p className="mt-1 text-xs text-[color:var(--primary)]/55">
-              📅 להגשה עד {formatHebDate(t.dueAt)}
+              📅 להגשה עד {english ? formatEnDate(t.dueAt) : formatHebDate(t.dueAt)}
               {t.workSeconds > 0 && <> · ⏱ עבדת {formatWorkTime(t.workSeconds)}</>}
             </p>
             <div className="mt-3 flex items-center gap-2">

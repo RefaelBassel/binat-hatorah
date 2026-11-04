@@ -28,8 +28,8 @@ export async function POST(
   const contentHe = await effectiveContent(reg.content);
   // an English-language student answered the translated check (its "order"
   // options are compared by text), so it is scored against the same translation
-  const { getTaskLang, translateContent } = await import("@/lib/task-lang");
-  const content = !guard.isTeacher && (await getTaskLang(guard.userId)) === "en" ? await translateContent(contentHe) : contentHe;
+  const { getTaskLang, translateContentSafe } = await import("@/lib/task-lang");
+  const content = !guard.isTeacher && (await getTaskLang(guard.userId)) === "en" ? await translateContentSafe(contentHe) : contentHe;
   const questions = content.check ?? [];
   if (questions.length === 0) {
     return NextResponse.json({ error: "למשימה זו אין בדיקת הבנה." }, { status: 400 });
