@@ -63,6 +63,8 @@ const DEFAULT_UNITS: Record<string, string[]> = {
 
 function defaultUnits(exam: DocRow): string[] {
   if (exam.seedKey && DEFAULT_UNITS[exam.seedKey]) return DEFAULT_UNITS[exam.seedKey];
+  // the Bamidbar exam re-created by hand (not the seeded row) gets the same default
+  if (/במדבר/.test(exam.title)) return DEFAULT_UNITS["bamidbar-9-14-exam"];
   return summaryUnitsFor(exam.seedKey).map((u) => u.taskRef);
 }
 
