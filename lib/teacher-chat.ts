@@ -908,6 +908,7 @@ export async function repairTruncatedRequests(): Promise<number> {
     await db().execute("SELECT id, user_id, issue_number, repo, created_at FROM code_requests WHERE issue_number IS NOT NULL AND length(body) BETWEEN 5990 AND 6000 AND status NOT IN ('merged','closed')")
   ).rows;
   let posted = 0;
+  console.log(`[repair-truncated] candidates=${rows.length}`);
   for (const row of rows) {
     const repo = (row.repo as string | null) ?? SITE.repo;
     const n = Number(row.issue_number);
@@ -931,6 +932,7 @@ export async function repairTruncatedRequests(): Promise<number> {
           if (t.length >= 1200) texts.push(t);
         }
       }
+      console.log(`[repair-truncated] request=${row.id} issue=${n} messages=${msgs.length} long=${texts.map((t) => t.length).join(",")}`);
       if (!texts.length) continue;
       // the latest messages matter most; keep within GitHub's comment limit
       const kept: string[] = [];
@@ -945,6 +947,7 @@ export async function repairTruncatedRequests(): Promise<number> {
       await db().execute({ sql: "UPDATE code_requests SET status = 'working', retried_at = ?, note = NULL, updated_at = ? WHERE id = ?", args: [now(), now(), Number(row.id)] });
       posted++;
     } catch (e) {
+      console.log(`[repair-truncated] request=${row.id} error=${e instanceof Error ? e.message : String(e)}`);
       await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), Number(row.id)] });
     }
   }

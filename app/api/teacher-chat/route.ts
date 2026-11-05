@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ error: "פעולה לא ידועה" }, { status: 400 });
     }
-    const text = String(body?.text ?? "").trim().slice(0, 8000);
+    const text = String(body?.text ?? "").trim().slice(0, 60_000); // a pasted exam is long; it was cut at 8,000
     if (!text) return NextResponse.json({ error: "כתבי משהו" }, { status: 400 });
     const session = await auth();
     const result = await chatTurn(guard.userId, session?.user?.fullName ?? null, text);

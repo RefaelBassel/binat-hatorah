@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const repaired = await repairTruncatedRequests().catch(() => 0);
+  const repaired = await repairTruncatedRequests().catch((e) => { console.log(`[repair-truncated] failed: ${e instanceof Error ? e.message : String(e)}`); return 0; });
   const list = await refreshCodeRequests(0);
   return NextResponse.json({ ok: true, at: new Date().toISOString(), seen: list.length, repaired });
 }
