@@ -539,7 +539,7 @@ async function buildProposal(name: string, input: Record<string, unknown>): Prom
     }
     case "request_code_change": {
       const title = str(input.title, 120);
-      const body = str(input.body, 6000);
+      const body = str(input.body, CODE_REQUEST_BODY_MAX);
       if (!title || !body) return { error: "title and body required" };
       return { summary: `בקשת שינוי באתר: ${title}`, preview: { changes: [{ what: "הבקשה שתישלח לבנייה", before: null, after: `${title}\n\n${body}` }] } };
     }
@@ -665,7 +665,7 @@ export async function applyAction(actionId: number, userId: number): Promise<Act
       }
       case "request_code_change": {
         const title = str(input.title, 120);
-        const body = str(input.body, 6000);
+        const body = str(input.body, CODE_REQUEST_BODY_MAX);
         // targets: "this" (default) and/or sister sites — each gets its own request
         const raw = Array.isArray(input.targets) ? (input.targets as unknown[]).map(String) : ["this"];
         const targets = raw.filter((k) => k === "this" || SITE.sisters[k]);
@@ -767,6 +767,29 @@ const gh = async (path: string, init?: RequestInit) => {
   return (await r.json()) as unknown;
 };
 
+// a request body may be long (a teacher pastes a whole exam): GitHub takes
+// 65,536 characters per issue; the rest of the issue is a short footer
+const CODE_REQUEST_BODY_MAX = 60_000;
+
+// what the teacher pasted in the chat since the last code request, word for
+// word: the chat model need not (and, within its output limit, cannot)
+// retype a long text into the request, so the build always gets the source
+function pastedSinceLastRequest(messages: Anthropic.MessageParam[]): string[] {
+  const out: string[] = [];
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (!Array.isArray(m.content)) continue;
+    if (m.role === "assistant" && m.content.some((b) => b.type === "tool_use" && b.name === "request_code_change")) break;
+    if (m.role !== "user") continue;
+    for (const b of m.content) {
+      if (b.type !== "text") continue;
+      const t = b.text.replace(/^\[[^\]\n]*\]\n/, "").trim();
+      if (t.length >= 1200) out.unshift(t);
+    }
+  }
+  return out;
+}
+
 export async function createCodeRequest(userId: number, title: string, body: string, repo: string = SITE.repo, size: "small" | "large" = "small"): Promise<CodeRequestRow & { mergedInto?: boolean }> {
   await ensureChatTables();
   await refreshCodeRequests(userId);
@@ -780,8 +803,8 @@ export async function createCodeRequest(userId: number, title: string, body: str
       args: [userId, SITE.repo, repo],
     })
   ).rows[0];
-  if (waiting) {
-    const merged = `${String(waiting.body)}\n\n---\nתוספת מאותה מורה, לבנות יחד עם הבקשה שלמעלה: ${title}\n\n${body}`.slice(0, 12000);
+  if (waiting && String(waiting.body).length + body.length < CODE_REQUEST_BODY_MAX) {
+    const merged = `${String(waiting.body)}\n\n---\nתוספת מאותה מורה, לבנות יחד עם הבקשה שלמעלה: ${title}\n\n${body}`;
     const mergedSize = size === "large" || String(waiting.size ?? "") === "large" ? "large" : "small";
     await db().execute({
       sql: "UPDATE code_requests SET body = ?, size = ?, updated_at = ? WHERE id = ?",
@@ -949,7 +972,7 @@ const SYSTEM = `אתה קלוד — העוזר של המורה באתר "${SITE.
 - ביטול משימה (cancel_task) לעולם לא מוחק עבודה של תלמידים — רק מוריד את המשימה מהרשימה שלהם. לכן במשימה מבוטלת class_progress מחזיר את העבודה השמורה ב-keptWorkNotAssigned (אחוז התקדמות, זמן עבודה, מספר תשובות); אל תאמר שעבודה אבדה בלי לבדוק שם.
 - לפני עריכת טקסט ביחידה — תמיד get_unit קודם, כדי לערוך את הנוסח הנוכחי ולהשתמש במפתחות (key) הנכונים של השאלות והבלוקים.
 - בדיקת ההבנה (check) נערכת בעמוד המשימה עצמו (״בדיקת ההבנה״ בלוח העריכה) — אם מבקשים לשנות שאלה סגורה, הפנה לשם, או השתמש ב-request_code_change אם זה שינוי מבני.
-- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה. בקשת קוד עולה דולרים, ועבודה בכלים שלך עולה אגורות: לפני request_code_change בדוק אם אחד הכלים שלך עושה את זה (נוסח, שאלות, תוכן יחידה, מועדים, פרסום, ביטול, הודעות, חשבונות) — אם כן, עשה זאת בכלי ואל תשלח בקשת קוד. בקשת קוד רק כשצריך באמת קוד חדש: מסך, כפתור, התנהגות או מבנה נתונים שאין להם כלי. בכל בקשת קוד ציין size: small לשינוי ממוקד (רוב הבקשות), large רק לפיצ׳ר חדש שנוגע בכמה מסכים או במבנה הנתונים. בקשה חדשה בזמן שקודמת עוד ממתינה בתור מצורפת אליה אוטומטית — אמור לה זאת לפי message.
+- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה. בקשת קוד עולה דולרים, ועבודה בכלים שלך עולה אגורות: לפני request_code_change בדוק אם אחד הכלים שלך עושה את זה (נוסח, שאלות, תוכן יחידה, מועדים, פרסום, ביטול, הודעות, חשבונות) — אם כן, עשה זאת בכלי ואל תשלח בקשת קוד. בקשת קוד רק כשצריך באמת קוד חדש: מסך, כפתור, התנהגות או מבנה נתונים שאין להם כלי. בכל בקשת קוד ציין size: small לשינוי ממוקד (רוב הבקשות), large רק לפיצ׳ר חדש שנוגע בכמה מסכים או במבנה הנתונים. בקשה חדשה בזמן שקודמת עוד ממתינה בתור מצורפת אליה אוטומטית — אמור לה זאת לפי message. אם המורה הדביקה בצ׳אט טקסט ארוך (מבחן, דף הכנה, נוסח שיש להעתיק מילה במילה) — אל תעתיק אותו לגוף הבקשה: ההודעה המקורית שלה מצורפת לבקשה אוטומטית, מילה במילה. בגוף כתוב רק מה לעשות עם הטקסט ואיפה.
 - שאלות על "איך עושים X באתר" — ענה ישירות מהידע שלך על האתר (למטה).
 
 סגנון: עברית, חם, קצר ופשוט. בלי Markdown (בלי כוכביות וכותרות); רשימות עם מקפים אם צריך. במבט אחד מבינים. כשמציעים ניסוח חדש — כתוב אותו במלואו. אל תמציא תוכן לימודי שהיא לא ביקשה; כשהיא מבקשת "לשפר" — הצע נוסח והסבר במשפט מה שונה.
@@ -1025,7 +1048,7 @@ export async function chatTurn(userId: number, teacherName: string | null, text:
   };
   await save("user", userContent);
 
-  const client = new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 });
+  const client = new Anthropic({ apiKey, timeout: 240_000, maxRetries: 1 });
   const newActions: ActionRow[] = [];
   let reply = "";
   const startedAt = Date.now();
@@ -1037,7 +1060,7 @@ export async function chatTurn(userId: number, teacherName: string | null, text:
     }
     const res = await client.messages.create({
         model: CLAUDE_MODEL,
-        max_tokens: 6000,
+        max_tokens: 12000,
         system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
         tools: TOOLS,
         messages,
@@ -1075,6 +1098,14 @@ export async function chatTurn(userId: number, teacherName: string | null, text:
         } else if (READ_TOOLS.has(u.name)) {
           out = await runReadTool(u.name, input, userId);
         } else {
+          if (u.name === "request_code_change") {
+            const body = String(input.body ?? "");
+            const pasted = pastedSinceLastRequest(messages).filter((t) => !body.includes(t.slice(0, 400)));
+            if (pasted.length) {
+              const add = `\n\n---\nהנוסח המקורי שהמורה שלחה בצ׳אט, מילה במילה (המקור הקובע לכל טקסט שביקשה להעתיק):\n\n${pasted.join("\n\n---\n\n")}`;
+              input.body = (body + add).slice(0, CODE_REQUEST_BODY_MAX);
+            }
+          }
           const p = await buildProposal(u.name, input);
           if ("error" in p) out = { error: p.error };
           else {
