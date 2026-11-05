@@ -932,7 +932,13 @@ export async function repairTruncatedRequests(): Promise<number> {
           if (t.length >= 1200) texts.push(t);
         }
       }
-      console.log(`[repair-truncated] request=${row.id} issue=${n} messages=${msgs.length} long=${texts.map((t) => t.length).join(",")}`);
+      const shape = msgs.map((m) => {
+        try {
+          const c = JSON.parse(String(m.content_json)) as { type?: string; text?: string; content?: unknown }[];
+          return Array.isArray(c) ? c.map((b) => `${b.type}:${b.type === "text" ? String(b.text ?? "").length : JSON.stringify(b.content ?? "").length}`).join("+") : "?";
+        } catch { return "bad"; }
+      });
+      console.log(`[repair-truncated] request=${row.id} issue=${n} at=${at} messages=${msgs.length} long=${texts.map((t) => t.length).join(",")} shape=${shape.slice(-25).join(" ")}`);
       if (!texts.length) continue;
       // the latest messages matter most; keep within GitHub's comment limit
       const kept: string[] = [];
