@@ -890,6 +890,11 @@ const QUEUE_NOTE = "ממתינה בתור — בקשה קודמת עדיין ב�
 // open the GitHub issue of a stored request — in this site's repository or,
 // for a cross-site request, in the sister site's
 async function openIssueFor(id: number) {
+  // the cron and the chat's poll may send the same waiting request in the same
+  // second (binat-hatorah #41/#42 — two issues, two builds): claim it first,
+  // only one caller wins. A failed send frees the claim after two minutes.
+  const claim = await db().execute({ sql: "UPDATE code_requests SET issue_url = 'sending', updated_at = ? WHERE id = ? AND issue_number IS NULL AND (issue_url IS NULL OR issue_url != 'sending' OR updated_at < ?)", args: [now(), id, now() - 120] });
+  if (claim.rowsAffected !== 1) return;
   const row = (await db().execute({ sql: "SELECT title, body, repo, size FROM code_requests WHERE id = ?", args: [id] })).rows[0];
   if (!row) return;
   const repo = (row.repo as string | null) ?? SITE.repo;
@@ -918,7 +923,7 @@ export async function listCodeRequests(userId: number): Promise<CodeRequestRow[]
     title: String(x.title),
     body: String(x.body),
     issueNumber: x.issue_number != null ? Number(x.issue_number) : null,
-    issueUrl: (x.issue_url as string | null) ?? null,
+    issueUrl: x.issue_url && x.issue_url !== "sending" ? String(x.issue_url) : null,
     prUrl: (x.pr_url as string | null) ?? null,
     previewUrl: x.branch && ((x.repo as string | null) ?? SITE.repo) === SITE.repo ? previewUrlFor(String(x.branch)) : null,
     status: String(x.status),
