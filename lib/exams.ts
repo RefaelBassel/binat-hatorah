@@ -9,6 +9,7 @@ import {
   parsePrepBody,
 } from "./exam-types";
 import {
+  LEGACY_EXAM_TITLE,
   SEED_EXAM_DURATION,
   SEED_EXAM_TITLE,
   SEED_GUIDE_TITLE,
@@ -90,6 +91,77 @@ export async function ensureExamTables() {
   ready = true;
 }
 
+// The exam "chapters 9-16" (issue #42). The seed key stays the historical
+// 'bamidbar-9-14-exam' because the practice/summary unit maps are keyed by it.
+// Exactly one such exam must exist:
+//  - it already exists: content is synced once (when it does not yet carry the
+//    seed key), never overwritten afterwards, so later edits survive;
+//  - otherwise the legacy "chapters 9-14" exam is deleted (when it holds no
+//    student data) and the new draft takes its place, keeping the prep link.
+async function seedExam(prepId: number, t: number) {
+  const key = "bamidbar-9-14-exam";
+  const body = JSON.stringify(seedExamBody());
+  const existing = await db().execute({
+    sql: "SELECT id, seed_key FROM exam_docs WHERE kind = 'exam' AND title = ? ORDER BY id LIMIT 1",
+    args: [SEED_EXAM_TITLE],
+  });
+  if (existing.rows[0]) {
+    if (existing.rows[0].seed_key == null) {
+      const held = await db().execute({ sql: "SELECT id FROM exam_docs WHERE seed_key = ?", args: [key] });
+      if (!held.rows[0]) {
+        await db().execute({
+          sql: "UPDATE exam_docs SET body_json = ?, duration_min = ?, seed_key = ?, updated_at = ? WHERE id = ?",
+          args: [body, SEED_EXAM_DURATION, key, t, Number(existing.rows[0].id)],
+        });
+      }
+    }
+    return;
+  }
+  const keyed = await db().execute({ sql: "SELECT id, title FROM exam_docs WHERE seed_key = ?", args: [key] });
+  const legacy = await db().execute({
+    sql: "SELECT id, prep_id FROM exam_docs WHERE kind = 'exam' AND (title = ? OR (seed_key = ? AND title = ?)) ORDER BY id LIMIT 1",
+    args: [LEGACY_EXAM_TITLE, key, LEGACY_EXAM_TITLE],
+  });
+  // the seed key is held by an exam the teacher renamed: leave everything alone
+  if (keyed.rows[0] && String(keyed.rows[0].title) !== LEGACY_EXAM_TITLE) return;
+  let linkPrep = prepId;
+  let oldId: number | null = null;
+  if (legacy.rows[0]) {
+    oldId = Number(legacy.rows[0].id);
+    if (legacy.rows[0].prep_id != null) linkPrep = Number(legacy.rows[0].prep_id);
+    // tables that do not exist yet hold no data
+    let n = 0;
+    for (const table of ["exam_attempts", "exam_summaries", "practice_events"]) {
+      try {
+        const r = await db().execute({ sql: `SELECT COUNT(*) AS n FROM ${table} WHERE exam_id = ?`, args: [oldId] });
+        n += Number(r.rows[0]?.n ?? 0);
+      } catch {}
+    }
+    if (n === 0) {
+      await db().execute({ sql: "DELETE FROM exam_doc_versions WHERE doc_id = ?", args: [oldId] });
+      await db().execute({ sql: "DELETE FROM exam_docs WHERE id = ?", args: [oldId] });
+    } else {
+      // has student data: keep it, only free the key
+      await db().execute({ sql: "UPDATE exam_docs SET seed_key = NULL WHERE id = ?", args: [oldId] });
+      oldId = null;
+    }
+  }
+  await db().execute({
+    sql: `INSERT OR IGNORE INTO exam_docs (kind, title, duration_min, body_json, prep_id, seed_key, created_at, updated_at)
+          VALUES ('exam', ?, ?, ?, ?, ?, ?, ?)`,
+    args: [SEED_EXAM_TITLE, SEED_EXAM_DURATION, body, linkPrep, key, t, t],
+  });
+  if (oldId != null) {
+    const created = await db().execute({ sql: "SELECT id FROM exam_docs WHERE seed_key = ?", args: [key] });
+    if (created.rows[0]) {
+      await db().execute({
+        sql: "UPDATE exam_docs SET linked_exam_id = ? WHERE linked_exam_id = ?",
+        args: [Number(created.rows[0].id), oldId],
+      });
+    }
+  }
+}
+
 async function seedOnce() {
   const t = now();
   const existing = await db().execute(
@@ -106,13 +178,7 @@ async function seedOnce() {
     const r = await db().execute("SELECT id FROM exam_docs WHERE seed_key = 'bamidbar-9-14-prep'");
     prepId = Number(r.rows[0].id);
   }
-  if (!have.has("bamidbar-9-14-exam")) {
-    await db().execute({
-      sql: `INSERT OR IGNORE INTO exam_docs (kind, title, duration_min, body_json, prep_id, seed_key, created_at, updated_at)
-            VALUES ('exam', ?, ?, ?, ?, 'bamidbar-9-14-exam', ?, ?)`,
-      args: [SEED_EXAM_TITLE, SEED_EXAM_DURATION, JSON.stringify(seedExamBody()), prepId, t, t],
-    });
-  }
+  await seedExam(prepId, t);
   // the general "how to study for the exam" sheet (issue #27): a draft,
   // linked by default to the first exam
   if (!have.has("study-guide-how-to-study")) {
