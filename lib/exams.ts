@@ -10,6 +10,7 @@ import {
 } from "./exam-types";
 import {
   LEGACY_EXAM_TITLE,
+  LEGACY_PREP_TITLE,
   SEED_EXAM_DURATION,
   SEED_EXAM_TITLE,
   SEED_GUIDE_TITLE,
@@ -162,6 +163,64 @@ async function seedExam(prepId: number, t: number) {
   }
 }
 
+// The prep sheet "chapters 9-14" is replaced, once, by the new wording for
+// chapters 9-16 (issue #38). It keeps its row (so the exam link survives), goes
+// back to draft, and the exam's practice area is reset to the seven units and
+// closed until the teacher opens it. A sheet whose title the teacher changed
+// is never touched.
+async function replaceLegacyPrep(prepId: number, t: number) {
+  const r = await db().execute({ sql: "SELECT title FROM exam_docs WHERE id = ? AND kind = 'prep'", args: [prepId] });
+  if (!r.rows[0] || String(r.rows[0].title) !== LEGACY_PREP_TITLE) return;
+  await db().execute({
+    sql: "UPDATE exam_docs SET title = ?, body_json = ?, published_at = NULL, updated_at = ? WHERE id = ?",
+    args: [SEED_PREP_TITLE, JSON.stringify(seedPrepBody()), t, prepId],
+  });
+  try {
+    await db().execute(
+      "UPDATE exam_docs SET practice_json = NULL, practice_opened_at = NULL WHERE seed_key = 'bamidbar-9-14-exam'"
+    );
+  } catch {
+    // practice columns not created yet: nothing to reset
+  }
+}
+
+// The old exam "chapters 9-14" goes away. Whatever students saved on it
+// (summaries, practice history) moves to the new exam, and study guides linked
+// to it follow. An old exam that still holds exam attempts is kept as is.
+async function retireLegacyExam(prepId: number) {
+  const created = await db().execute("SELECT id, prep_id FROM exam_docs WHERE seed_key = 'bamidbar-9-14-exam'");
+  const target = created.rows[0];
+  if (!target) return;
+  const newId = Number(target.id);
+  if (target.prep_id == null) {
+    await db().execute({ sql: "UPDATE exam_docs SET prep_id = ? WHERE id = ?", args: [prepId, newId] });
+  }
+  const olds = await db().execute({
+    sql: "SELECT id FROM exam_docs WHERE kind = 'exam' AND title = ? AND id <> ?",
+    args: [LEGACY_EXAM_TITLE, newId],
+  });
+  for (const row of olds.rows) {
+    const oldId = Number(row.id);
+    // tables that do not exist yet hold no data
+    for (const table of ["exam_summaries", "practice_events"]) {
+      try {
+        await db().execute({ sql: `UPDATE OR IGNORE ${table} SET exam_id = ? WHERE exam_id = ?`, args: [newId, oldId] });
+      } catch {}
+    }
+    await db().execute({ sql: "UPDATE exam_docs SET linked_exam_id = ? WHERE linked_exam_id = ?", args: [newId, oldId] });
+    let left = 0;
+    for (const table of ["exam_attempts", "exam_summaries", "practice_events"]) {
+      try {
+        const c = await db().execute({ sql: `SELECT COUNT(*) AS n FROM ${table} WHERE exam_id = ?`, args: [oldId] });
+        left += Number(c.rows[0]?.n ?? 0);
+      } catch {}
+    }
+    if (left > 0) continue;
+    await db().execute({ sql: "DELETE FROM exam_doc_versions WHERE doc_id = ?", args: [oldId] });
+    await db().execute({ sql: "DELETE FROM exam_docs WHERE id = ?", args: [oldId] });
+  }
+}
+
 async function seedOnce() {
   const t = now();
   const existing = await db().execute(
@@ -178,7 +237,9 @@ async function seedOnce() {
     const r = await db().execute("SELECT id FROM exam_docs WHERE seed_key = 'bamidbar-9-14-prep'");
     prepId = Number(r.rows[0].id);
   }
+  await replaceLegacyPrep(prepId, t);
   await seedExam(prepId, t);
+  await retireLegacyExam(prepId);
   // the general "how to study for the exam" sheet (issue #27): a draft,
   // linked by default to the first exam
   if (!have.has("study-guide-how-to-study")) {

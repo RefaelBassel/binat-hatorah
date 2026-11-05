@@ -58,7 +58,7 @@ export async function ensurePracticeTables() {
 
 // Units a practice covers before the teacher chooses, by the exam's seed key.
 const DEFAULT_UNITS: Record<string, string[]> = {
-  "bamidbar-9-14-exam": ["lesson-01", "lesson-02", "lesson-03", "lesson-04", "lesson-05", "lesson-07"],
+  "bamidbar-9-14-exam": ["lesson-01", "lesson-02", "lesson-03", "lesson-04", "lesson-05", "lesson-06", "lesson-07"],
 };
 
 function defaultUnits(exam: DocRow): string[] {

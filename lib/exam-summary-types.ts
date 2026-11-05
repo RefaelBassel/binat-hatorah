@@ -37,6 +37,8 @@ const BAMIDBAR_UNITS: SummaryUnit[] = [
   { key: "mitavim", title: "המתאוננים והמתאווים", chapters: "פרק י״א", taskRef: "lesson-03" },
   { key: "miriam-aharon", title: "מרים ואהרן", chapters: "פרק י״ב", taskRef: "lesson-04" },
   { key: "meraglim", title: "המרגלים", chapters: "פרקים י״ג–י״ד", taskRef: "lesson-05" },
+  { key: "lo-taturu", title: "וְלֹא תָתוּרוּ", chapters: "פרק ט״ו", taskRef: "lesson-06" },
+  { key: "korach", title: "קרח ועדתו", chapters: "פרק ט״ז", taskRef: "lesson-07" },
 ];
 
 export const EXAM_SUMMARY_UNITS: Record<string, SummaryUnit[]> = {
