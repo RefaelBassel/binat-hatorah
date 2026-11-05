@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import PageShell from "@/components/page-shell";
 import { requireTeacherPage } from "@/lib/exam-page-guard";
 import { allSummaries, summaryUnitsOfExam } from "@/lib/exam-summaries";
-import { SUMMARY_FIELDS } from "@/lib/exam-summary-types";
+import { SUMMARY_FIELDS, commentatorLines } from "@/lib/exam-summary-types";
 import { formatHebDate, formatHebTime } from "@/lib/hebrew";
 
 export const dynamic = "force-dynamic";
@@ -71,9 +71,17 @@ export default async function ExamSummariesPage({ params }: { params: Promise<{ 
                         {SUMMARY_FIELDS.filter((f) => v[f.key].trim() !== "").map((f) => (
                           <div key={f.key} className={f.key === "notes" ? "sm:col-span-2" : ""}>
                             <dt className="font-bold">{f.label}</dt>
-                            <dd dir="auto" className="whitespace-pre-wrap text-start">
-                              {v[f.key]}
-                            </dd>
+                            {f.key === "commentator" ? (
+                              commentatorLines(v.commentator).map((line, i) => (
+                                <dd key={i} dir="auto" className="whitespace-pre-wrap text-start">
+                                  {line}
+                                </dd>
+                              ))
+                            ) : (
+                              <dd dir="auto" className="whitespace-pre-wrap text-start">
+                                {v[f.key]}
+                              </dd>
+                            )}
                           </div>
                         ))}
                       </dl>

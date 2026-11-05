@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  MAX_COMMENTATOR_ROWS,
   SUMMARY_FIELDS,
+  parseCommentators,
+  serializeCommentators,
+  type CommentatorRow,
   type SummaryField,
   type SummaryUnit,
   type SummaryValues,
@@ -30,6 +34,14 @@ export default function MySummaries({
   const blank = (): SummaryValues => ({ whatHappened: "", keyVerse: "", commentator: "", message: "", notes: "" });
   const [values, setValues] = useState<Record<string, SummaryValues>>(() =>
     Object.fromEntries(units.map((u) => [u.key, { ...blank(), ...(initial[u.key] ?? {}) }]))
+  );
+  const [rows, setRows] = useState<Record<string, CommentatorRow[]>>(() =>
+    Object.fromEntries(
+      units.map((u) => {
+        const parsed = parseCommentators(initial[u.key]?.commentator ?? "");
+        return [u.key, parsed.length > 0 ? parsed : [{ name: "", says: "" }]];
+      })
+    )
   );
   const [phase, setPhase] = useState<Record<string, Phase>>({});
   const [exporting, setExporting] = useState<"summary" | "tasks" | null>(null);
@@ -77,6 +89,24 @@ export default function MySummaries({
     const old = timers.current.get(id);
     if (old) window.clearTimeout(old);
     timers.current.set(id, window.setTimeout(() => void flushOne(id), 900));
+  }
+
+  // commentator rows: each edit saves the whole list through the same autosave
+  function commitRows(unit: string, next: CommentatorRow[]) {
+    setRows((cur) => ({ ...cur, [unit]: next }));
+    edit(unit, "commentator", serializeCommentators(next));
+  }
+  function editRow(unit: string, i: number, patch: Partial<CommentatorRow>) {
+    commitRows(unit, rows[unit].map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  }
+  function addRow(unit: string) {
+    if (rows[unit].length >= MAX_COMMENTATOR_ROWS) return;
+    setRows((cur) => ({ ...cur, [unit]: [...cur[unit], { name: "", says: "" }] }));
+  }
+  function removeRow(unit: string, i: number) {
+    if (!window.confirm("למחוק את הפרשן הזה?")) return;
+    const left = rows[unit].filter((_, j) => j !== i);
+    commitRows(unit, left.length > 0 ? left : [{ name: "", says: "" }]);
   }
 
   // warn when leaving with text that did not reach the server yet
@@ -154,7 +184,69 @@ export default function MySummaries({
                 </span>
               </header>
               <div className="grid gap-3 sm:grid-cols-2">
-                {SUMMARY_FIELDS.map((f) => (
+                {SUMMARY_FIELDS.map((f) =>
+                  f.key === "commentator" ? (
+                    <div key={f.key} className="block">
+                      <span className="mb-1 block text-sm font-bold">{f.label}</span>
+                      <ul className="space-y-2">
+                        {rows[u.key].map((r, i) => (
+                          <li
+                            key={i}
+                            className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-2"
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="grid min-w-0 flex-1 gap-2">
+                                <input
+                                  type="text"
+                                  dir="auto"
+                                  maxLength={60}
+                                  readOnly={readOnly}
+                                  aria-label="שם הפרשן"
+                                  placeholder="שם הפרשן"
+                                  value={r.name}
+                                  onChange={(e) => editRow(u.key, i, { name: e.target.value })}
+                                  onBlur={() => void flushOne(`${u.key}|commentator`)}
+                                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-2 text-base"
+                                />
+                                <textarea
+                                  dir="auto"
+                                  rows={2}
+                                  maxLength={1500}
+                                  readOnly={readOnly}
+                                  aria-label="מה הוא אומר במשפט אחד"
+                                  placeholder="מה הוא אומר במשפט אחד"
+                                  value={r.says}
+                                  onChange={(e) => editRow(u.key, i, { says: e.target.value })}
+                                  onBlur={() => void flushOne(`${u.key}|commentator`)}
+                                  className="w-full resize-y rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] p-2 text-base leading-7"
+                                />
+                              </div>
+                              {!readOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeRow(u.key, i)}
+                                  aria-label="מחיקת הפרשן"
+                                  title="מחיקת הפרשן"
+                                  className="shrink-0 rounded-lg border border-[color:var(--danger)]/40 px-2 py-1 text-base text-[color:var(--danger)] hover:bg-[color:var(--danger)]/10"
+                                >
+                                  🗑
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                      {!readOnly && rows[u.key].length < MAX_COMMENTATOR_ROWS && (
+                        <button
+                          type="button"
+                          onClick={() => addRow(u.key)}
+                          className="mt-2 rounded-full border-2 border-[color:var(--primary)]/50 px-4 py-1.5 text-sm font-bold text-[color:var(--primary)] transition hover:scale-[1.02]"
+                        >
+                          ➕ הוספת פרשן
+                        </button>
+                      )}
+                    </div>
+                  ) : (
                   <label key={f.key} className={`block ${f.key === "notes" ? "sm:col-span-2" : ""}`}>
                     <span className="mb-1 block text-sm font-bold">
                       {f.label}
@@ -171,7 +263,8 @@ export default function MySummaries({
                       className="w-full resize-y rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-2 text-base leading-7"
                     />
                   </label>
-                ))}
+                  )
+                )}
               </div>
             </article>
           );

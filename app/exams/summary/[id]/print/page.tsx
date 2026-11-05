@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { PrintNow } from "@/components/exams/list-actions";
 import { getSummaries, studentName, summaryContextForExam, summaryUnitsOfExam } from "@/lib/exam-summaries";
-import { SUMMARY_FIELDS } from "@/lib/exam-summary-types";
+import { SUMMARY_FIELDS, commentatorLines } from "@/lib/exam-summary-types";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +66,21 @@ export default async function SummaryPrintPage({
                   </th>
                   {SUMMARY_FIELDS.map((f) => (
                     <td key={f.key} dir="auto" className="whitespace-pre-wrap border border-black p-2 text-start">
-                      {v?.[f.key]?.trim() ? v[f.key] : <span className="text-neutral-400">&nbsp;</span>}
+                      {f.key === "commentator" ? (
+                        commentatorLines(v?.commentator ?? "").length > 0 ? (
+                          commentatorLines(v?.commentator ?? "").map((line, i) => (
+                            <div key={i} dir="auto" className={i > 0 ? "mt-1" : ""}>
+                              {line}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-neutral-400">&nbsp;</span>
+                        )
+                      ) : v?.[f.key]?.trim() ? (
+                        v[f.key]
+                      ) : (
+                        <span className="text-neutral-400">&nbsp;</span>
+                      )}
                     </td>
                   ))}
                 </tr>

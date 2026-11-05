@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { getDoc, listDocs, now, type DocRow } from "./exams";
 import {
-  SUMMARY_MAX_LEN,
+  maxLenFor,
   summaryUnitsFor,
   type SummaryField,
   type SummaryUnit,
@@ -132,7 +132,7 @@ export async function saveSummaryField(
     sql: `INSERT INTO exam_summaries (exam_id, user_id, unit_key, ${col}, updated_at)
           VALUES (?, ?, ?, ?, ?)
           ON CONFLICT(exam_id, user_id, unit_key) DO UPDATE SET ${col} = excluded.${col}, updated_at = excluded.updated_at`,
-    args: [examId, userId, unitKey, value.slice(0, SUMMARY_MAX_LEN), t],
+    args: [examId, userId, unitKey, value.slice(0, maxLenFor(field)), t],
   });
 }
 
