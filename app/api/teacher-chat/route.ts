@@ -16,8 +16,10 @@ export async function GET(req: Request) {
   const guard = await requireTeacher();
   if (!guard.ok) return guard.res;
   const which = Number(new URL(req.url).searchParams.get("thread") ?? "") || null;
+  // refresh first: a build's question is written into the chat as a message
+  const fresh = await refreshCodeRequests(guard.userId).catch(() => null);
   const data = await loadChat(guard.userId, which);
-  const codeRequests = await refreshCodeRequests(guard.userId).catch(() => data.codeRequests);
+  const codeRequests = fresh ?? data.codeRequests;
   return NextResponse.json({ ok: true, ...data, codeRequests, github: Boolean(process.env.GITHUB_TOKEN) });
 }
 

@@ -33,6 +33,7 @@ const STATUS_HE: Record<string, { label: string; tone: string }> = {
   merged: { label: "עלה לאתר ✓", tone: "var(--success-fill)" },
   failed: { label: "הבנייה נכשלה — רפאל קיבל הודעה", tone: "var(--danger-fill)" },
   paused: { label: "ממתינה בתור לבנייה — תצא מעצמה, בקשה אחת בכל פעם", tone: "var(--warning-fill)" },
+  question: { label: "הבנייה שואלת שאלה — עני כאן בצ׳אט", tone: "var(--warning-fill)" },
   closed: { label: "נסגר", tone: "var(--primary-fill)" },
 };
 
@@ -53,6 +54,9 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
   const [reloading, setReloading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const sendingRef = useRef(false);
+  // the thread on screen: the poll refreshes its messages (a build's question
+  // arrives as a message) only when it is the latest one
+  const threadRef = useRef<number | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -66,6 +70,7 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
     setGithub(Boolean(d.github));
     setThreads(d.threads ?? []);
     setThread(d.thread ?? null);
+    threadRef.current = d.thread ?? null;
     setLoaded(true);
   };
   const reload = async () => {
@@ -88,7 +93,12 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
       fetch("/api/teacher-chat", { cache: "no-store" })
         .then((r) => r.json())
         .then((d) => {
-          if (d.ok) setCodeRequests(d.codeRequests);
+          if (!d.ok) return;
+          setCodeRequests(d.codeRequests);
+          if (!sendingRef.current && d.thread === threadRef.current && Array.isArray(d.messages)) {
+            setMsgs(flatten(d.messages));
+            setActions(d.actions);
+          }
         })
         .catch(() => {});
     }, 60000);

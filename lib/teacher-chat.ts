@@ -108,6 +108,14 @@ export async function ensureChatTables() {
   } catch {
     /* column exists */
   }
+  // older tables: a question the build asked on GitHub, relayed to the chat
+  for (const col of ["question TEXT", "question_comment_id INTEGER"]) {
+    try {
+      await db().execute(`ALTER TABLE code_requests ADD COLUMN ${col}`);
+    } catch {
+      /* column exists */
+    }
+  }
   ready = true;
 }
 
@@ -139,6 +147,7 @@ export interface CodeRequestRow {
   previewUrl: string | null;
   status: string;
   note: string | null;
+  question: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -286,6 +295,11 @@ async function publishUnit(contentRef: string, dueAt: number, teacherId: number)
 const READ_TOOLS = new Set(["list_units", "get_unit", "list_students", "class_progress", "list_tasks", "list_code_requests"]);
 
 export const TOOLS: Anthropic.Tool[] = [
+  {
+    name: "answer_build_question",
+    description: "Pass the teacher's answer to a question the automatic build asked (it appears in the chat as \"❓ שאלה מהבנייה … (בקשה #N)\"). codeRequestId: N. answer: her answer in Hebrew, complete and self-contained — the build sees only this text and the original request, not the chat. The build then continues by itself.",
+    input_schema: { type: "object", properties: { codeRequestId: { type: "integer" }, answer: { type: "string" } }, required: ["codeRequestId", "answer"], additionalProperties: false },
+  },
   {
     name: "list_units",
     description: "All units in the content library (lessons and writing practices): ref, title, whether published (taskId), due date, assigned/submitted/graded counts.",
@@ -537,6 +551,13 @@ async function buildProposal(name: string, input: Record<string, unknown>): Prom
       }
       return { summary: "הודעה לכל הכיתה", preview: { changes: [{ what: "אל: כל הכיתה (צ׳אט קבוצתי)", before: null, after: text }] } };
     }
+    case "answer_build_question": {
+      const answer = str(input.answer, 20_000);
+      if (!answer) return { error: "answer required" };
+      const cr = (await db().execute({ sql: "SELECT title, issue_number, question FROM code_requests WHERE id = ?", args: [Number(input.codeRequestId)] })).rows[0];
+      if (!cr || cr.issue_number == null) return { error: "code request not found or not sent yet" };
+      return { summary: `תשובה לשאלת הבנייה: ${String(cr.title)}`, preview: { changes: [{ what: "התשובה שתועבר לבנייה", before: (cr.question as string | null) ?? null, after: answer }] } };
+    }
     case "request_code_change": {
       const title = str(input.title, 120);
       const body = str(input.body, CODE_REQUEST_BODY_MAX);
@@ -661,6 +682,21 @@ export async function applyAction(actionId: number, userId: number): Promise<Act
         const text = str(input.text, 4000);
         if (input.to === "student") await sendMessage(userId, Number(input.userId), text);
         else await sendGroupMessage(userId, text);
+        break;
+      }
+      case "answer_build_question": {
+        const id = Number(input.codeRequestId);
+        const answer = str(input.answer, 20_000);
+        const cr = (await db().execute({ sql: "SELECT issue_number, repo FROM code_requests WHERE id = ?", args: [id] })).rows[0];
+        if (!cr || cr.issue_number == null) throw new Error("הבקשה לא נמצאה");
+        if (!process.env.GITHUB_TOKEN) throw new Error("אין חיבור ל-GitHub");
+        const repo = (cr.repo as string | null) ?? SITE.repo;
+        await gh(`/repos/${repo}/issues/${Number(cr.issue_number)}/comments`, {
+          method: "POST",
+          body: JSON.stringify({ body: `@claude\n\nתשובת המורה (מהצ׳אט באתר):\n\n${answer}\n\nיש להמשיך לבנות את הבקשה לפי התשובה הזאת, להריץ בנייה ולפתוח Pull Request.` }),
+        });
+        await db().execute({ sql: "UPDATE code_requests SET status = 'working', retried_at = ?, updated_at = ? WHERE id = ?", args: [now(), now(), id] });
+        result = { codeRequestId: id, message: "התשובה הועברה לבנייה, והיא ממשיכה מעצמה" };
         break;
       }
       case "request_code_change": {
@@ -844,6 +880,7 @@ export function describeCodeRequest(cr: CodeRequestRow): string {
   if (cr.status === "queued" && cr.note === QUEUE_NOTE) return "נרשמה וממתינה בתור — בקשה קודמת עדיין בבנייה; תישלח מעצמה כשתסתיים";
   if (cr.status === "queued" && cr.note) return `השליחה ל-GitHub נכשלה (${cr.note}); המערכת תנסה שוב מעצמה`;
   if (cr.status === "paused") return "ממתינה בתור לבנייה: הבקשה שמורה ותצא מעצמה כשיגיע תורה (בקשה אחת בכל פעם; אם חסר קרדיט בחשבון Claude, רפאל מקבל הודעה)";
+  if (cr.status === "question") return `הבנייה עצרה ושואלת את המורה: ${cr.question ?? ""} — כשהיא עונה, העבר את התשובה עם answer_build_question`;
   if (cr.status === "failed") return "הבנייה נעצרה ולא הושלמה; רפאל קיבל הודעה";
   return `סטטוס: ${cr.status}`;
 }
@@ -886,6 +923,7 @@ export async function listCodeRequests(userId: number): Promise<CodeRequestRow[]
     previewUrl: x.branch && ((x.repo as string | null) ?? SITE.repo) === SITE.repo ? previewUrlFor(String(x.branch)) : null,
     status: String(x.status),
     note: (x.note as string | null) ?? null,
+    question: (x.question as string | null) ?? null,
     createdAt: Number(x.created_at),
     updatedAt: Number(x.updated_at),
   }));
@@ -953,11 +991,32 @@ export async function repairTruncatedRequests(): Promise<number> {
   return posted;
 }
 
+// a build's question, once per GitHub comment: stored on the request and
+// written into the teacher's chat as a message from Claude
+async function surfaceBuildQuestion(id: number, q: { id: number; body: string }) {
+  const r = (await db().execute({ sql: "SELECT user_id, title, question_comment_id FROM code_requests WHERE id = ?", args: [id] })).rows[0];
+  if (!r || Number(r.question_comment_id ?? 0) === q.id) return;
+  const text = q.body
+    .replace(/^@\S+\s*/, "")
+    .replace(/\[View job[^\n]*/gi, "")
+    .replace(/\n?-{3,}\n?\[?branch[^\n]*/gi, "")
+    .trim()
+    .slice(0, 4000);
+  await db().execute({ sql: "UPDATE code_requests SET question = ?, question_comment_id = ?, updated_at = ? WHERE id = ?", args: [text, q.id, now(), id] });
+  const userId = Number(r.user_id);
+  const thread = await currentThread(userId);
+  const msg = `❓ שאלה מהבנייה של ״${String(r.title)}״ (בקשה #${id}):\n\n${text}\n\nאפשר לענות לי כאן בצ׳אט, ואעביר את התשובה לבנייה. אחרי התשובה הבנייה ממשיכה מעצמה.`;
+  await db().execute({
+    sql: "INSERT INTO teacher_chat_messages (user_id, thread, role, content_json, created_at) VALUES (?, ?, 'assistant', ?, ?)",
+    args: [userId, thread, JSON.stringify([{ type: "text", text: msg }]), now()],
+  });
+}
+
 export async function refreshCodeRequests(userId: number): Promise<CodeRequestRow[]> {
   await ensureChatTables();
   if (!process.env.GITHUB_TOKEN) return listCodeRequests(userId);
   const open = await db().execute({
-    sql: "SELECT id, issue_number, repo FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview','paused','failed') AND updated_at < ?",
+    sql: "SELECT id, issue_number, repo, length(body) AS blen FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview','paused','failed','question') AND updated_at < ?",
     args: [now() - 60],
   });
   for (const row of open.rows) {
@@ -979,6 +1038,21 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
       else if (issue?.state === "closed") status = "closed";
       else if (labels.has("waiting-credit")) status = "paused";
       else if (labels.has("build-failed")) status = "failed";
+      // the build may stop to ask the teacher something — on GitHub, which she
+      // never sees. The bot's last comment, a question, nothing after it:
+      // relay it to her chat; her answer goes back as an @claude comment.
+      // (Requests cut at 6,000 characters get their full text from
+      // repairTruncatedRequests instead.)
+      const blen = Number(row.blen ?? 0);
+      if (status === "working" && issue?.state === "open" && !pr && !(blen >= 5990 && blen <= 6000)) {
+        const comments = (await gh(`/repos/${repo}/issues/${n}/comments?per_page=100`)) as { id: number; body: string; user: { login: string; type: string }; updated_at: string }[] | null;
+        const last = comments?.[comments.length - 1];
+        const asks = last ? /[?？]/.test(last.body.replace(/https?:\/\/\S+/g, "")) : false;
+        if (last && asks && last.user.type === "Bot" && last.user.login.toLowerCase().includes("claude") && Date.now() - Date.parse(last.updated_at) > 120_000) {
+          status = "question";
+          await surfaceBuildQuestion(Number(row.id), { id: last.id, body: last.body });
+        }
+      }
       await db().execute({ sql: "UPDATE code_requests SET status = ?, pr_url = ?, branch = ?, updated_at = ? WHERE id = ?", args: [status, pr?.html_url ?? null, pr?.head.ref ?? null, now(), Number(row.id)] });
     } catch (e) {
       await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), Number(row.id)] });
@@ -1029,7 +1103,7 @@ const SYSTEM = `אתה קלוד — העוזר של המורה באתר "${SITE.
 - ביטול משימה (cancel_task) לעולם לא מוחק עבודה של תלמידים — רק מוריד את המשימה מהרשימה שלהם. לכן במשימה מבוטלת class_progress מחזיר את העבודה השמורה ב-keptWorkNotAssigned (אחוז התקדמות, זמן עבודה, מספר תשובות); אל תאמר שעבודה אבדה בלי לבדוק שם.
 - לפני עריכת טקסט ביחידה — תמיד get_unit קודם, כדי לערוך את הנוסח הנוכחי ולהשתמש במפתחות (key) הנכונים של השאלות והבלוקים.
 - בדיקת ההבנה (check) נערכת בעמוד המשימה עצמו (״בדיקת ההבנה״ בלוח העריכה) — אם מבקשים לשנות שאלה סגורה, הפנה לשם, או השתמש ב-request_code_change אם זה שינוי מבני.
-- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה. בקשת קוד עולה דולרים, ועבודה בכלים שלך עולה אגורות: לפני request_code_change בדוק אם אחד הכלים שלך עושה את זה (נוסח, שאלות, תוכן יחידה, מועדים, פרסום, ביטול, הודעות, חשבונות) — אם כן, עשה זאת בכלי ואל תשלח בקשת קוד. בקשת קוד רק כשצריך באמת קוד חדש: מסך, כפתור, התנהגות או מבנה נתונים שאין להם כלי. בכל בקשת קוד ציין size: small לשינוי ממוקד (רוב הבקשות), large רק לפיצ׳ר חדש שנוגע בכמה מסכים או במבנה הנתונים. בקשה חדשה בזמן שקודמת עוד ממתינה בתור מצורפת אליה אוטומטית — אמור לה זאת לפי message. אם המורה הדביקה בצ׳אט טקסט ארוך (מבחן, דף הכנה, נוסח שיש להעתיק מילה במילה) — אל תעתיק אותו לגוף הבקשה: ההודעה המקורית שלה מצורפת לבקשה אוטומטית, מילה במילה. בגוף כתוב רק מה לעשות עם הטקסט ואיפה.
+- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה. בקשת קוד עולה דולרים, ועבודה בכלים שלך עולה אגורות: לפני request_code_change בדוק אם אחד הכלים שלך עושה את זה (נוסח, שאלות, תוכן יחידה, מועדים, פרסום, ביטול, הודעות, חשבונות) — אם כן, עשה זאת בכלי ואל תשלח בקשת קוד. בקשת קוד רק כשצריך באמת קוד חדש: מסך, כפתור, התנהגות או מבנה נתונים שאין להם כלי. בכל בקשת קוד ציין size: small לשינוי ממוקד (רוב הבקשות), large רק לפיצ׳ר חדש שנוגע בכמה מסכים או במבנה הנתונים. בקשה חדשה בזמן שקודמת עוד ממתינה בתור מצורפת אליה אוטומטית — אמור לה זאת לפי message. אם המורה הדביקה בצ׳אט טקסט ארוך (מבחן, דף הכנה, נוסח שיש להעתיק מילה במילה) — אל תעתיק אותו לגוף הבקשה: ההודעה המקורית שלה מצורפת לבקשה אוטומטית, מילה במילה. בגוף כתוב רק מה לעשות עם הטקסט ואיפה. הודעה בצ׳אט שמתחילה ב-״❓ שאלה מהבנייה״ היא שאלה שהבנייה האוטומטית שאלה ועצרה בגללה. כשהמורה עונה עליה, העבר את התשובה מיד עם answer_build_question (codeRequestId = מספר הבקשה שבהודעה), מנוסחת מלאה ועצמאית; אם התשובה נמצאת בכלים שלך (נוסח, תוכן יחידה), צרף את התוכן עצמו. אל תשלח בקשת קוד חדשה במקום זה.
 - שאלות על "איך עושים X באתר" — ענה ישירות מהידע שלך על האתר (למטה).
 
 סגנון: עברית, חם, קצר ופשוט. בלי Markdown (בלי כוכביות וכותרות); רשימות עם מקפים אם צריך. במבט אחד מבינים. כשמציעים ניסוח חדש — כתוב אותו במלואו. אל תמציא תוכן לימודי שהיא לא ביקשה; כשהיא מבקשת "לשפר" — הצע נוסח והסבר במשפט מה שונה.
@@ -1082,7 +1156,11 @@ async function loadRepairedHistory(userId: number, thread: number): Promise<Anth
       content = content.filter((b) => b.type !== "tool_result" || open.has((b as Anthropic.ToolResultBlockParam).tool_use_id));
       if (content.length === 0) continue;
     }
-    out.push({ role: m.role, content });
+    // two messages in a row from the same side (a build's question written
+    // into the chat after Claude's reply): one turn
+    const last = out[out.length - 1];
+    if (last && last.role === m.role && Array.isArray(last.content)) last.content = [...last.content, ...content];
+    else out.push({ role: m.role, content });
   }
   return out;
 }
