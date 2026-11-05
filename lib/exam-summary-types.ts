@@ -5,7 +5,7 @@ export type SummaryField = "whatHappened" | "keyVerse" | "commentator" | "messag
 export const SUMMARY_FIELDS: { key: SummaryField; label: string; hint: string; rows: number }[] = [
   { key: "whatHappened", label: "מה קרה", hint: "2–3 משפטים", rows: 3 },
   { key: "keyVerse", label: "פסוק מפתח", hint: "", rows: 2 },
-  { key: "commentator", label: "הפרשן ומה הוא אומר במשפט אחד", hint: "", rows: 2 },
+  { key: "commentator", label: "הפרשנים ומה הם אומרים", hint: "", rows: 2 },
   { key: "message", label: "המסר או הערך", hint: "", rows: 2 },
   { key: "notes", label: "הערות", hint: "שדה חופשי", rows: 2 },
 ];
@@ -21,6 +21,55 @@ export function isSummaryField(v: unknown): v is SummaryField {
 }
 
 export const SUMMARY_MAX_LEN = 4000;
+// the commentator field stores a JSON list, so it gets a larger ceiling
+export const COMMENTATOR_MAX_LEN = 20000;
+export function maxLenFor(field: SummaryField): number {
+  return field === "commentator" ? COMMENTATOR_MAX_LEN : SUMMARY_MAX_LEN;
+}
+
+// ── Commentators: several rows per unit ────────────────────────────────
+// Stored in the existing `commentator` column as a JSON array of
+// {name, says}. Older rows hold plain text; it is moved into the first row.
+export interface CommentatorRow {
+  name: string;
+  says: string;
+}
+export const MAX_COMMENTATOR_ROWS = 10;
+
+export function parseCommentators(raw: string): CommentatorRow[] {
+  const text = raw ?? "";
+  if (text.trim() === "") return [];
+  if (text.trimStart().startsWith("[")) {
+    try {
+      const arr: unknown = JSON.parse(text);
+      if (Array.isArray(arr)) {
+        return arr
+          .filter((r): r is Record<string, unknown> => !!r && typeof r === "object")
+          .map((r) => ({ name: String(r.name ?? ""), says: String(r.says ?? "") }));
+      }
+    } catch {
+      // plain text that merely starts with "[": fall through
+    }
+  }
+  // legacy free text: split "name: text" when clearly possible, else keep it all
+  const m = /^\s*([^:：\n]{1,30}?)\s*[:：]\s*([\s\S]+)$/.exec(text);
+  if (m && m[2].trim() !== "") return [{ name: m[1].trim(), says: m[2] }];
+  return [{ name: "", says: text }];
+}
+
+// "" when every row is empty, so an untouched card never counts as started
+export function serializeCommentators(rows: CommentatorRow[]): string {
+  const kept = rows.slice(0, MAX_COMMENTATOR_ROWS);
+  if (kept.every((r) => r.name.trim() === "" && r.says.trim() === "")) return "";
+  return JSON.stringify(kept.map((r) => ({ name: r.name, says: r.says })));
+}
+
+// Print / teacher view: one "name: says" line per non-empty row
+export function commentatorLines(raw: string): string[] {
+  return parseCommentators(raw)
+    .filter((r) => r.name.trim() !== "" || r.says.trim() !== "")
+    .map((r) => (r.name.trim() && r.says.trim() ? `${r.name.trim()}: ${r.says.trim()}` : r.name.trim() || r.says.trim()));
+}
 
 export interface SummaryUnit {
   key: string;

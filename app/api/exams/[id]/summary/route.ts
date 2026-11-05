@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { saveSummaryField, summaryContextForExam } from "@/lib/exam-summaries";
-import { SUMMARY_MAX_LEN, isSummaryField } from "@/lib/exam-summary-types";
+import { isSummaryField, maxLenFor } from "@/lib/exam-summary-types";
 
 // Student: autosave one summary field. Summaries are private to the student
 // (the teachers read them in the dashboard); nothing here grades or checks.
@@ -20,7 +20,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!ctx.units.some((u) => u.key === unitKey) || !isSummaryField(field) || value == null) {
     return NextResponse.json({ error: "בקשה לא תקינה." }, { status: 400 });
   }
-  if (value.length > SUMMARY_MAX_LEN) {
+  if (value.length > maxLenFor(field)) {
     return NextResponse.json({ error: "הטקסט ארוך מדי." }, { status: 400 });
   }
   await saveSummaryField(ctx.exam.id, Number(user.id), unitKey, field, value);
