@@ -916,29 +916,22 @@ export async function repairTruncatedRequests(): Promise<number> {
       const comments = (await gh(`/repos/${repo}/issues/${n}/comments?per_page=100`)) as { body: string }[] | null;
       if (!comments || comments.some((c) => c.body.includes(FULL_TEXT_MARK))) continue;
       const at = Number(row.created_at);
-      const msgs = (
+      // the chat model's own request, before the cut: the stored tool input
+      // keeps the full body
+      const acts = (
         await db().execute({
-          sql: "SELECT content_json FROM teacher_chat_messages WHERE user_id = ? AND role = 'user' AND created_at BETWEEN ? AND ? ORDER BY id",
-          args: [Number(row.user_id), at - 2 * 86400, at],
+          sql: "SELECT input_json FROM teacher_chat_actions WHERE user_id = ? AND tool = 'request_code_change' AND created_at BETWEEN ? AND ? ORDER BY id DESC",
+          args: [Number(row.user_id), at - 900, at + 120],
         })
       ).rows;
       const texts: string[] = [];
-      for (const m of msgs) {
-        let content: unknown;
-        try { content = JSON.parse(String(m.content_json)); } catch { continue; }
-        if (!Array.isArray(content)) continue;
-        for (const b of content as { type?: string; text?: string }[]) {
-          const t = b.type === "text" ? String(b.text ?? "").replace(/^\[[^\]\n]*\]\n/, "").trim() : "";
-          if (t.length >= 1200) texts.push(t);
-        }
+      for (const a of acts) {
+        let input: { body?: unknown } = {};
+        try { input = JSON.parse(String(a.input_json)); } catch { continue; }
+        const full = typeof input.body === "string" ? input.body.trim() : "";
+        if (full.length > 6000) { texts.push(full); break; }
       }
-      const shape = msgs.map((m) => {
-        try {
-          const c = JSON.parse(String(m.content_json)) as { type?: string; text?: string; content?: unknown }[];
-          return Array.isArray(c) ? c.map((b) => `${b.type}:${b.type === "text" ? String(b.text ?? "").length : JSON.stringify(b.content ?? "").length}`).join("+") : "?";
-        } catch { return "bad"; }
-      });
-      console.log(`[repair-truncated] request=${row.id} issue=${n} at=${at} messages=${msgs.length} long=${texts.map((t) => t.length).join(",")} shape=${shape.slice(-25).join(" ")}`);
+      console.log(`[repair-truncated] request=${row.id} issue=${n} at=${at} actions=${acts.length} full=${texts.map((t) => t.length).join(",")}`);
       if (!texts.length) continue;
       // the latest messages matter most; keep within GitHub's comment limit
       const kept: string[] = [];
@@ -948,7 +941,7 @@ export async function repairTruncatedRequests(): Promise<number> {
         kept.unshift(t);
         size += t.length;
       }
-      const body = `@claude\n\n${FULL_TEXT_MARK}, מילה במילה. גוף הבקשה נחתך בגלל מגבלת אורך שתוקנה; זה המקור הקובע לכל טקסט שהמורה ביקשה להעתיק. אין צורך לחכות לתשובה נוספת: יש לבנות את הבקשה המלאה עכשיו.\n\n---\n\n${kept.join("\n\n---\n\n")}`;
+      const body = `@claude\n\n${FULL_TEXT_MARK}: גוף הבקשה המלא, מילה במילה. הגוף שלמעלה נחתך בגלל מגבלת אורך שתוקנה; זה הנוסח הקובע, כולל כל התוכן שיש להעתיק. אין צורך לחכות לתשובה נוספת: יש לבנות את הבקשה המלאה עכשיו.\n\n---\n\n${kept.join("\n\n---\n\n")}`;
       await gh(`/repos/${repo}/issues/${n}/comments`, { method: "POST", body: JSON.stringify({ body }) });
       await db().execute({ sql: "UPDATE code_requests SET status = 'working', retried_at = ?, note = NULL, updated_at = ? WHERE id = ?", args: [now(), now(), Number(row.id)] });
       posted++;
