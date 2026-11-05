@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { refreshCodeRequests } from "@/lib/teacher-chat";
+import { refreshCodeRequests, repairTruncatedRequests } from "@/lib/teacher-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const repaired = await repairTruncatedRequests().catch(() => 0);
   const list = await refreshCodeRequests(0);
-  return NextResponse.json({ ok: true, at: new Date().toISOString(), seen: list.length });
+  return NextResponse.json({ ok: true, at: new Date().toISOString(), seen: list.length, repaired });
 }

@@ -896,6 +896,61 @@ function previewUrlFor(branch: string): string {
   return `https://${SITE.vercelProject}-git-${slug}-${SITE.vercelTeam}.vercel.app`.slice(0, 250);
 }
 
+// Requests made before the 60,000-character cap were cut at 6,000 characters
+// (#20 → issue #38: a pasted exam, the build stopped to ask for the rest). For
+// each such request still open, post the teacher's own long messages from the
+// chat, word for word, as an @claude comment — once per issue.
+const FULL_TEXT_MARK = "הנוסח המלא מהצ׳אט של המורה";
+export async function repairTruncatedRequests(): Promise<number> {
+  await ensureChatTables();
+  if (!process.env.GITHUB_TOKEN) return 0;
+  const rows = (
+    await db().execute("SELECT id, user_id, issue_number, repo, created_at FROM code_requests WHERE issue_number IS NOT NULL AND length(body) BETWEEN 5990 AND 6000 AND status NOT IN ('merged','closed')")
+  ).rows;
+  let posted = 0;
+  for (const row of rows) {
+    const repo = (row.repo as string | null) ?? SITE.repo;
+    const n = Number(row.issue_number);
+    try {
+      const comments = (await gh(`/repos/${repo}/issues/${n}/comments?per_page=100`)) as { body: string }[] | null;
+      if (!comments || comments.some((c) => c.body.includes(FULL_TEXT_MARK))) continue;
+      const at = Number(row.created_at);
+      const msgs = (
+        await db().execute({
+          sql: "SELECT content_json FROM teacher_chat_messages WHERE user_id = ? AND role = 'user' AND created_at BETWEEN ? AND ? ORDER BY id",
+          args: [Number(row.user_id), at - 2 * 86400, at],
+        })
+      ).rows;
+      const texts: string[] = [];
+      for (const m of msgs) {
+        let content: unknown;
+        try { content = JSON.parse(String(m.content_json)); } catch { continue; }
+        if (!Array.isArray(content)) continue;
+        for (const b of content as { type?: string; text?: string }[]) {
+          const t = b.type === "text" ? String(b.text ?? "").replace(/^\[[^\]\n]*\]\n/, "").trim() : "";
+          if (t.length >= 1200) texts.push(t);
+        }
+      }
+      if (!texts.length) continue;
+      // the latest messages matter most; keep within GitHub's comment limit
+      const kept: string[] = [];
+      let size = 0;
+      for (const t of [...texts].reverse()) {
+        if (size + t.length > CODE_REQUEST_BODY_MAX) break;
+        kept.unshift(t);
+        size += t.length;
+      }
+      const body = `@claude\n\n${FULL_TEXT_MARK}, מילה במילה. גוף הבקשה נחתך בגלל מגבלת אורך שתוקנה; זה המקור הקובע לכל טקסט שהמורה ביקשה להעתיק. אין צורך לחכות לתשובה נוספת: יש לבנות את הבקשה המלאה עכשיו.\n\n---\n\n${kept.join("\n\n---\n\n")}`;
+      await gh(`/repos/${repo}/issues/${n}/comments`, { method: "POST", body: JSON.stringify({ body }) });
+      await db().execute({ sql: "UPDATE code_requests SET status = 'working', retried_at = ?, note = NULL, updated_at = ? WHERE id = ?", args: [now(), now(), Number(row.id)] });
+      posted++;
+    } catch (e) {
+      await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), Number(row.id)] });
+    }
+  }
+  return posted;
+}
+
 export async function refreshCodeRequests(userId: number): Promise<CodeRequestRow[]> {
   await ensureChatTables();
   if (!process.env.GITHUB_TOKEN) return listCodeRequests(userId);
