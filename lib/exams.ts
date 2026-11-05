@@ -9,6 +9,7 @@ import {
   parsePrepBody,
 } from "./exam-types";
 import {
+  OLD_SEED_EXAM_TITLE,
   SEED_EXAM_DURATION,
   SEED_EXAM_TITLE,
   SEED_GUIDE_TITLE,
@@ -93,7 +94,7 @@ export async function ensureExamTables() {
 async function seedOnce() {
   const t = now();
   const existing = await db().execute(
-    "SELECT seed_key, id FROM exam_docs WHERE seed_key IN ('bamidbar-9-14-prep', 'bamidbar-9-14-exam', 'study-guide-how-to-study')"
+    "SELECT seed_key, id FROM exam_docs WHERE seed_key IN ('bamidbar-9-14-prep', 'study-guide-how-to-study')"
   );
   const have = new Map(existing.rows.map((r) => [String(r.seed_key), Number(r.id)]));
   let prepId = have.get("bamidbar-9-14-prep");
@@ -106,18 +107,42 @@ async function seedOnce() {
     const r = await db().execute("SELECT id FROM exam_docs WHERE seed_key = 'bamidbar-9-14-prep'");
     prepId = Number(r.rows[0].id);
   }
-  if (!have.has("bamidbar-9-14-exam")) {
+  // The exam (issue #41): at most one exam with this title may exist. If it
+  // is already there (seeded, or created by hand) it is left untouched.
+  // Otherwise the superseded 9-14 exam is deleted and the new one is created
+  // as an unpublished draft, linked to the existing prep sheet.
+  const newExam = await db().execute({
+    sql: "SELECT id FROM exam_docs WHERE kind = 'exam' AND (seed_key = 'bamidbar-9-16-exam' OR title = ?) LIMIT 1",
+    args: [SEED_EXAM_TITLE],
+  });
+  let examId: number | null = newExam.rows[0] ? Number(newExam.rows[0].id) : null;
+  if (examId == null) {
+    const old = await db().execute({
+      sql: "SELECT id FROM exam_docs WHERE kind = 'exam' AND (seed_key = 'bamidbar-9-14-exam' OR title = ?)",
+      args: [OLD_SEED_EXAM_TITLE],
+    });
+    for (const r of old.rows) {
+      const oldId = Number(r.id);
+      await db().execute({ sql: "DELETE FROM exam_attempts WHERE exam_id = ?", args: [oldId] });
+      await db().execute({ sql: "DELETE FROM exam_doc_versions WHERE doc_id = ?", args: [oldId] });
+      await db().execute({ sql: "DELETE FROM exam_docs WHERE id = ?", args: [oldId] });
+    }
     await db().execute({
       sql: `INSERT OR IGNORE INTO exam_docs (kind, title, duration_min, body_json, prep_id, seed_key, created_at, updated_at)
-            VALUES ('exam', ?, ?, ?, ?, 'bamidbar-9-14-exam', ?, ?)`,
+            VALUES ('exam', ?, ?, ?, ?, 'bamidbar-9-16-exam', ?, ?)`,
       args: [SEED_EXAM_TITLE, SEED_EXAM_DURATION, JSON.stringify(seedExamBody()), prepId, t, t],
+    });
+    const created = await db().execute("SELECT id FROM exam_docs WHERE seed_key = 'bamidbar-9-16-exam'");
+    examId = Number(created.rows[0].id);
+    // a general guide that pointed at the deleted exam now points at the new one
+    await db().execute({
+      sql: "UPDATE exam_docs SET linked_exam_id = ? WHERE kind = 'prep' AND linked_exam_id IS NOT NULL AND linked_exam_id NOT IN (SELECT id FROM exam_docs WHERE kind = 'exam')",
+      args: [examId],
     });
   }
   // the general "how to study for the exam" sheet (issue #27): a draft,
   // linked by default to the first exam
   if (!have.has("study-guide-how-to-study")) {
-    const ex = await db().execute("SELECT id FROM exam_docs WHERE seed_key = 'bamidbar-9-14-exam'");
-    const examId = ex.rows[0] ? Number(ex.rows[0].id) : null;
     await db().execute({
       sql: `INSERT OR IGNORE INTO exam_docs (kind, title, body_json, linked_exam_id, seed_key, created_at, updated_at)
             VALUES ('prep', ?, ?, ?, 'study-guide-how-to-study', ?, ?)`,
