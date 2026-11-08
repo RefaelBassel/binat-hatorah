@@ -6,6 +6,8 @@ import { summaryStarterCounts } from "@/lib/exam-summaries";
 import { summaryUnitsFor } from "@/lib/exam-summary-types";
 import { formatHebDate, formatHebTime } from "@/lib/hebrew";
 import { CreateButton, DuplicateButton } from "@/components/exams/list-actions";
+import { DeckButton } from "@/components/exams/deck-buttons";
+import { listDecks, type DeckRow } from "@/lib/decks";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +16,13 @@ export default async function ExamsDashboardPage() {
   let docs: DocRow[] = [];
   let counts = new Map<number, { total: number; submitted: number; approved: number }>();
   let starters = new Map<number, number>();
+  let decks: DeckRow[] = [];
   let failed = false;
   try {
     docs = await listDocs();
     counts = await attemptCounts();
     starters = await summaryStarterCounts();
+    decks = await listDecks();
   } catch (e) {
     console.error("exams list failed", e);
     failed = true;
@@ -33,11 +37,14 @@ export default async function ExamsDashboardPage() {
   const guidesOf = (examId: number) => docs.filter((d) => isGuide(d) && d.linkedExamId === examId);
   const loosePreps = docs.filter((d) => d.kind === "prep" && !linkedPreps.has(d.id) && !isGuide(d));
 
+  const generalDecks = decks.filter((d) => d.examId == null);
+
   return (
     <PageShell title="מבחנים" subtitle="מבחנים ודפי הכנה: עריכה, הדפסה, פרסום לתלמידים ובדיקת הגשות">
       <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
         <CreateButton kind="exam" label="+ מבחן חדש" primary />
         <CreateButton kind="prep" label="+ דף הכנה חדש" />
+        <DeckButton label="🖥️ מצגת חדשה" />
         <Link href="/dashboard" className="text-sm font-semibold text-[color:var(--primary)] underline">
           חזרה לדשבורד
         </Link>
@@ -49,7 +56,7 @@ export default async function ExamsDashboardPage() {
           const c = counts.get(e.id);
           return (
             <div key={e.id} className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-sm">
-              <DocLine doc={e} icon="📝" />
+              <DocLine doc={e} icon="📝" extra={<DeckButton examId={e.id} label="🖥️ מצגת חזרה" />} />
               {c && c.total > 0 && (
                 <p className="mt-1 text-sm">
                   <Link href={`/dashboard/exams/${e.id}/submissions`} className="font-semibold text-[color:var(--primary)] underline">
@@ -84,13 +91,28 @@ export default async function ExamsDashboardPage() {
             <DocLine doc={p} icon="📄" />
           </div>
         ))}
+        {generalDecks.map((d) => (
+          <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-sm">
+            <div>
+              <Link href={`/dashboard/exams/deck/${d.id}`} className="font-display text-lg font-bold text-[color:var(--primary)] hover:underline">
+                🖥️ {d.title || "מצגת ללא שם"}
+              </Link>
+              <p className="text-xs text-[color:var(--foreground)]/60">
+                מצגת · {d.slides.length} שקופיות · עודכן לאחרונה {formatHebDate(d.updatedAt)}, {formatHebTime(d.updatedAt)}
+              </p>
+            </div>
+            <Link href={`/dashboard/exams/deck/${d.id}`} className="rounded-full bg-[color:var(--primary-fill)] px-3 py-1 text-xs font-bold text-white">
+              פתיחה
+            </Link>
+          </div>
+        ))}
         {!failed && docs.length === 0 && <p className="text-center">אין עדיין מבחנים.</p>}
       </div>
     </PageShell>
   );
 }
 
-function DocLine({ doc, icon, small }: { doc: DocRow; icon: string; small?: boolean }) {
+function DocLine({ doc, icon, small, extra }: { doc: DocRow; icon: string; small?: boolean; extra?: React.ReactNode }) {
   const published = doc.publishedAt != null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -121,6 +143,7 @@ function DocLine({ doc, icon, small }: { doc: DocRow; icon: string; small?: bool
         >
           עריכה
         </Link>
+        {extra}
         <DuplicateButton id={doc.id} />
       </div>
     </div>
