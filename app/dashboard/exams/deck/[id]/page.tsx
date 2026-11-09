@@ -2,14 +2,27 @@ import { notFound } from "next/navigation";
 import PageShell from "@/components/page-shell";
 import DeckEditor from "@/components/exams/deck-editor";
 import { requireTeacherPage } from "@/lib/exam-page-guard";
-import { getDeck } from "@/lib/decks";
+import { fillSeedIfEmpty, getDeck } from "@/lib/decks";
 
 export const dynamic = "force-dynamic";
 
 export default async function DeckPage({ params }: { params: Promise<{ id: string }> }) {
   await requireTeacherPage();
   const { id } = await params;
-  const deck = await getDeck(Number(id));
+  let deck;
+  try {
+    const found = await getDeck(Number(id));
+    deck = found ? await fillSeedIfEmpty(found) : null;
+  } catch (e) {
+    console.error("deck load failed", e);
+    return (
+      <PageShell title="מצגת חזרה" subtitle="למורה בלבד: עריכה, הקרנה והדפסה">
+        <p role="alert" className="text-center font-bold text-[color:var(--danger)]">
+          לא הצלחנו לטעון את המצגת. רעננו את הדף ונסו שוב.
+        </p>
+      </PageShell>
+    );
+  }
   if (!deck) notFound();
   return (
     <PageShell title="מצגת חזרה" subtitle="למורה בלבד: עריכה, הקרנה והדפסה">
