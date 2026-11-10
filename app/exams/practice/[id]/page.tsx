@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import PageShell from "@/components/page-shell";
 import { PrepView } from "@/components/exams/doc-view";
 import MySummaries from "@/components/exams/my-summaries";
+import DeckViewer from "@/components/exams/deck-viewer";
+import { getPublicDeck } from "@/lib/student-decks";
 import PracticeHub from "@/components/exams/practice-hub";
 import { listDocs, prepBodyOf } from "@/lib/exams";
 import { getSummaries, summaryContextForExam } from "@/lib/exam-summaries";
@@ -27,6 +29,7 @@ const TABS = [
   { key: "guide", label: "איך לומדים למבחן" },
   { key: "summaries", label: "הסיכומים שלי" },
   { key: "practice", label: "תרגול" },
+  { key: "deck", label: "🖥️ מצגת חזרה" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -62,9 +65,23 @@ export default async function PracticePage({
   const prep = docs.find((d) => d.kind === "prep" && d.id === exam.prepId && d.publishedAt != null) ?? null;
   const guides = docs.filter((d) => d.kind === "prep" && d.linkedExamId === exam.id && d.publishedAt != null && d.id !== exam.prepId);
   const userId = Number(user.id);
+  // the published student copy of the review presentation (no speaker notes)
+  const deck = await getPublicDeck(exam.id).catch((e) => {
+    console.error("student deck failed", e);
+    return null;
+  });
+  // students see the tab only when there is something published; the teacher
+  // always does (to preview, with a pointer to the editor)
+  const tabs = TABS.filter((t) => t.key !== "deck" || deck != null || realTeacher);
 
   let content: React.ReactNode = null;
-  if (tab === "prep") {
+  if (tab === "deck") {
+    content = deck ? (
+      <DeckViewer slides={deck.slides} printHref={`/exams/practice/${exam.id}/deck-print`} />
+    ) : (
+      <Empty text="המצגת לא מפורסמת לתלמידות כרגע." />
+    );
+  } else if (tab === "prep") {
     content = prep ? (
       <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-sm sm:p-8">
         <PrepView title={prep.title} body={prepBodyOf(prep)} />
@@ -156,7 +173,7 @@ export default async function PracticePage({
       )}
       <nav aria-label="לשוניות התרגול" className="mb-6 overflow-x-auto">
         <ul className="mx-auto flex w-max min-w-full justify-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--card)] p-1 shadow-sm">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <li key={t.key}>
               <Link
                 href={`/exams/practice/${exam.id}?tab=${t.key}`}
@@ -173,6 +190,13 @@ export default async function PracticePage({
           ))}
         </ul>
       </nav>
+      {tab === "deck" && teacherView && (
+        <p className="mx-auto mb-4 max-w-4xl text-center text-sm">
+          <Link href={`/dashboard/exams/student-deck/${exam.id}`} className="font-semibold text-[color:var(--primary)] underline">
+            עריכה ופרסום של המצגת לתלמידים
+          </Link>
+        </p>
+      )}
       <div className="mx-auto max-w-4xl">{content}</div>
     </PageShell>
   );

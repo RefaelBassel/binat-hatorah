@@ -56,7 +56,17 @@ export default async function ExamsDashboardPage() {
           const c = counts.get(e.id);
           return (
             <div key={e.id} className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-sm">
-              <DocLine doc={e} icon="📝" extra={<DeckButton examId={e.id} label="🖥️ מצגת חזרה" />} />
+              <DocLine doc={e} icon="📝" extra={
+                  <>
+                    <DeckButton examId={e.id} label="🖥️ מצגת חזרה" />
+                    <Link
+                      href={`/dashboard/exams/student-deck/${e.id}`}
+                      className="rounded-full border-2 border-[color:var(--primary)]/50 px-3 py-1 text-xs font-bold text-[color:var(--primary)] hover:bg-[color:var(--primary)]/10"
+                    >
+                      🖥️ מצגת חזרה — לתלמידים
+                    </Link>
+                  </>
+                } />
               {c && c.total > 0 && (
                 <p className="mt-1 text-sm">
                   <Link href={`/dashboard/exams/${e.id}/submissions`} className="font-semibold text-[color:var(--primary)] underline">
