@@ -84,7 +84,7 @@ function isBlank(slides: DeckSlide[]): boolean {
 
 // The exam "Bamidbar 9-16" is recognised by its seed key or by its title (the
 // key may be missing on exams that were re-created).
-function isSeededExam(exam: { seedKey: string | null; title: string }): boolean {
+export function isSeededExam(exam: { seedKey: string | null; title: string }): boolean {
   return exam.seedKey === "bamidbar-9-14-exam" || exam.title === SEED_EXAM_TITLE;
 }
 

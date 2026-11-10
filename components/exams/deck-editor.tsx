@@ -18,11 +18,20 @@ export default function DeckEditor({
   deckId,
   initialTitle,
   initialSlides,
+  studentCopy,
 }: {
   deckId: number;
   initialTitle: string;
   initialSlides: DeckSlide[];
+  // the student copy of an exam's deck (issue #53): saves elsewhere, can be
+  // re-synced from the teacher's own deck and published to students
+  studentCopy?: { examId: number; published: boolean };
 }) {
+  const saveUrl = studentCopy ? `/api/student-decks/${studentCopy.examId}` : `/api/decks/${deckId}`;
+  const [published, setPublished] = useState(studentCopy?.published ?? true);
+  const [pubBusy, setPubBusy] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [note, setNote] = useState("");
   const [title, setTitle] = useState(initialTitle);
   const [slides, setSlides] = useState<DeckSlide[]>(initialSlides);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -43,7 +52,7 @@ export default function DeckEditor({
     dirty.current = false;
     setState("saving");
     try {
-      const res = await fetch(`/api/decks/${deckId}`, {
+      const res = await fetch(saveUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(latest.current),
@@ -58,7 +67,7 @@ export default function DeckEditor({
     } finally {
       inFlight.current = false;
     }
-  }, [deckId]);
+  }, [saveUrl]);
 
   // debounced autosave
   useEffect(() => {
@@ -111,6 +120,53 @@ export default function DeckEditor({
     change(next);
   }
 
+  async function togglePublished() {
+    if (!studentCopy) return;
+    const next = !published;
+    setPubBusy(true);
+    setNote("");
+    try {
+      const res = await fetch(saveUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "לא נשמר.");
+      setPublished(next);
+      setNote(next ? "המצגת מפורסמת לתלמידים ✓" : "המצגת הוסתרה מהתלמידים ✓");
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "לא נשמר.");
+    } finally {
+      setPubBusy(false);
+    }
+  }
+
+  async function syncFromSource() {
+    if (!studentCopy) return;
+    if (!window.confirm("לעדכן את המצגת לתלמידים מהמצגת שלך? כל העריכות שעשית בעותק לתלמידים יוחלפו בשקופיות של המצגת שלך.")) return;
+    setSyncBusy(true);
+    setNote("");
+    try {
+      const res = await fetch(saveUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "העדכון לא הצליח.");
+      setSlides(data.slides as DeckSlide[]);
+      setOpenId(null);
+      dirty.current = false;
+      setState("saved");
+      setNote("השקופיות הועתקו מחדש מהמצגת שלך ✓");
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "העדכון לא הצליח.");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
   async function deleteDeck() {
     if (!window.confirm("למחוק את כל המצגת? אי אפשר לשחזר.")) return;
     setDeleting(true);
@@ -160,7 +216,7 @@ export default function DeckEditor({
           🖥️ הקרנה במסך מלא
         </button>
         <Link
-          href={`/dashboard/exams/deck/${deckId}/print`}
+          href={studentCopy ? `/dashboard/exams/student-deck/${studentCopy.examId}/print` : `/dashboard/exams/deck/${deckId}/print`}
           target="_blank"
           className="rounded-full border-2 border-[color:var(--primary)]/50 px-5 py-2 text-sm font-bold text-[color:var(--primary)] hover:bg-[color:var(--primary)]/10"
         >
@@ -170,6 +226,42 @@ export default function DeckEditor({
           חזרה למבחנים
         </Link>
       </div>
+
+      {studentCopy && (
+        <div className="no-print mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={published}
+            disabled={pubBusy}
+            onClick={() => void togglePublished()}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-[color:var(--primary)]/50 px-4 py-2 text-sm font-bold text-[color:var(--primary)] disabled:opacity-70"
+          >
+            <span
+              aria-hidden
+              className={`relative inline-block h-5 w-9 rounded-full transition ${published ? "bg-[color:var(--success)]" : "bg-[color:var(--foreground)]/30"}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${published ? "end-0.5" : "start-0.5"}`} />
+            </span>
+            {pubBusy ? "שומר…" : "פרסום לתלמידים"}
+            <span className="text-xs font-semibold">{published ? "(מפורסם)" : "(מוסתר)"}</span>
+          </button>
+          <button
+            type="button"
+            disabled={syncBusy}
+            onClick={() => void syncFromSource()}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-[color:var(--primary)]/50 px-4 py-2 text-sm font-bold text-[color:var(--primary)] hover:bg-[color:var(--primary)]/10 disabled:opacity-70"
+          >
+            {syncBusy && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />}
+            {syncBusy ? "מעדכן…" : "עדכון מהמצגת שלי"}
+          </button>
+          {note && (
+            <span aria-live="polite" className="text-sm font-semibold">
+              {note}
+            </span>
+          )}
+        </div>
+      )}
 
       <ol className="space-y-3">
         {slides.map((s, i) => {
@@ -258,15 +350,17 @@ export default function DeckEditor({
         >
           + הוספת שקופית
         </button>
-        <button
-          type="button"
-          onClick={deleteDeck}
-          disabled={deleting}
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--danger)]/60 px-4 py-2 text-xs font-bold text-[color:var(--danger)] disabled:opacity-60"
-        >
-          {deleting && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />}
-          {deleting ? "מוחק…" : "מחיקת המצגת"}
-        </button>
+        {!studentCopy && (
+          <button
+            type="button"
+            onClick={deleteDeck}
+            disabled={deleting}
+            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--danger)]/60 px-4 py-2 text-xs font-bold text-[color:var(--danger)] disabled:opacity-60"
+          >
+            {deleting && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />}
+            {deleting ? "מוחק…" : "מחיקת המצגת"}
+          </button>
+        )}
       </div>
 
       {presentAt !== null && <Presenter slides={slides} start={presentAt} onClose={() => setPresentAt(null)} />}
