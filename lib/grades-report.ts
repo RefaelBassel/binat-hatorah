@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { allStudents, ensureCancellationsTable, now } from "./tasks";
 import { ensureGradeAssistColumns, hasFreshProposal } from "./grade-assist";
+import { getTaskContent } from "@/content/tasks/registry";
 import { isCompletionStatus, type CompletionStatus } from "./completion";
 
 // The teacher's grades report (#24): a row per student, a column per
@@ -18,7 +19,7 @@ export interface ReportCell {
   status: CompletionStatus | null;
 }
 export interface GradesReport {
-  tasks: { id: number; title: string; dueAt: number }[];
+  tasks: { id: number; title: string; dueAt: number; tag: string | null }[];
   students: { id: number; name: string }[];
   cells: Record<string, ReportCell>; // key `${taskId}:${userId}`
 }
@@ -28,7 +29,7 @@ export async function buildGradesReport(): Promise<GradesReport> {
   await ensureGradeAssistColumns();
   const t = now();
   const taskRes = await db().execute({
-    sql: `SELECT id, title, due_at FROM tasks t
+    sql: `SELECT id, title, due_at, content_ref FROM tasks t
           WHERE t.published_at <= ?
             AND NOT EXISTS (SELECT 1 FROM task_cancellations c WHERE c.task_id = t.id)
           ORDER BY t.due_at ASC, t.id ASC`,
@@ -38,6 +39,8 @@ export async function buildGradesReport(): Promise<GradesReport> {
     id: Number(r.id),
     title: String(r.title),
     dueAt: Number(r.due_at),
+    // e.g. "בונוס" for the bonus task — marks the column in the report
+    tag: getTaskContent(String(r.content_ref))?.content.gradeTag ?? null,
   }));
   const students = (await allStudents()).map((s) => ({ id: s.id, name: s.fullName }));
   const cells: Record<string, ReportCell> = {};

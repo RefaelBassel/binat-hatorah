@@ -28,6 +28,7 @@ export default async function ContentHubPage() {
         hasOpen: Boolean(c.checkOpen),
         hasPlenary: Boolean(c.plenary?.question),
         hasOpening: Boolean(c.opening?.opener),
+        worksheetOnly: c.worksheetOnly === true,
         edited: Object.keys(ov),
       };
     })
@@ -53,10 +54,16 @@ export default async function ContentHubPage() {
                 <p className="text-xs text-[color:var(--primary)]/55">{r.bookRef}</p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
-                <Pill ok={r.checkCount > 0} label={r.checkCount > 0 ? `✅ צ'ק · ${r.checkCount} שאלות` : "צ'ק — חסר"} />
-                <Pill ok={r.hasOpen} label="פתוחה" />
-                <Pill ok={r.hasPlenary} label="💬 מליאה" />
-                <Pill ok={r.hasOpening} label="✨ פתיחה" />
+                {r.worksheetOnly ? (
+                  <Pill ok label="📝 דף עבודה בלבד" />
+                ) : (
+                  <>
+                    <Pill ok={r.checkCount > 0} label={r.checkCount > 0 ? `✅ צ'ק · ${r.checkCount} שאלות` : "צ'ק — חסר"} />
+                    <Pill ok={r.hasOpen} label="פתוחה" />
+                    <Pill ok={r.hasPlenary} label="💬 מליאה" />
+                    <Pill ok={r.hasOpening} label="✨ פתיחה" />
+                  </>
+                )}
                 {r.edited.length > 0 && (
                   <span className="rounded-full bg-[color:var(--accent)]/15 px-2 py-0.5 text-[color:var(--accent)]">
                     ✏️ נערך ידנית

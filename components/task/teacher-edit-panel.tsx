@@ -53,7 +53,7 @@ export default function TeacherEditPanel({
         <span className="text-xs font-extrabold text-[color:var(--primary)]">✏️ עריכת המשימה</span>
         <span className="text-[10px] text-[color:var(--primary)]/50">רק את רואה את זה · התלמידות רואות את מה שתשמרי</span>
         <span className="ms-auto flex flex-wrap items-center gap-1.5">
-          {TABS.map((t) => (
+          {TABS.filter((t) => !unitMeta.worksheetOnly || t.id === "texts").map((t) => (
             <button
               key={t.id}
               type="button"
@@ -70,7 +70,7 @@ export default function TeacherEditPanel({
               {edited[t.id] && tab !== t.id && <span className="ms-1 text-[9px] text-[color:var(--accent)]">● נערך</span>}
             </button>
           ))}
-          {taskId != null && (
+          {taskId != null && !unitMeta.worksheetOnly && (
             <a
               href={`/dashboard/opening/${taskId}`}
               target="_blank"

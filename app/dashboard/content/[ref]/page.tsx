@@ -59,6 +59,7 @@ export default async function ContentEditPage({
           )}
         </p>
 
+        {!reg.content.worksheetOnly && (<>
         <section>
           <h2 className="mb-2 font-display text-lg font-extrabold text-[color:var(--primary)]">
             ✅ בדיקת ההבנה (שלב 7)
@@ -89,6 +90,7 @@ export default async function ContentEditPage({
           </h2>
           <OpeningEditor contentRef={ref} initial={content.opening ?? null} />
         </section>
+        </>)}
 
         <section>
           <h2 className="mb-2 font-display text-lg font-extrabold text-[color:var(--primary)]">
@@ -108,6 +110,7 @@ export default async function ContentEditPage({
               heroCaption: reg.content.heroArt ? (reg.content.heroArt.caption ?? "") : undefined,
               genreOptions: reg.content.decode.genreOptions,
               minQuestions: reg.content.decode.minQuestions,
+              worksheetOnly: reg.content.worksheetOnly,
             }}
           />
         </section>

@@ -244,6 +244,7 @@ export default async function TaskPage({
               heroCaption: baseReg.content.heroArt ? (baseReg.content.heroArt.caption ?? "") : undefined,
               genreOptions: baseReg.content.decode.genreOptions,
               minQuestions: baseReg.content.decode.minQuestions,
+              worksheetOnly: baseReg.content.worksheetOnly,
             }}
             edits={{ ...EMPTY_EDITS, ...(overrides.worksheet ?? {}) }}
             unitEdits={{ ...EMPTY_UNIT, ...(overrides.unit ?? {}) }}

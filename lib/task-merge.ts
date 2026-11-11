@@ -2,7 +2,7 @@ import type { InStatement } from "@libsql/client";
 import { db } from "./db";
 import { now, ensurePassageShifts, ensureCancellationsTable } from "./tasks";
 import { ensureCheckTable } from "./check";
-import { getTaskContent, countTaskUnits, isWritingTask } from "@/content/tasks/registry";
+import { getTaskContent, countTaskUnits, isWritingTask, isWorksheetOnly } from "@/content/tasks/registry";
 
 // One-time merges of a unit that was published twice (issue #15). The work
 // students did in the duplicate (source) task is folded into the task the
@@ -106,8 +106,11 @@ function lessonProgressPct(
 ): number | null {
   const reg = getTaskContent(contentRef);
   if (!reg || isWritingTask(reg.content)) return null;
-  let n = Math.min(Math.max(stage - 1, 0), 7);
-  if (reg.content.check?.length) {
+  const partAOff = isWorksheetOnly(reg.content);
+  let n = partAOff ? 0 : Math.min(Math.max(stage - 1, 0), 7);
+  if (partAOff) {
+    // worksheet-only task: no comprehension check
+  } else if (reg.content.check?.length) {
     if (hasCheckResult) n += 1;
   } else {
     for (const c of reg.content.comprehension) {

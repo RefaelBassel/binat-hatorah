@@ -147,9 +147,12 @@ export default function TaskRunner({
   const hasCheck = Boolean(check && check.length > 0);
   const [markings, setMarkings] = useState<Marking[]>(initialMarkings);
   // Stages 1-7 = Part A (pshat decoding); stage 8 = Part B (העמקה ודיון).
-  const [stage, setStage] = useState(Math.min(Math.max(initialStage, 1), 8));
+  // A worksheet-only task (e.g. the bonus task) has no Part A: the student
+  // lands straight in the worksheet, and there is no comprehension check.
+  const partAOff = content.worksheetOnly === true;
+  const [stage, setStage] = useState(partAOff ? 8 : Math.min(Math.max(initialStage, 1), 8));
   // Highest stage ever reached — navigating back never re-locks later stages.
-  const [maxStage, setMaxStage] = useState(Math.min(Math.max(initialStage, 1), 8));
+  const [maxStage, setMaxStage] = useState(partAOff ? 8 : Math.min(Math.max(initialStage, 1), 8));
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [workSeconds, setWorkSeconds] = useState(initialWorkSeconds);
   const [clock, setClock] = useState("");
@@ -442,8 +445,10 @@ export default function TaskRunner({
   const answeredCount = useMemo(() => {
     let n = 0;
     // decode stages 1-7 completed
-    n += Math.min(stage - 1, 7);
-    if (hasCheck) {
+    if (!partAOff) n += Math.min(stage - 1, 7);
+    if (partAOff) {
+      // no comprehension check in a worksheet-only task
+    } else if (hasCheck) {
       if (checkResult) n += 1;
     } else {
       for (const c of content.comprehension) {
@@ -462,7 +467,7 @@ export default function TaskRunner({
       }
     }
     return n;
-  }, [answers, stage, content.sections]);
+  }, [answers, stage, content.sections, partAOff]);
   const progressPct = Math.min(100, Math.round((answeredCount / totalUnits) * 100));
 
   const saveState = useCallback(
@@ -1046,6 +1051,7 @@ export default function TaskRunner({
       )}
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-stretch">
         {/* Part A block */}
+        {!partAOff && (
         <div
           className={[
             "flex-1 rounded-2xl border-2 p-3.5 transition",
@@ -1091,13 +1097,16 @@ export default function TaskRunner({
             ))}
           </div>
         </div>
+        )}
         {/* connector: forward is left in RTL */}
+        {!partAOff && (
         <div
           className="hidden items-center text-xl font-bold text-[color:var(--accent)]/60 sm:flex"
           aria-hidden
         >
           ←
         </div>
+        )}
         {/* Part B block */}
         <div
           className={[
@@ -1141,14 +1150,14 @@ export default function TaskRunner({
           </button>
         </div>
       </div>
-      {stage <= 7 && (
+      {!partAOff && stage <= 7 && (
         <p className="mb-6 text-xs text-[color:var(--accent)]">
           🎯 למה השלב הזה? <b>{DECODE_STAGES[stage - 1].why}</b>
         </p>
       )}
 
       {/* ===== Part A: decode stages 1-7 ===== */}
-      {stage <= 7 && (
+      {!partAOff && stage <= 7 && (
         <DecodeStage
           stage={stage}
           content={content}
@@ -1233,7 +1242,7 @@ export default function TaskRunner({
               <ThinkingCard
                 plenary={plenary}
                 contentRef={content.ref}
-                canEdit={Boolean(canEditContent)}
+                canEdit={Boolean(canEditContent) && !partAOff}
               />
               {submitCard}
             </SlidesSummary>
@@ -1356,7 +1365,7 @@ export default function TaskRunner({
             <ThinkingCard
               plenary={plenary}
               contentRef={content.ref}
-              canEdit={Boolean(canEditContent)}
+              canEdit={Boolean(canEditContent) && !partAOff}
             />
           )}
 

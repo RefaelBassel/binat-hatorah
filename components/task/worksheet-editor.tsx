@@ -23,6 +23,8 @@ export interface UnitMeta {
   heroCaption?: string;
   genreOptions: string[];
   minQuestions: number;
+  // worksheet-only task: no Part A settings to show
+  worksheetOnly?: boolean;
 }
 
 function Field({
@@ -192,6 +194,7 @@ export default function WorksheetEditor({
         {unitMeta.heroCaption != null && (
           <Field label="כיתוב לאיור הפתיחה (חלק א, מפגש ראשון)" value={meta.heroCaption || undefined} original={unitMeta.heroCaption} rows={2} onChange={(v) => setMeta((m) => ({ ...m, heroCaption: v }))} onReset={() => setMeta((m) => ({ ...m, heroCaption: "" }))} />
         )}
+        {!unitMeta.worksheetOnly && (<>
         <p className="mb-2 mt-3 text-[11px] font-bold text-[color:var(--accent)]">הגדרות חלק א (פענוח הפשט)</p>
         <Field label="אפשרויות הסוגה, מופרדות בפסיקים" value={meta.genre || undefined} original={unitMeta.genreOptions.join(", ")} rows={1} onChange={(v) => setMeta((m) => ({ ...m, genre: v }))} onReset={() => setMeta((m) => ({ ...m, genre: "" }))} />
         <div className="w-40">
@@ -205,6 +208,7 @@ export default function WorksheetEditor({
             className="mt-0.5 w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1.5 text-sm outline-none focus:border-[color:var(--accent)]"
           />
         </div>
+        </>)}
       </div>
 
       <p className="mb-2 text-[11px] font-bold text-[color:var(--accent)]">חלק ב — העמקה ודיון</p>

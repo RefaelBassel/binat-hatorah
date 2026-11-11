@@ -79,7 +79,7 @@ export default function GradesReportTable({ report }: { report: GradesReport }) 
     try {
       const header = [
         "תלמיד/ה",
-        ...tasks.map((t) => t.title),
+        ...tasks.map((t) => (t.tag ? `${t.title} (${t.tag})` : t.title)),
         COMPLETION_META.done.label,
         COMPLETION_META.partial.label,
         COMPLETION_META.not_done.label,
@@ -127,7 +127,7 @@ export default function GradesReportTable({ report }: { report: GradesReport }) 
               <option value="all">כל המשימות ({report.tasks.length})</option>
               {report.tasks.map((t) => (
                 <option key={t.id} value={String(t.id)}>
-                  {t.title}
+                  {t.tag ? `${t.title} (${t.tag})` : t.title}
                 </option>
               ))}
             </select>
@@ -206,6 +206,11 @@ export default function GradesReportTable({ report }: { report: GradesReport }) 
                   <Link href={`/dashboard/task/${t.id}`} className="hover:underline">
                     {t.title}
                   </Link>
+                  {t.tag && (
+                    <span className="ms-1.5 rounded-full bg-[color:var(--accent)]/15 px-2 py-0.5 text-[10px] font-bold text-[color:var(--accent)]">
+                      {t.tag}
+                    </span>
+                  )}
                 </th>
               ))}
               <th className="px-2 py-2.5 font-semibold" style={{ color: COMPLETION_META.done.color }}>
