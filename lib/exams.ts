@@ -15,6 +15,7 @@ import {
   SEED_EXAM_TITLE,
   SEED_GUIDE_TITLE,
   SEED_PREP_TITLE,
+  breadthPart,
   seedExamBody,
   seedGuideBody,
   seedPrepBody,
@@ -221,6 +222,44 @@ async function retireLegacyExam(prepId: number) {
   }
 }
 
+// Adds the two cross-cutting questions to the existing exam, in place (issue
+// #58). Only an exam still in the old three-part shape is touched (a one-time,
+// idempotent step); the wording of every existing question, the publishing
+// state and the id of the exam are all kept.
+async function addBreadthPart(t: number) {
+  const r = await db().execute({
+    sql: "SELECT id, title, duration_min, body_json FROM exam_docs WHERE kind = 'exam' AND seed_key = 'bamidbar-9-14-exam' AND title = ?",
+    args: [SEED_EXAM_TITLE],
+  });
+  const row = r.rows[0];
+  if (!row) return;
+  let body: ExamBody;
+  try {
+    body = JSON.parse(String(row.body_json)) as ExamBody;
+  } catch {
+    return;
+  }
+  if (!Array.isArray(body.parts) || body.parts.length !== 3) return;
+  const [a, b, c] = body.parts;
+  if (a.choose !== 4 || a.questions.length !== 7 || b.questions.length !== 3 || c.questions.length !== 1) return;
+  a.instructions = "ענו על 3 מתוך 7 השאלות (10 נקודות לכל שאלה).";
+  a.points = 30;
+  a.choose = 3;
+  b.points = 30;
+  for (const x of b.questions) x.points = 10;
+  c.points = 20;
+  for (const x of c.questions) x.points = 20;
+  body.parts = [a, breadthPart(), b, c];
+  const bodyJson = JSON.stringify(body);
+  const id = Number(row.id);
+  await db().execute({ sql: "UPDATE exam_docs SET body_json = ?, updated_at = ? WHERE id = ?", args: [bodyJson, t, id] });
+  await snapshot(
+    id,
+    { title: String(row.title), durationMin: row.duration_min == null ? null : Number(row.duration_min), bodyJson },
+    true
+  );
+}
+
 async function seedOnce() {
   const t = now();
   const existing = await db().execute(
@@ -240,6 +279,7 @@ async function seedOnce() {
   await replaceLegacyPrep(prepId, t);
   await seedExam(prepId, t);
   await retireLegacyExam(prepId);
+  await addBreadthPart(t);
   // the general "how to study for the exam" sheet (issue #27): a draft,
   // linked by default to the first exam
   if (!have.has("study-guide-how-to-study")) {
