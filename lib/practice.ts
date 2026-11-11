@@ -590,7 +590,8 @@ const FEEDBACK_SYSTEM = `את/ה מלווה לימודי/ת באתר "בינת �
 - good: מה טוב בתשובה (משפט אחד או שניים).
 - missing: מה חסר או לא מדויק (משפט אחד או שניים). אם התשובה מלאה, כתבי זאת.
 - hint: רמז אחד לשיפור, שמכוון לפסוק, לפרשן או למושג (טענה / נימוק / הנחת יסוד / הפרכה) בלי לכתוב את התשובה המלאה.
-אם התשובה ריקה או לא קשורה, אמרי זאת בעדינות ותני רמז להתחלה. טקסט רגיל בלבד, בלי Markdown.`;
+אם התשובה ריקה או לא קשורה, אמרי זאת בעדינות ותני רמז להתחלה. טקסט רגיל בלבד, בלי Markdown.
+את המשוב מגישים אך ורק דרך הכלי submit_feedback, בלי טקסט נוסף.`;
 
 // a student set to English (#36) may answer in English or Hebrew; she reads
 // the feedback in English
@@ -630,10 +631,12 @@ export async function openQuestionFeedback(
 ): Promise<OpenFeedback> {
   const msg = await client().messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 1200,
+    // Opus 5.5: no forced tool_choice (400), and its thinking counts against
+    // max_tokens — auto + strict schema + an instruction to use the tool
+    max_tokens: 4000,
     system: english ? `${FEEDBACK_SYSTEM}\n${ENGLISH_FEEDBACK}` : FEEDBACK_SYSTEM,
-    tools: [{ name: "submit_feedback", description: "הגשת המשוב לתלמידה", input_schema: feedbackTool(false) }],
-    tool_choice: { type: "tool", name: "submit_feedback" },
+    tools: [{ name: "submit_feedback", description: "הגשת המשוב לתלמידה", input_schema: feedbackTool(false), strict: true }],
+    tool_choice: { type: "auto", disable_parallel_tool_use: true },
     messages: [
       {
         role: "user",
@@ -672,9 +675,10 @@ export async function mockExamFeedback(
           required: ["answers"],
           additionalProperties: false,
         },
+        strict: true,
       },
     ],
-    tool_choice: { type: "tool", name: "submit_feedback" },
+    tool_choice: { type: "auto", disable_parallel_tool_use: true },
     messages: [{ role: "user", content: `${title}\n\n${qa.join("\n\n")}` }],
   });
   const input = pickTool<{ answers?: unknown }>(msg);
@@ -746,9 +750,10 @@ export async function suggestCards(units: string[]): Promise<Flashcard[]> {
           required: ["cards"],
           additionalProperties: false,
         },
+        strict: true,
       },
     ],
-    tool_choice: { type: "tool", name: "submit_cards" },
+    tool_choice: { type: "auto", disable_parallel_tool_use: true },
     messages: [{ role: "user", content: parts.join("\n\n") }],
   });
   const input = pickTool<{ cards?: unknown }>(msg);

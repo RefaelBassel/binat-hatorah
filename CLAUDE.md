@@ -53,3 +53,10 @@ Second subtitle: בדגש על מיומנויות לימוד עצמי של פש�
 - Claude-assisted grading: Claude proposes score + feedback, teacher edits and approves
 - /messages: personal + group chat (learn from gemara10 lib/messages.ts)
 - /me: highly visual learning status (like the אמונה site journey)
+
+## Claude API calls (Opus 5.5) — read before writing one
+- Never force a tool: `tool_choice: { type: "tool" | "any" }` is rejected with a 400.
+  Use `tool_choice: { type: "auto", disable_parallel_tool_use: true }`, `strict: true`
+  on the tool, and tell the model in the system prompt to answer only through the tool.
+- No `minimum` / `maximum` / `minLength` in a strict schema.
+- Thinking counts against `max_tokens`: give at least 4000 even for a short answer.
