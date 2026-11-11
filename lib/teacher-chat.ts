@@ -996,6 +996,8 @@ export async function repairTruncatedRequests(): Promise<number> {
   return posted;
 }
 
+const RESTART_MARK = "🔁 הפעלה מחדש אוטומטית";
+
 // a build's question, once per GitHub comment: stored on the request and
 // written into the teacher's chat as a message from Claude
 async function surfaceBuildQuestion(id: number, q: { id: number; body: string }) {
@@ -1021,7 +1023,7 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
   await ensureChatTables();
   if (!process.env.GITHUB_TOKEN) return listCodeRequests(userId);
   const open = await db().execute({
-    sql: "SELECT id, issue_number, repo, length(body) AS blen FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview','paused','failed','question') AND updated_at < ?",
+    sql: "SELECT id, issue_number, repo, length(body) AS blen, COALESCE(retried_at, created_at) AS since FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview','paused','failed','question') AND updated_at < ?",
     args: [now() - 60],
   });
   for (const row of open.rows) {
@@ -1056,6 +1058,23 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
         if (last && asks && last.user.type === "Bot" && last.user.login.toLowerCase().includes("claude") && Date.now() - Date.parse(last.updated_at) > 120_000) {
           status = "question";
           await surfaceBuildQuestion(Number(row.id), { id: last.id, body: last.body });
+        }
+        // a build that never started (GitHub refused the run: binat-hatorah
+        // #52 sat two days) or died without a label: an hour of silence and
+        // nothing running → trigger it again, once. A second silent hour
+        // marks it failed, so the teacher's card stops saying "working".
+        if (status === "working" && comments && now() - Number(row.since ?? now()) > 3600) {
+          const runs = (await gh(`/repos/${repo}/actions/workflows/claude-chat.yml/runs?per_page=10`)) as { workflow_runs: { status: string }[] } | null;
+          const running = !runs || runs.workflow_runs.some((r) => r.status !== "completed");
+          if (!running) {
+            if (!comments.some((c) => c.body.includes(RESTART_MARK))) {
+              await gh(`/repos/${repo}/issues/${n}/comments`, { method: "POST", body: JSON.stringify({ body: `@claude\n\n${RESTART_MARK}: הבנייה של הבקשה לא התחילה או נעצרה בלי תוצאה. יש לבנות את הבקשה כפי שהיא, להריץ בנייה ולפתוח Pull Request.` }) });
+              await db().execute({ sql: "UPDATE code_requests SET retried_at = ? WHERE id = ?", args: [now(), Number(row.id)] });
+            } else {
+              await gh(`/repos/${repo}/issues/${n}/labels`, { method: "POST", body: JSON.stringify({ labels: ["build-failed"] }) });
+              status = "failed";
+            }
+          }
         }
       }
       await db().execute({ sql: "UPDATE code_requests SET status = ?, pr_url = ?, branch = ?, updated_at = ? WHERE id = ?", args: [status, pr?.html_url ?? null, pr?.head.ref ?? null, now(), Number(row.id)] });
