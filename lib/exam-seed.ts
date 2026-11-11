@@ -1,4 +1,4 @@
-import type { ExamBody, ExamQuestion, PrepBody } from "./exam-types";
+import type { ExamBody, ExamPart, ExamQuestion, PrepBody } from "./exam-types";
 
 // The first exam and its preparation sheet (issue #25), word for word as the
 // teacher sent them. Seeded once as drafts with empty marking guides; from
@@ -7,13 +7,21 @@ import type { ExamBody, ExamQuestion, PrepBody } from "./exam-types";
 let seq = 0;
 const id = (p: string) => `${p}${++seq}`;
 
-function q(text: string, subs: string[], points: number | null, extra?: Partial<ExamQuestion>): ExamQuestion {
+function q(
+  text: string,
+  subs: (string | [string, string])[],
+  points: number | null,
+  extra?: Partial<ExamQuestion>
+): ExamQuestion {
   return {
     id: id("q"),
     text,
     points,
     rubric: "",
-    subs: subs.map((s) => ({ id: id("s"), text: s, points: null, rubric: "" })),
+    subs: subs.map((s) => {
+      const [t, rubric] = typeof s === "string" ? [s, ""] : s;
+      return { id: id("s"), text: t, points: null, rubric };
+    }),
     ...extra,
   };
 }
@@ -26,15 +34,44 @@ export const SEED_PREP_TITLE = "דף הכנה למבחן: חומש במדבר, �
 // the earlier prep sheet, replaced together with the exam (issue #38)
 export const LEGACY_PREP_TITLE = "דף הכנה למבחן: חומש במדבר, פרקים ט׳–י״ד";
 
+const BREADTH_INSTRUCTION =
+  "לכל אחד מהמושגים הבאים: כתבו באיזה אירוע מהחומר שלמדנו הוא בא לידי ביטוי, ציינו את הפרק, והסבירו בפירוט איך הוא בא לידי ביטוי באירוע.";
+
+// Part ב׳ (issue #58): two cross-cutting questions, with sample answers in the
+// marking guides that the teacher can edit.
+export function breadthPart(): ExamPart {
+  return {
+    id: id("p"),
+    title: "שאלות רוחב",
+    instructions: "חובה",
+    points: 20,
+    choose: null,
+    questions: [
+      q(BREADTH_INSTRUCTION, [
+        ["לחץ חברתי", "המרגלים: עשרה מרגלים סחפו את כל העם לבכי, ויהושע וכלב כמעט נסקלו (י״ג–י״ד). אפשר גם: האספסוף, שהתחיל את התאווה, והעם שהצטרף אליו (י״א, ד׳)."],
+        ["התחשבות של הכלל בפרט", "פסח שני, שבו נוצרה הזדמנות שנייה בשביל הטמאים (ט׳). או: ״וְהָעָם לֹא נָסַע עַד הֵאָסֵף מִרְיָם״ (י״ב, ט״ו)."],
+        ["סממן חיצוני קהילתי", "הציצית ופתיל התכלת, ״וּרְאִיתֶם... וּזְכַרְתֶּם״ (ט״ו)."],
+        ["הוקעה קהילתית של חוטא", "המקושש. ״וַיֹּצִיאוּ אֹתוֹ כָּל הָעֵדָה... וַיִּרְגְּמוּ אֹתוֹ״ (ט״ו). או: מרים, שהוסגרה מחוץ למחנה שבעה ימים (י״ב)."],
+      ], 10),
+      q(BREADTH_INSTRUCTION, [
+        ["מנהיג שמחכה לדבר ה׳ לפני שהוא מכריע", "״עִמְדוּ וְאֶשְׁמְעָה״ בפסח שני (ט׳). או: המקושש, ״כִּי לֹא פֹרַשׁ מַה יֵּעָשֶׂה לוֹ״ (ט״ו)."],
+        ["טענה שמסתירה מניע אישי", "קרח. לפי רש״י, קרח קינא באליצפן בן עוזיאל (ט״ז). אפשר גם: מרים ואהרן."],
+        ["מנהיג שמשתף אחרים בסמכות שלו", "שבעים הזקנים, ואלדד ומידד: ״וּמִי יִתֵּן כָּל עַם ה׳ נְבִיאִים״ (י״א)."],
+        ["עונש שבנוי מחומרי החטא (מידה כנגד מידה)", "המרגלים. ״יוֹם לַשָּׁנָה״, ו״כַּאֲשֶׁר דִּבַּרְתֶּם בְּאָזְנָי כֵּן אֶעֱשֶׂה לָכֶם״ (י״ד)."],
+      ], 10),
+    ],
+  };
+}
+
 export function seedExamBody(): ExamBody {
   return {
     parts: [
       {
         id: id("p"),
         title: "ידע והבנת הטקסט",
-        instructions: "ענו על 4 מתוך 7 השאלות (10 נקודות לכל שאלה).",
-        points: 40,
-        choose: 4,
+        instructions: "ענו על 3 מתוך 7 השאלות (10 נקודות לכל שאלה).",
+        points: 30,
+        choose: 3,
         questions: [
           q("פסח שני (פרק ט׳)", [
             "מדוע לא יכלו האנשים להקריב את הפסח במועדו? (פסוק ו׳)",
@@ -73,11 +110,12 @@ export function seedExamBody(): ExamBody {
           ], 10),
         ],
       },
+      breadthPart(),
       {
         id: id("p"),
         title: "מיומנויות הטיעון",
         instructions: "חובה",
-        points: 35,
+        points: 30,
         choose: null,
         questions: [
           q("המרגלים אומרים: ״לֹא נוּכַל לַעֲלוֹת אֶל הָעָם כִּי חָזָק הוּא מִמֶּנּוּ״.", [
@@ -85,7 +123,7 @@ export function seedExamBody(): ExamBody {
             "מהו הנימוק?",
             "נסחו את הנחת היסוד הסמויה בצורה כללית, עם אחת המילים תמיד / אף פעם / כל.",
             "איך דברי יהושע וכלב (פרק י״ד, פסוקים ז׳–ט׳) שומטים את ההנחה הזו?",
-          ], 15),
+          ], 10),
           q("קרח אומר: ״כָּל הָעֵדָה כֻּלָּם קְדֹשִׁים... וּמַדּוּעַ תִּתְנַשְּׂאוּ עַל קְהַל ה׳?״ (פרק ט״ז, פסוק ג׳)", [
             "מהי הטענה של קרח, ומהו הנימוק שלה?",
             "נסחו את הנחת היסוד שעליה היא נשענת.",
@@ -101,7 +139,7 @@ export function seedExamBody(): ExamBody {
         id: id("p"),
         title: "כתיבה טיעונית",
         instructions: "",
-        points: 25,
+        points: 20,
         choose: null,
         questions: [
           q(
@@ -111,7 +149,7 @@ export function seedExamBody(): ExamBody {
               "״האם מנהיג צריך לחלוק את הסמכות שלו עם אחרים?״ היעזרו בסיפור שבעים הזקנים ובסיפור אלדד ומידד.",
               "״מתי מחלוקת בונה קהילה, ומתי היא מפרקת אותה?״ היעזרו בסיפור קרח ועדתו.",
             ],
-            25,
+            20,
             {
               chooseSubs: 1,
               footer:
