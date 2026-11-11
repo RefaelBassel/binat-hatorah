@@ -89,6 +89,12 @@ export default function StudentsAdmin({
         rows={approved}
         actions={(a) => (
           <>
+            <Link
+              href={`/dashboard/students/${a.id}/notebook`}
+              className="rounded-full border border-[color:var(--border)] px-3 py-1 text-xs font-bold text-[color:var(--primary)]/80 transition hover:border-[color:var(--accent)]"
+            >
+              📓 מחברת
+            </Link>
             <ActionBtn
               label="חסימה"
               tone="muted"

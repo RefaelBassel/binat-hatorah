@@ -254,6 +254,19 @@ body {
   }
 }
 
+/* "המחברת שלי" (#52): rich text of a notebook entry. Colors are inherited so
+   the same markup works on screen (light/dark) and on the white print page. */
+.notebook-body { overflow-wrap: anywhere; }
+.notebook-body ul { list-style: disc; padding-inline-start: 1.5rem; margin: 0.4rem 0; }
+.notebook-body ol { list-style: decimal; padding-inline-start: 1.5rem; margin: 0.4rem 0; }
+.notebook-body li { margin: 0.1rem 0; }
+.notebook-body b, .notebook-body strong { font-weight: 800; }
+.notebook-editor:empty::before {
+  content: attr(data-placeholder);
+  color: color-mix(in srgb, currentColor 45%, transparent);
+  pointer-events: none;
+}
+
 /* small entrance animations shared with the floating chat */
 @keyframes note-pop { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 .note-pop { animation: note-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards; }

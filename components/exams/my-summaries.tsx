@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import NotebookImport from "@/components/notebook/notebook-import";
 import {
   MAX_COMMENTATOR_ROWS,
   SUMMARY_FIELDS,
@@ -266,6 +267,7 @@ export default function MySummaries({
                   )
                 )}
               </div>
+              {!readOnly && <NotebookImport unitKey={u.taskRef} />}
             </article>
           );
         })}

@@ -146,6 +146,7 @@ export async function removeUser(userId: number) {
     "writing_results",
     "debate_votes",
     "group_message_reads",
+    "notebook_entries",
   ]) {
     try {
       await db().execute({ sql: `DELETE FROM ${table} WHERE user_id = ?`, args: [userId] });

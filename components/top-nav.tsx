@@ -71,6 +71,10 @@ export default async function TopNav() {
       // DB unavailable — the menu still renders
     }
   }
+  // the student's private notebook (issue #52): students, and a teacher in student mode
+  if (user && !user.guest && !isTeacher) {
+    links.splice(links.findIndex((l) => l.href === "/me") + 1, 0, { href: "/notebook", label: "📓 המחברת שלי" });
+  }
   if (isTeacher) {
     links.push({ href: "/dashboard", label: "דשבורד מורה" });
     links.push({ href: "/dashboard/chat", label: "הצ׳אט עם קלוד" });
