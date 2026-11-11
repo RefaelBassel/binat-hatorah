@@ -34,6 +34,7 @@ const STATUS_HE: Record<string, { label: string; tone: string }> = {
   failed: { label: "הבנייה נכשלה — רפאל קיבל הודעה", tone: "var(--danger-fill)" },
   paused: { label: "ממתינה בתור לבנייה — תצא מעצמה, בקשה אחת בכל פעם", tone: "var(--warning-fill)" },
   question: { label: "הבנייה שואלת שאלה — עני כאן בצ׳אט", tone: "var(--warning-fill)" },
+  fix_queued: { label: "התיקון נרשם — ייצא לבנייה מעצמו", tone: "var(--warning-fill)" },
   closed: { label: "נסגר", tone: "var(--primary-fill)" },
 };
 
@@ -202,7 +203,7 @@ export default function TeacherChat({ teacherName, compact = false }: { teacherN
     const last = i === msgs.length - 1;
     return actions.filter((a) => (!prev || a.createdAt >= prev.createdAt) && (last || a.createdAt <= m.createdAt + 1));
   };
-  const codeFor = (a: ActionRow) => (a.tool === "request_code_change" && a.result && typeof a.result === "object" ? codeRequests.find((c) => c.id === (a.result as { codeRequestId?: number }).codeRequestId) ?? null : null);
+  const codeFor = (a: ActionRow) => ((a.tool === "request_code_change" || a.tool === "revise_code_request") && a.result && typeof a.result === "object" ? codeRequests.find((c) => c.id === (a.result as { codeRequestId?: number }).codeRequestId) ?? null : null);
 
   return (
     <div className={`flex flex-col ${compact ? "min-h-full" : "min-h-[70vh]"}`} dir="rtl">
@@ -335,12 +336,13 @@ function ActionCard({ a, code, onAct }: { a: ActionRow; code: CodeRequestRow | n
   // approve: the chat is a chat, the change already happened.
   const working = a.status === "undoing";
   const isCode = a.tool === "request_code_change";
+  const isFix = a.tool === "revise_code_request";
   const st = code ? STATUS_HE[code.status] ?? { label: code.status, tone: "var(--primary-fill)" } : null;
   const tone = a.status === "applied" ? "var(--success)" : a.status === "failed" ? "var(--danger)" : "var(--primary)";
   return (
     <div className="my-1 me-0 ms-auto flex max-w-[92%] flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-3 py-1.5 text-[12px]" style={{ background: "color-mix(in srgb, var(--background) 70%, transparent)" }}>
       <span className="font-bold" style={{ color: tone }}>
-        {a.status === "applied" ? (isCode ? "🛠️ נשלח לבנייה" : "✓") : a.status === "undone" ? "↶ בוטל" : a.status === "failed" ? "✗ לא הצליח" : working ? "…" : "·"}
+        {a.status === "applied" ? (isCode ? "🛠️ נשלח לבנייה" : isFix ? "🔧 תיקון נרשם" : "✓") : a.status === "undone" ? "↶ בוטל" : a.status === "failed" ? "✗ לא הצליח" : working ? "…" : "·"}
       </span>
       <span className="text-[color:var(--foreground)]/80">{a.summary}</span>
       {a.status === "failed" && a.result != null && typeof a.result === "object" && "error" in (a.result as object) ? (
@@ -349,7 +351,7 @@ function ActionCard({ a, code, onAct }: { a: ActionRow; code: CodeRequestRow | n
       {code && st && (
         <>
           <span className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: st.tone }}>
-            {st.label}
+            {code.round > 1 && code.status === "merged" ? `התיקון עלה לאתר ✓ (סבב ${code.round})` : code.round > 1 && (code.status === "working" || code.status === "open") ? `קלוד מתקן — סבב ${code.round}` : st.label}
           </span>
           {code.issueUrl && (
             <a href={code.issueUrl} target="_blank" rel="noopener noreferrer" className="underline text-[color:var(--primary)]/70">

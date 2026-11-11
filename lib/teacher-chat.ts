@@ -109,7 +109,9 @@ export async function ensureChatTables() {
     /* column exists */
   }
   // older tables: a question the build asked on GitHub, relayed to the chat
-  for (const col of ["question TEXT", "question_comment_id INTEGER"]) {
+  // …and the fix rounds of a request: its round number, when the last round
+  // was sent, a fix waiting to be sent, and which round the chat was told about
+  for (const col of ["question TEXT", "question_comment_id INTEGER", "round INTEGER", "revised_at INTEGER", "pending_fix TEXT", "fix_at INTEGER", "announced_round INTEGER"]) {
     try {
       await db().execute(`ALTER TABLE code_requests ADD COLUMN ${col}`);
     } catch {
@@ -148,6 +150,8 @@ export interface CodeRequestRow {
   status: string;
   note: string | null;
   question: string | null;
+  round: number;
+  fixPending: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -296,6 +300,11 @@ const READ_TOOLS = new Set(["list_units", "get_unit", "list_students", "class_pr
 
 export const TOOLS: Anthropic.Tool[] = [
   {
+    name: "revise_code_request",
+    description: "A fix to something a code request already built (or is building): the teacher looked at the result and wants it changed (\"not like that\", move, rename, add what is missing, it does not work). Goes to the SAME request as a fix round — the build sees the original spec, what was built and this remark. codeRequestId: the request (from the \"✅ … (בקשה #N)\" message, the card, or list_code_requests). feedback: all her remarks in one complete, self-contained Hebrew text — what she sees now, and what it should be instead.",
+    input_schema: { type: "object", properties: { codeRequestId: { type: "integer" }, feedback: { type: "string" } }, required: ["codeRequestId", "feedback"], additionalProperties: false },
+  },
+  {
     name: "answer_build_question",
     description: "Pass the teacher's answer to a question the automatic build asked (it appears in the chat as \"❓ שאלה מהבנייה … (בקשה #N)\"). codeRequestId: N. answer: her answer in Hebrew, complete and self-contained — the build sees only this text and the original request, not the chat. The build then continues by itself.",
     input_schema: { type: "object", properties: { codeRequestId: { type: "integer" }, answer: { type: "string" } }, required: ["codeRequestId", "answer"], additionalProperties: false },
@@ -425,7 +434,7 @@ async function runReadTool(name: string, input: Record<string, unknown>, userId:
       };
     }
     case "list_code_requests":
-      return (await listCodeRequests(userId)).map((c) => ({ id: c.id, title: c.title, status: c.status, issueUrl: c.issueUrl, prUrl: c.prUrl, previewUrl: c.previewUrl, note: c.note }));
+      return (await listCodeRequests(userId)).map((c) => ({ id: c.id, title: c.title, status: c.status, round: c.round, fixWaiting: c.fixPending, issueUrl: c.issueUrl, prUrl: c.prUrl, previewUrl: c.previewUrl, note: c.note }));
     default:
       return { error: `unknown tool ${name}` };
   }
@@ -550,6 +559,13 @@ async function buildProposal(name: string, input: Record<string, unknown>): Prom
         return { summary: `הודעה אישית ל${acc.fullName ?? acc.email}`, preview: { changes: [{ what: `אל: ${acc.fullName ?? acc.email}`, before: null, after: text }] } };
       }
       return { summary: "הודעה לכל הכיתה", preview: { changes: [{ what: "אל: כל הכיתה (צ׳אט קבוצתי)", before: null, after: text }] } };
+    }
+    case "revise_code_request": {
+      const feedback = str(input.feedback, 20_000);
+      if (!feedback) return { error: "feedback required" };
+      const cr = (await db().execute({ sql: "SELECT title FROM code_requests WHERE id = ?", args: [Number(input.codeRequestId)] })).rows[0];
+      if (!cr) return { error: "code request not found — use list_code_requests" };
+      return { summary: `תיקון לבקשה: ${String(cr.title)}`, preview: { changes: [{ what: "התיקון שיישלח לבנייה", before: null, after: feedback }] } };
     }
     case "answer_build_question": {
       const answer = str(input.answer, 20_000);
@@ -682,6 +698,17 @@ export async function applyAction(actionId: number, userId: number): Promise<Act
         const text = str(input.text, 4000);
         if (input.to === "student") await sendMessage(userId, Number(input.userId), text);
         else await sendGroupMessage(userId, text);
+        break;
+      }
+      case "revise_code_request": {
+        const cr = await reviseCodeRequest(Number(input.codeRequestId), str(input.feedback, 20_000));
+        const message =
+          cr.issueNumber == null
+            ? "הבקשה עוד לא יצאה לבנייה, אז התיקון צורף אליה והכול ייבנה יחד"
+            : cr.status === "fix_queued"
+              ? "התיקון נרשם על אותה בקשה וייצא לבנייה בעוד כשתי דקות (או מיד כשהבנייה שרצה עכשיו תסתיים). הערות נוספות שתכתבי עד אז ייכנסו לאותו סבב"
+              : "הבקשה עדיין בבנייה; התיקון נרשם וייצא מיד כשהיא תעלה לאתר";
+        result = { codeRequestId: cr.id, status: cr.status, message };
         break;
       }
       case "answer_build_question": {
@@ -881,6 +908,7 @@ export function describeCodeRequest(cr: CodeRequestRow): string {
   if (cr.status === "queued" && cr.note) return `השליחה ל-GitHub נכשלה (${cr.note}); המערכת תנסה שוב מעצמה`;
   if (cr.status === "paused") return "ממתינה בתור לבנייה: הבקשה שמורה ותצא מעצמה כשיגיע תורה (בקשה אחת בכל פעם; אם חסר קרדיט בחשבון Claude, רפאל מקבל הודעה)";
   if (cr.status === "question") return `הבנייה עצרה ושואלת את המורה: ${cr.question ?? ""} — כשהיא עונה, העבר את התשובה עם answer_build_question`;
+  if (cr.status === "fix_queued") return "התיקון נרשם וייצא לבנייה מעצמו (בעוד כשתי דקות, או מיד כשהבנייה הנוכחית תסתיים)";
   if (cr.status === "failed") return "הבנייה נעצרה ולא הושלמה; רפאל קיבל הודעה";
   return `סטטוס: ${cr.status}`;
 }
@@ -929,6 +957,8 @@ export async function listCodeRequests(userId: number): Promise<CodeRequestRow[]
     status: String(x.status),
     note: (x.note as string | null) ?? null,
     question: (x.question as string | null) ?? null,
+    round: Number(x.round ?? 1) || 1,
+    fixPending: x.pending_fix != null,
     createdAt: Number(x.created_at),
     updatedAt: Number(x.updated_at),
   }));
@@ -1019,11 +1049,109 @@ async function surfaceBuildQuestion(id: number, q: { id: number; body: string })
   });
 }
 
+interface IssueComment {
+  id: number;
+  body: string;
+  user: { login: string; type: string };
+  created_at: string;
+  updated_at: string;
+}
+
+// what the build wrote for the teacher, without the action's own trailer
+const cleanBotComment = (body: string) =>
+  body
+    .replace(/^@\S+\s*/, "")
+    .replace(/\[View job[^\n]*/gi, "")
+    .replace(/\n?-{3,}\n?\[?branch[^\n]*/gi, "")
+    .trim()
+    .slice(0, 2000);
+
+async function tellTeacher(userId: number, text: string) {
+  const thread = await currentThread(userId);
+  await db().execute({
+    sql: "INSERT INTO teacher_chat_messages (user_id, thread, role, content_json, created_at) VALUES (?, ?, 'assistant', ?, ?)",
+    args: [userId, thread, JSON.stringify([{ type: "text", text }]), now()],
+  });
+}
+
+// once per round: "it is on the site", in the chat, with what the build said
+// it made — the teacher looks, and answers in the same conversation
+async function announceBuilt(id: number, round: number, comments: IssueComment[], roundStart: number) {
+  const claim = await db().execute({ sql: "UPDATE code_requests SET announced_round = ? WHERE id = ? AND COALESCE(announced_round, 0) < ?", args: [round, id, round] });
+  if (claim.rowsAffected !== 1) return;
+  const r = (await db().execute({ sql: "SELECT user_id, title FROM code_requests WHERE id = ?", args: [id] })).rows[0];
+  if (!r) return;
+  const said = [...comments].reverse().find((c) => c.user.type === "Bot" && c.user.login.toLowerCase().includes("claude") && Date.parse(c.created_at) >= roundStart);
+  const summary = said ? cleanBotComment(said.body) : "";
+  const head = round > 1 ? `✅ התיקון ל״${String(r.title)}״ עלה לאתר (בקשה #${id}, סבב ${round}).` : `✅ ״${String(r.title)}״ עלה לאתר (בקשה #${id}).`;
+  await tellTeacher(
+    Number(r.user_id),
+    `${head} לפעמים עוברות דקה-שתיים עד שרואים את השינוי.${summary ? `\n\n${summary}` : ""}\n\nאם משהו לא יצא כמו שרצית, כתבי לי כאן מה לשנות, ואתקן באותה בקשה.`
+  );
+}
+
+// A remark on something already built is a fix round of the same request, not
+// a new request: the build then sees the original spec, what was built and
+// the remark. Remarks wait two quiet minutes (FIX_QUIET) so several in a row
+// go out as one round, and behind any build still running in the repository;
+// refreshCodeRequests sends them. A request not sent yet just takes the
+// remark into its body.
+const FIX_QUIET = 120;
+export async function reviseCodeRequest(id: number, feedback: string): Promise<CodeRequestRow> {
+  await ensureChatTables();
+  const r = (await db().execute({ sql: "SELECT user_id, body, status, issue_number, pending_fix FROM code_requests WHERE id = ?", args: [id] })).rows[0];
+  if (!r) throw new Error("הבקשה לא נמצאה");
+  const userId = Number(r.user_id);
+  if (r.issue_number == null) {
+    const body = `${String(r.body)}\n\n---\nתוספת מאותה מורה, לבנות יחד עם הבקשה שלמעלה:\n\n${feedback}`.slice(0, CODE_REQUEST_BODY_MAX);
+    await db().execute({ sql: "UPDATE code_requests SET body = ?, updated_at = ? WHERE id = ?", args: [body, now(), id] });
+  } else {
+    const fix = r.pending_fix ? `${String(r.pending_fix)}\n\n${feedback}` : feedback;
+    // a request in the middle of a build keeps its status; the fix follows it
+    const inBuild = ["open", "working", "preview", "question"].includes(String(r.status));
+    await db().execute({
+      sql: "UPDATE code_requests SET pending_fix = ?, fix_at = ?, status = ?, updated_at = ? WHERE id = ?",
+      args: [fix.slice(0, 20_000), now(), inBuild ? String(r.status) : "fix_queued", now(), id],
+    });
+  }
+  return (await listCodeRequests(userId)).find((c) => c.id === id)!;
+}
+
+// send a waiting fix as an @claude comment on the request's own issue
+async function sendFix(id: number): Promise<boolean> {
+  const r = (await db().execute({ sql: "SELECT issue_number, repo, pending_fix, COALESCE(round, 1) AS round, pr_url, status FROM code_requests WHERE id = ?", args: [id] })).rows[0];
+  if (!r || r.pending_fix == null || r.issue_number == null) return false;
+  const fix = String(r.pending_fix);
+  // the cron and the chat's poll may both get here: only one takes the fix
+  const claim = await db().execute({ sql: "UPDATE code_requests SET pending_fix = NULL WHERE id = ? AND pending_fix = ?", args: [id, fix] });
+  if (claim.rowsAffected !== 1) return false;
+  const repo = (r.repo as string | null) ?? SITE.repo;
+  const n = Number(r.issue_number);
+  const round = Number(r.round) + 1;
+  const built = r.pr_url ? `הבקשה כבר נבנתה ומוזגה (${String(r.pr_url)}), והקוד שלה נמצא ב-main. המורה ראתה את התוצאה באתר ומבקשת לתקן:` : "המורה מוסיפה לבקשה הזאת:";
+  try {
+    await gh(`/repos/${repo}/issues/${n}`, { method: "PATCH", body: JSON.stringify({ state: "open" }) }).catch(() => null);
+    for (const label of ["build-failed", "waiting-credit"]) await gh(`/repos/${repo}/issues/${n}/labels/${label}`, { method: "DELETE" }).catch(() => null);
+    await gh(`/repos/${repo}/issues/${n}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ body: `@claude\n\n🔧 תיקון לבקשה הזאת (סבב ${round}). ${built}\n\n${fix}\n\nיש לעבוד על גבי main הנוכחי בענף חדש, לשנות רק את מה שהיא מבקשת, להריץ בנייה ולפתוח Pull Request חדש שמתחיל ב-"Closes #${n}".` }),
+    });
+    await db().execute({
+      sql: "UPDATE code_requests SET status = 'working', round = ?, revised_at = ?, retried_at = ?, question = NULL, note = NULL, updated_at = ? WHERE id = ?",
+      args: [round, now(), now(), now(), id],
+    });
+    return true;
+  } catch (e) {
+    await db().execute({ sql: "UPDATE code_requests SET pending_fix = ?, note = ?, updated_at = ? WHERE id = ?", args: [fix, e instanceof Error ? e.message : String(e), now(), id] });
+    return false;
+  }
+}
+
 export async function refreshCodeRequests(userId: number): Promise<CodeRequestRow[]> {
   await ensureChatTables();
   if (!process.env.GITHUB_TOKEN) return listCodeRequests(userId);
   const open = await db().execute({
-    sql: "SELECT id, issue_number, repo, length(body) AS blen, COALESCE(retried_at, created_at) AS since FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview','paused','failed','question') AND updated_at < ?",
+    sql: "SELECT id, issue_number, repo, length(body) AS blen, COALESCE(retried_at, created_at) AS since, revised_at, COALESCE(round, 1) AS round, COALESCE(announced_round, 0) AS announced FROM code_requests WHERE issue_number IS NOT NULL AND status IN ('open','working','preview','paused','failed','question') AND updated_at < ?",
     args: [now() - 60],
   });
   for (const row of open.rows) {
@@ -1031,8 +1159,14 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
     const repo = (row.repo as string | null) ?? SITE.repo;
     try {
       const issue = (await gh(`/repos/${repo}/issues/${n}`)) as { state: string; labels?: { name: string }[] } | null;
-      const prs = (await gh(`/repos/${repo}/pulls?state=all&per_page=50&sort=created&direction=desc`)) as { html_url: string; state: string; merged_at: string | null; head: { ref: string }; body: string | null; title: string }[] | null;
-      const pr = prs?.find((p) => p.head.ref.includes(`issue-${n}`) || (p.body ?? "").includes(`#${n}`) || p.title.includes(`#${n}`));
+      const prs = (await gh(`/repos/${repo}/pulls?state=all&per_page=50&sort=created&direction=desc`)) as { html_url: string; state: string; merged_at: string | null; created_at: string; head: { ref: string }; body: string | null; title: string }[] | null;
+      // this issue's pull request — "issue-5" must not match "issue-52" — and,
+      // after a fix round was sent, only one opened since (the earlier round's
+      // merged pull request is history)
+      const byBranch = new RegExp(`issue-${n}(?!\\d)`);
+      const byRef = new RegExp(`#${n}(?!\\d)`);
+      const roundStart = row.revised_at != null ? (Number(row.revised_at) - 60) * 1000 : 0;
+      const pr = prs?.find((p) => (byBranch.test(p.head.ref) || byRef.test(p.body ?? "") || byRef.test(p.title)) && Date.parse(p.created_at) >= roundStart);
       // a closed issue ends the request whether or not a PR exists — a PR
       // closed without merge used to leave the request "working" for ever,
       // and every later request waited in the queue behind it
@@ -1052,7 +1186,7 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
       // repairTruncatedRequests instead.)
       const blen = Number(row.blen ?? 0);
       if (status === "working" && issue?.state === "open" && !pr && !(blen >= 5990 && blen <= 6000)) {
-        const comments = (await gh(`/repos/${repo}/issues/${n}/comments?per_page=100`)) as { id: number; body: string; user: { login: string; type: string }; updated_at: string }[] | null;
+        const comments = (await gh(`/repos/${repo}/issues/${n}/comments?per_page=100`)) as IssueComment[] | null;
         const last = comments?.[comments.length - 1];
         const asks = last ? /[?？]/.test(last.body.replace(/https?:\/\/\S+/g, "")) : false;
         if (last && asks && last.user.type === "Bot" && last.user.login.toLowerCase().includes("claude") && Date.now() - Date.parse(last.updated_at) > 120_000) {
@@ -1067,7 +1201,7 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
           const runs = (await gh(`/repos/${repo}/actions/workflows/claude-chat.yml/runs?per_page=10`)) as { workflow_runs: { status: string }[] } | null;
           const running = !runs || runs.workflow_runs.some((r) => r.status !== "completed");
           if (!running) {
-            if (!comments.some((c) => c.body.includes(RESTART_MARK))) {
+            if (!comments.some((c) => c.body.includes(RESTART_MARK) && Date.parse(c.created_at) >= (Number(row.since ?? 0) - 7200) * 1000)) {
               await gh(`/repos/${repo}/issues/${n}/comments`, { method: "POST", body: JSON.stringify({ body: `@claude\n\n${RESTART_MARK}: הבנייה של הבקשה לא התחילה או נעצרה בלי תוצאה. יש לבנות את הבקשה כפי שהיא, להריץ בנייה ולפתוח Pull Request.` }) });
               await db().execute({ sql: "UPDATE code_requests SET retried_at = ? WHERE id = ?", args: [now(), Number(row.id)] });
             } else {
@@ -1078,6 +1212,12 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
         }
       }
       await db().execute({ sql: "UPDATE code_requests SET status = ?, pr_url = ?, branch = ?, updated_at = ? WHERE id = ?", args: [status, pr?.html_url ?? null, pr?.head.ref ?? null, now(), Number(row.id)] });
+      // the build is on the site: say so in the chat, with the build's own
+      // words about what it made, so the teacher can look and answer there
+      if (status === "merged" && Number(row.announced) < Number(row.round)) {
+        const comments = (await gh(`/repos/${repo}/issues/${n}/comments?per_page=100`).catch(() => null)) as IssueComment[] | null;
+        await announceBuilt(Number(row.id), Number(row.round), comments ?? [], roundStart);
+      }
     } catch (e) {
       await db().execute({ sql: "UPDATE code_requests SET note = ?, updated_at = ? WHERE id = ?", args: [e instanceof Error ? e.message : String(e), now(), Number(row.id)] });
     }
@@ -1090,7 +1230,13 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
     });
     if (Number(still.rows[0]?.n ?? 0) === 0) {
       const nextUp = await db().execute({ sql: "SELECT id FROM code_requests WHERE COALESCE(repo, ?) = ? AND status = 'queued' AND issue_number IS NULL ORDER BY id LIMIT 1", args: [SITE.repo, repo] });
-      if (nextUp.rows[0]) await openIssueFor(Number(nextUp.rows[0].id));
+      // a fix round first (it finishes something the teacher is waiting on)
+      const fixUp = await db().execute({
+        sql: "SELECT id FROM code_requests WHERE COALESCE(repo, ?) = ? AND pending_fix IS NOT NULL AND issue_number IS NOT NULL AND COALESCE(fix_at, 0) < ? ORDER BY fix_at LIMIT 1",
+        args: [SITE.repo, repo, now() - FIX_QUIET],
+      });
+      const sentFix = fixUp.rows[0] ? await sendFix(Number(fixUp.rows[0].id)) : false;
+      if (!sentFix && nextUp.rows[0]) await openIssueFor(Number(nextUp.rows[0].id));
       // a request paused for API credit is re-triggered by itself (an
       // "@claude" comment starts the build again); a failed attempt costs
       // nothing, so once credit is back the request simply goes through
@@ -1098,7 +1244,7 @@ export async function refreshCodeRequests(userId: number): Promise<CodeRequestRo
         sql: "SELECT id, issue_number FROM code_requests WHERE COALESCE(repo, ?) = ? AND status = 'paused' AND issue_number IS NOT NULL AND COALESCE(retried_at, 0) < ? ORDER BY id LIMIT 1",
         args: [SITE.repo, repo, now() - 3600],
       });
-      if (paused.rows[0]) {
+      if (!sentFix && paused.rows[0]) {
         const pid = Number(paused.rows[0].id);
         try {
           await gh(`/repos/${repo}/issues/${Number(paused.rows[0].issue_number)}/comments`, {
@@ -1127,7 +1273,7 @@ const SYSTEM = `אתה קלוד — העוזר של המורה באתר "${SITE.
 - ביטול משימה (cancel_task) לעולם לא מוחק עבודה של תלמידים — רק מוריד את המשימה מהרשימה שלהם. לכן במשימה מבוטלת class_progress מחזיר את העבודה השמורה ב-keptWorkNotAssigned (אחוז התקדמות, זמן עבודה, מספר תשובות); אל תאמר שעבודה אבדה בלי לבדוק שם.
 - לפני עריכת טקסט ביחידה — תמיד get_unit קודם, כדי לערוך את הנוסח הנוכחי ולהשתמש במפתחות (key) הנכונים של השאלות והבלוקים.
 - בדיקת ההבנה (check) נערכת בעמוד המשימה עצמו (״בדיקת ההבנה״ בלוח העריכה) — אם מבקשים לשנות שאלה סגורה, הפנה לשם, או השתמש ב-request_code_change אם זה שינוי מבני.
-- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה. בקשת קוד עולה דולרים, ועבודה בכלים שלך עולה אגורות: לפני request_code_change בדוק אם אחד הכלים שלך עושה את זה (נוסח, שאלות, תוכן יחידה, מועדים, פרסום, ביטול, הודעות, חשבונות) — אם כן, עשה זאת בכלי ואל תשלח בקשת קוד. בקשת קוד רק כשצריך באמת קוד חדש: מסך, כפתור, התנהגות או מבנה נתונים שאין להם כלי. בכל בקשת קוד ציין size: small לשינוי ממוקד (רוב הבקשות), large רק לפיצ׳ר חדש שנוגע בכמה מסכים או במבנה הנתונים. בקשה חדשה בזמן שקודמת עוד ממתינה בתור מצורפת אליה אוטומטית — אמור לה זאת לפי message. אם המורה הדביקה בצ׳אט טקסט ארוך (מבחן, דף הכנה, נוסח שיש להעתיק מילה במילה) — אל תעתיק אותו לגוף הבקשה: ההודעה המקורית שלה מצורפת לבקשה אוטומטית, מילה במילה. בגוף כתוב רק מה לעשות עם הטקסט ואיפה. הודעה בצ׳אט שמתחילה ב-״❓ שאלה מהבנייה״ היא שאלה שהבנייה האוטומטית שאלה ועצרה בגללה. כשהמורה עונה עליה, העבר את התשובה מיד עם answer_build_question (codeRequestId = מספר הבקשה שבהודעה), מנוסחת מלאה ועצמאית; אם התשובה נמצאת בכלים שלך (נוסח, תוכן יחידה), צרף את התוכן עצמו. אל תשלח בקשת קוד חדשה במקום זה.
+- כשהבקשה דורשת שינוי באתר עצמו (כפתור, מסך, התנהגות, עיצוב, דבר שאין לו כלי) — השתמש ב-request_code_change עם כותרת קצרה ומפרט מלא בעברית: איפה באתר, מה בדיוק, למה, מה התלמידים יראו ומה המורה. הבקשה נבנית ועולה לאתר אוטומטית (בדרך כלל תוך 10–30 דקות); היא תראה את הסטטוס בכרטיס. דווח לה בדיוק מה הכלי החזיר: אם status=open — "נשלחה לבנייה האוטומטית" עם הקישור; אם status=queued — "נרשמה וממתינה בתור, תישלח מעצמה כשהבקשה הקודמת תסתיים"; אם יש note עם שגיאה — אמור שהשליחה נכשלה ושהמערכת תנסה שוב מעצמה. אין "מפתחים" ואין מתווך אנושי — אל תכתוב שאתה "מעביר למפתחים"; זה צינור אוטומטי שאתה עצמך מפעיל. אם לא ברור מה בדיוק היא רוצה — שאל שאלה אחת ממוקדת לפני שאתה שולח. אם המורה מבקשת שהשינוי ייעשה גם (או רק) באתר האחות קדושים תהיו — השתמש ב-targets (למשל ["this", "kedoshim-tihyu"], או ["kedoshim-tihyu"] בלבד). באתר האחר קלוד אחר בונה לפי המפרט בלבד ואינו רואה את האתר הזה, לכן המפרט חייב להיות מלא ועצמאי, בלי "כמו כאן" ובלי שמות של קבצים מכאן. דווח לה על כל בקשה בנפרד לפי requests בתוצאה. בקשת קוד עולה דולרים, ועבודה בכלים שלך עולה אגורות: לפני request_code_change בדוק אם אחד הכלים שלך עושה את זה (נוסח, שאלות, תוכן יחידה, מועדים, פרסום, ביטול, הודעות, חשבונות) — אם כן, עשה זאת בכלי ואל תשלח בקשת קוד. בקשת קוד רק כשצריך באמת קוד חדש: מסך, כפתור, התנהגות או מבנה נתונים שאין להם כלי. בכל בקשת קוד ציין size: small לשינוי ממוקד (רוב הבקשות), large רק לפיצ׳ר חדש שנוגע בכמה מסכים או במבנה הנתונים. בקשה חדשה בזמן שקודמת עוד ממתינה בתור מצורפת אליה אוטומטית — אמור לה זאת לפי message. אם המורה הדביקה בצ׳אט טקסט ארוך (מבחן, דף הכנה, נוסח שיש להעתיק מילה במילה) — אל תעתיק אותו לגוף הבקשה: ההודעה המקורית שלה מצורפת לבקשה אוטומטית, מילה במילה. בגוף כתוב רק מה לעשות עם הטקסט ואיפה. הודעה בצ׳אט שמתחילה ב-״❓ שאלה מהבנייה״ היא שאלה שהבנייה האוטומטית שאלה ועצרה בגללה. כשהמורה עונה עליה, העבר את התשובה מיד עם answer_build_question (codeRequestId = מספר הבקשה שבהודעה), מנוסחת מלאה ועצמאית; אם התשובה נמצאת בכלים שלך (נוסח, תוכן יחידה), צרף את התוכן עצמו. אל תשלח בקשת קוד חדשה במקום זה. הודעה שמתחילה ב-״✅״ מודיעה שבקשת קוד עלתה לאתר ומה נבנה. זו שיחה, לא בקשה חד-פעמית: כשהמורה מעירה על משהו שנבנה בבקשת קוד (״לא ככה״, להזיז, לשנות, חסר, לא עובד) — זה תיקון לאותה בקשה. השתמש ב-revise_code_request עם codeRequestId של הבקשה (המספר שבהודעת ה-✅, או מ-list_code_requests) ו-feedback מלא ועצמאי: מה היא רואה עכשיו ומה צריך להיות במקום. רכז את כל ההערות שלה בקריאה אחת. אל תפתח request_code_change חדש בשביל תיקון של משהו שכבר נבנה; בקשה חדשה רק לדבר חדש שאינו קשור. אם התיקון הוא בנוסח או בתוכן שיש לך כלי בשבילו, עשה אותו בכלי ולא בבנייה. דווח לה לפי message.
 - שאלות על "איך עושים X באתר" — ענה ישירות מהידע שלך על האתר (למטה).
 
 סגנון: עברית, חם, קצר ופשוט. בלי Markdown (בלי כוכביות וכותרות); רשימות עם מקפים אם צריך. במבט אחד מבינים. כשמציעים ניסוח חדש — כתוב אותו במלואו. אל תמציא תוכן לימודי שהיא לא ביקשה; כשהיא מבקשת "לשפר" — הצע נוסח והסבר במשפט מה שונה.
