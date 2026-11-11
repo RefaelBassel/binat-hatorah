@@ -44,6 +44,7 @@ export default async function MePage() {
   let questions: { id: number; question: string; starred: boolean; chosen: boolean }[] = [];
   let notifications: Awaited<ReturnType<typeof unreadFor>> = [];
   let roles: { productKey: string; title: string; role: string }[] = [];
+  let notebookCount = 0;
   let reflections: (ReflectionPoint & { contextRef: string | null; note: string | null })[] = [];
 
   try {
@@ -85,6 +86,11 @@ export default async function MePage() {
         note: (r.note as string | null) ?? null,
       }));
       await markAllRead(userId);
+      try {
+        notebookCount = await (await import("@/lib/notebook")).countEntries(userId);
+      } catch {
+        notebookCount = 0;
+      }
     }
   } catch {
     // DB not available
@@ -142,6 +148,21 @@ export default async function MePage() {
               <TaskViewPicker initial={taskView} />
             </div>
           </div>
+        )}
+
+        {!user.guest && !isTeacher && (
+          <Link
+            href="/notebook"
+            className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 transition hover:border-[color:var(--accent)]"
+          >
+            <span>
+              <span className="block font-display text-base font-bold text-[color:var(--primary)]">📓 המחברת שלי</span>
+              <span className="mt-0.5 block text-xs text-[color:var(--foreground)]/65">
+                {notebookCount > 0 ? `${notebookCount} רשומות במחברת` : "סיכומים מהשיעורים, עם תאריך לכל יום"}
+              </span>
+            </span>
+            <span aria-hidden className="text-xl text-[color:var(--accent)]">←</span>
+          </Link>
         )}
 
         {/* overdue alert */}

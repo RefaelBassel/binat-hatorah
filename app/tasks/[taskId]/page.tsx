@@ -21,6 +21,7 @@ import { getTaskContent, countTaskUnits } from "@/content/tasks/registry";
 import { isStudentMode } from "@/lib/student-mode";
 import { formatFullDate, formatHebTime, formatEnDate } from "@/lib/hebrew";
 import UiTranslate from "@/components/task/ui-translate";
+import NotebookPanel from "@/components/notebook/notebook-panel";
 
 // the first visit of an English-language student translates the task (then cached)
 export const maxDuration = 300;
@@ -185,6 +186,12 @@ export default async function TaskPage({
       )}
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6" {...(lang === "en" ? { dir: "ltr", "data-lang": "en" } : {})}>
         {uiDict && <UiTranslate dict={uiDict} />}
+        {/* the notebook is the student's own: not for guests, not for the teacher's editing view */}
+        {!guest && !canEditContent && (
+          <div className="mb-3 flex justify-end">
+            <NotebookPanel unitKey={task.content_ref} />
+          </div>
+        )}
         <div className="mb-6 text-center">
           <p className="mb-1 text-[11px] font-semibold tracking-[0.25em] text-[color:var(--accent)]">
             {reg.content.bookRef}
