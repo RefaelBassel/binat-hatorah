@@ -182,4 +182,10 @@ export interface TaskContent extends Partial<EditableTaskContent> {
   // An argumentative-writing practice (~40 min, independent of the chapters):
   // no decode stages — the essay runner shows the text and the five steps.
   writing?: EssayExercise;
+  // A summary task with the Part B worksheet only: no Part A decode stages,
+  // no comprehension check, no plenary. The student lands straight in the
+  // worksheet. `decode`/`comprehension`/mainPassage are empty placeholders.
+  worksheetOnly?: boolean;
+  // Short tag shown on the grades-report column header (e.g. "בונוס").
+  gradeTag?: string;
 }

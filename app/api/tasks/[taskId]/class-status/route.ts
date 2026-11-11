@@ -10,6 +10,7 @@ import {
   countTaskUnits,
   DECODE_STAGES,
   isWritingTask,
+  isWorksheetOnly,
 } from "@/content/tasks/registry";
 import type { QuestionBlock } from "@/content/tasks/types";
 
@@ -35,7 +36,8 @@ export async function GET(
     return NextResponse.json({ error: "תוכן המשימה לא נמצא." }, { status: 404 });
   }
   const reg = { ...baseReg, content: await effectiveContent(baseReg.content) };
-  const writing = isWritingTask(reg.content);
+  // no Part A: a writing practice or a worksheet-only task (e.g. the bonus)
+  const writing = isWritingTask(reg.content) || isWorksheetOnly(reg.content);
   const hasCheck = !writing && Boolean(reg.content.check?.length);
 
   // the equal-weight unit list, in reading order (a writing practice has
