@@ -358,3 +358,33 @@ export function applySeedRubrics(body: ExamBody): { body: ExamBody; changed: boo
   };
   return { body: next, changed };
 }
+
+// Read-only view for the marking-guide page (issue #60, round 2): the guide is
+// shown over the exam exactly as the teacher sees it (same questions, order,
+// numbering and points). A sub-item whose guide is empty gets the sample
+// answer of the seeded wording when it is still the same question; nothing is
+// ever added to or removed from the exam, and nothing is saved.
+export function withSeedRubricsForView(body: ExamBody): ExamBody {
+  const seed = seedExamBody();
+  const wanted = new Map<string, string>();
+  seed.parts.forEach((p, pi) =>
+    p.questions.forEach((q, qi) =>
+      q.subs.forEach((s, si) => {
+        const text = TEXTS[pi]?.[qi]?.[si];
+        if (text) wanted.set(`${q.text}||${s.text}`, text);
+      })
+    )
+  );
+  return {
+    ...body,
+    parts: body.parts.map((p) => ({
+      ...p,
+      questions: p.questions.map((q) => ({
+        ...q,
+        subs: q.subs.map((s) =>
+          s.rubric.trim() ? s : { ...s, rubric: wanted.get(`${q.text}||${s.text}`) ?? "" }
+        ),
+      })),
+    })),
+  };
+}
