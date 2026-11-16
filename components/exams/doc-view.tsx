@@ -1,5 +1,8 @@
 import {
   type ExamBody,
+  answerItems,
+  fmtPoints,
+  partComputedPoints,
   type PrepBody,
   examTotal,
   partLabel,
@@ -29,6 +32,8 @@ export function ExamView({
 }) {
   const nums = questionNumbers(body);
   const total = examTotal(body);
+  // sub-items without points of their own share the question's points
+  const itemPoints = new Map(answerItems(body).map((it) => [it.key, it.maxPoints]));
   return (
     <article className="exam-doc space-y-6 leading-7">
       <header className="border-b-2 border-[color:var(--primary)]/40 pb-3 text-center">
@@ -69,6 +74,9 @@ export function ExamView({
                           <span className="font-semibold">{subLabel(si)} </span>
                           {s.text}
                           {s.points != null && <span className="text-sm"> ({pointsText(s.points)})</span>}
+                          {showRubric && s.points == null && (itemPoints.get(`${q.id}:${s.id}`) ?? 0) > 0 && (
+                            <span className="text-sm"> ({pointsText(itemPoints.get(`${q.id}:${s.id}`) ?? 0)})</span>
+                          )}
                         </p>
                         {showRubric && s.rubric.trim() && <Rubric text={s.rubric} />}
                       </li>
@@ -81,7 +89,51 @@ export function ExamView({
           </ol>
         </section>
       ))}
+      {showRubric && <RubricSummary body={body} total={total} />}
     </article>
+  );
+}
+
+// Closing points summary of the marking guide, checked against the points the
+// exam states for each part.
+function RubricSummary({ body, total }: { body: ExamBody; total: number }) {
+  return (
+    <section className="break-inside-avoid space-y-2 border-t-2 border-[color:var(--primary)]/40 pt-4">
+      <h2 className="font-display text-lg font-bold">סיכום נקודות</h2>
+      <table className="w-full border-collapse text-sm">
+        <tbody>
+          {body.parts.map((p, pi) => {
+            const got = partComputedPoints(p);
+            const mismatch = p.points != null && Math.abs(p.points - got) > 0.05;
+            return (
+              <tr key={p.id} className="border-b border-black/20">
+                <td className="py-1 pe-3 font-semibold">
+                  {partLabel(pi)}
+                  {p.title ? `: ${p.title}` : ""}
+                </td>
+                <td className="py-1 pe-3">
+                  {p.choose != null && p.choose > 0 ? `${p.choose} מתוך ${p.questions.length} שאלות` : `${p.questions.length} שאלות`}
+                </td>
+                <td className="py-1 text-start font-bold">
+                  {fmtPoints(got)}
+                  {mismatch && (
+                    <span className="ms-2 text-xs font-semibold text-[color:var(--danger)]">
+                      (בכותרת החלק כתוב {fmtPoints(p.points ?? 0)})
+                    </span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+          <tr>
+            <td className="py-1 pe-3 font-bold" colSpan={2}>
+              סך הכול
+            </td>
+            <td className="py-1 text-start font-extrabold">{fmtPoints(total)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   );
 }
 

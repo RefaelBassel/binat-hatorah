@@ -58,6 +58,12 @@ export default async function ExamsDashboardPage() {
             <div key={e.id} className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 shadow-sm">
               <DocLine doc={e} icon="📝" extra={
                   <>
+                    <Link
+                      href={`/dashboard/exams/print/${e.id}?mode=rubric`}
+                      className="rounded-full border-2 border-[color:var(--success)]/60 px-3 py-1 text-xs font-bold text-[color:var(--success)] hover:bg-[color:var(--success)]/10"
+                    >
+                      📋 מחוון
+                    </Link>
                     <DeckButton examId={e.id} label="🖥️ מצגת חזרה" />
                     <Link
                       href={`/dashboard/exams/student-deck/${e.id}`}
