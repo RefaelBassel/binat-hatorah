@@ -224,7 +224,7 @@ function rowToAction(r: Record<string, unknown>): ActionRow {
   };
 }
 
-export async function newThread(userId: number) {
+export async function newThread(userId: number, greeting = "שיחה חדשה. במה אפשר לעזור?") {
   await ensureChatTables();
   const t = (await currentThread(userId)) + 1;
   await db().execute({
@@ -233,7 +233,7 @@ export async function newThread(userId: number) {
   });
   await db().execute({
     sql: "INSERT INTO teacher_chat_messages (user_id, thread, role, content_json, created_at) VALUES (?, ?, 'assistant', ?, ?)",
-    args: [userId, t, JSON.stringify([{ type: "text", text: "שיחה חדשה. במה אפשר לעזור?" }]), now()],
+    args: [userId, t, JSON.stringify([{ type: "text", text: greeting }]), now()],
   });
 }
 
@@ -1294,11 +1294,29 @@ export interface ChatTurnResult {
 // mid-turn) made every later request fail with 400 ("tool_use ids found
 // without tool_result"). History is repaired while loading: such calls are
 // stripped from the stored message, results whose call is gone are dropped.
+// what the teacher is told when Claude's safety classifier declines a message
+// (the first is the wording used until 2026-11-16)
+const REFUSAL_REPLY = "לא הצלחתי לענות על ההודעה הזאת: מסנן הבטיחות של Claude עצר אותה, כנראה בטעות. נסי לנסח אותה קצת אחרת. אם זה חוזר, כתבי לרפאל.";
+const REFUSAL_TEXTS = ["לא אוכל לעזור בבקשה הזאת.", REFUSAL_REPLY];
+
 async function loadRepairedHistory(userId: number, thread: number): Promise<Anthropic.MessageParam[]> {
   const rows = (await db().execute({ sql: "SELECT id, role, content_json FROM teacher_chat_messages WHERE user_id = ? AND thread = ? ORDER BY id", args: [userId, thread] })).rows;
   const parsed = rows.map((r) => ({ id: Number(r.id), role: String(r.role) as "user" | "assistant", content: JSON.parse(String(r.content_json)) as Anthropic.ContentBlockParam[] | string }));
+  // a turn the safety classifier declined is kept for the teacher to see but
+  // not sent again: a declined exchange left in the history got every later
+  // message of the conversation declined too
+  const declined = new Set<number>();
+  parsed.forEach((m, i) => {
+    if (m.role !== "assistant" || !Array.isArray(m.content)) return;
+    const texts = m.content.filter((b) => b.type === "text").map((b) => (b as Anthropic.TextBlockParam).text.trim());
+    if (texts.length !== 1 || !REFUSAL_TEXTS.includes(texts[0]) || m.content.some((b) => b.type === "tool_use")) return;
+    declined.add(i);
+    const prev = parsed[i - 1];
+    if (prev && prev.role === "user" && Array.isArray(prev.content) && prev.content.every((b) => b.type === "text")) declined.add(i - 1);
+  });
   const out: Anthropic.MessageParam[] = [];
   for (let i = 0; i < parsed.length; i++) {
+    if (declined.has(i)) continue;
     const m = parsed[i];
     let content: Anthropic.ContentBlockParam[] = Array.isArray(m.content) ? m.content : [{ type: "text", text: String(m.content) }];
     if (m.role === "assistant") {
@@ -1343,15 +1361,20 @@ export async function chatTurn(userId: number, teacherName: string | null, text:
   await ensureChatTables();
   const apiKey = getAnthropicApiKey();
   if (!apiKey) throw new Error("מפתח Claude לא מוגדר");
-  const thread = await currentThread(userId);
-  const messages = await loadRepairedHistory(userId, thread);
+  let thread = await currentThread(userId);
+  let messages = await loadRepairedHistory(userId, thread);
   const stamp = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "full", timeStyle: "short" }).format(new Date());
   const userContent: Anthropic.ContentBlockParam[] = [{ type: "text", text: `[${stamp}${teacherName ? ` · ${teacherName}` : ""}]\n${text}` }];
   messages.push({ role: "user", content: userContent });
   const save = async (role: "user" | "assistant", content: unknown) => {
-    await db().execute({ sql: "INSERT INTO teacher_chat_messages (user_id, thread, role, content_json, created_at) VALUES (?, ?, ?, ?, ?)", args: [userId, thread, role, JSON.stringify(content), now()] });
+    const ins = await db().execute({
+      sql: "INSERT INTO teacher_chat_messages (user_id, thread, role, content_json, created_at) VALUES (?, ?, ?, ?, ?)",
+      args: [userId, thread, role, JSON.stringify(content), now()],
+    });
+    return Number(ins.lastInsertRowid);
   };
-  await save("user", userContent);
+  const askedRow = await save("user", userContent);
+  let restarted = false;
 
   const client = new Anthropic({ apiKey, timeout: 240_000, maxRetries: 1 });
   const newActions: ActionRow[] = [];
@@ -1363,22 +1386,48 @@ export async function chatTurn(userId: number, teacherName: string | null, text:
       await save("assistant", [{ type: "text", text: reply }]);
       break;
     }
-    const res = await client.messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: 12000,
-        system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-        tools: TOOLS,
-        messages,
-      });
+    // Opus 5.5's safety classifiers sometimes decline a harmless request.
+    // `fallbacks: "default"` has the API run a declined request again on the
+    // model Anthropic recommends for that category, inside the same call.
+    const raw = await client.beta.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 12000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+      tools: TOOLS,
+      messages: messages as Anthropic.Beta.BetaMessageParam[],
+    });
+    // the beta response is read through the stable types; a `fallback` block
+    // (where another model took over) is stored and sent back as it came
+    const res = raw as unknown as Anthropic.Message;
+    if (res.stop_reason === "refusal") {
+      // category and sizes only — never the conversation
+      console.log(`[teacher-chat] declined user=${userId} thread=${thread} step=${i} history=${messages.length} model=${res.model} category=${res.stop_details?.category ?? "-"} explanation=${String(res.stop_details?.explanation ?? "").slice(0, 300)}`);
+      // The conversation so far can be what trips the classifier, and then
+      // every message in it is declined (Reut, 2026-11-16: the same messages
+      // pass in an empty conversation). Once per turn: open a new conversation
+      // and ask again with this message alone.
+      if (!restarted && i === 0 && messages.length > 1) {
+        restarted = true;
+        await db().execute({ sql: "DELETE FROM teacher_chat_messages WHERE id = ?", args: [askedRow] });
+        await newThread(userId, "השיחה הקודמת נתקעה, אז פתחתי שיחה חדשה והעברתי אליה את ההודעה האחרונה שלך. השיחה הקודמת שמורה ברשימת השיחות.");
+        thread = await currentThread(userId);
+        await save("user", userContent);
+        messages = [{ role: "user", content: userContent }];
+        continue;
+      }
+    }
     const texts = res.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text);
     if (texts.length) reply = texts.join("\n").trim();
     const uses = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
     const finished = res.stop_reason === "refusal" || uses.length === 0 || res.stop_reason === "end_turn" || res.stop_reason === "max_tokens";
     if (finished) {
-      if (res.stop_reason === "refusal") reply = reply || "לא אוכל לעזור בבקשה הזאת.";
+      if (res.stop_reason === "refusal") reply = REFUSAL_REPLY;
       // never store a tool call that will get no result
       const kept = res.content.filter((b) => b.type !== "tool_use");
-      await save("assistant", kept.some((b) => b.type === "text") ? kept : [...kept, { type: "text", text: reply || "(ללא תשובה)" }]);
+      if (res.stop_reason === "refusal") await save("assistant", [{ type: "text", text: reply }]);
+      else await save("assistant", kept.some((b) => b.type === "text") ? kept : [...kept, { type: "text", text: reply || "(ללא תשובה)" }]);
       break;
     }
     messages.push({ role: "assistant", content: res.content });
