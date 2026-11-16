@@ -20,6 +20,7 @@ import {
   seedGuideBody,
   seedPrepBody,
 } from "./exam-seed";
+import { applySeedRubrics } from "./exam-rubric";
 
 // Exams and preparation sheets (issue #25). Server-only. Tables are created
 // lazily (canonical DDL: migrations/0017_exams.sql) and the first exam + prep
@@ -86,6 +87,12 @@ export async function ensureExamTables() {
   // additive column: a general study guide's link to an exam (migration 0018)
   try {
     await db().execute("ALTER TABLE exam_docs ADD COLUMN linked_exam_id INTEGER");
+  } catch {
+    // already there
+  }
+  // additive column: when the marking guide of the seeded exam was filled (migration 0024)
+  try {
+    await db().execute("ALTER TABLE exam_docs ADD COLUMN rubric_seeded_at INTEGER");
   } catch {
     // already there
   }
@@ -260,6 +267,32 @@ async function addBreadthPart(t: number) {
   );
 }
 
+// Fills the marking guide of the seeded exam (issue #60), once. Only empty
+// guides (or the earlier sample answers of the breadth questions) are filled,
+// so whatever the teacher wrote or later edits is never overwritten.
+async function fillSeedRubrics(t: number) {
+  const r = await db().execute(
+    "SELECT id, title, duration_min, body_json, rubric_seeded_at FROM exam_docs WHERE kind = 'exam' AND seed_key = 'bamidbar-9-14-exam'"
+  );
+  const row = r.rows[0];
+  if (!row || row.rubric_seeded_at != null) return;
+  const id = Number(row.id);
+  const current = parseExamBody(String(row.body_json));
+  if (current.parts.length > 0) {
+    const { body, changed } = applySeedRubrics(current);
+    if (changed) {
+      const bodyJson = JSON.stringify(body);
+      await db().execute({ sql: "UPDATE exam_docs SET body_json = ?, updated_at = ? WHERE id = ?", args: [bodyJson, t, id] });
+      await snapshot(
+        id,
+        { title: String(row.title), durationMin: row.duration_min == null ? null : Number(row.duration_min), bodyJson },
+        true
+      );
+    }
+  }
+  await db().execute({ sql: "UPDATE exam_docs SET rubric_seeded_at = ? WHERE id = ?", args: [t, id] });
+}
+
 async function seedOnce() {
   const t = now();
   const existing = await db().execute(
@@ -280,6 +313,7 @@ async function seedOnce() {
   await seedExam(prepId, t);
   await retireLegacyExam(prepId);
   await addBreadthPart(t);
+  await fillSeedRubrics(t);
   // the general "how to study for the exam" sheet (issue #27): a draft,
   // linked by default to the first exam
   if (!have.has("study-guide-how-to-study")) {

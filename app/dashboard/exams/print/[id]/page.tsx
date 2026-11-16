@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireTeacherPage } from "@/lib/exam-page-guard";
 import { examBodyOf, getDoc, prepBodyOf } from "@/lib/exams";
@@ -27,7 +28,17 @@ export default async function ExamPrintPage({
         <span className="text-sm">
           {doc.kind === "prep" ? "דף הכנה" : rubric ? "מחוון (למורה בלבד)" : "מבחן נקי להדפסה, בלי המחוון"} · בחלון ההדפסה אפשר לבחור ״שמירה כ־PDF״
         </span>
-        <PrintNow />
+        <div className="flex flex-wrap items-center gap-3">
+          {rubric && (
+            <Link href={`/dashboard/exams/${doc.id}`} className="text-sm font-semibold text-[color:var(--primary)] underline">
+              עריכת המחוון
+            </Link>
+          )}
+          <Link href="/dashboard/exams" className="text-sm font-semibold text-[color:var(--primary)] underline">
+            חזרה למבחנים
+          </Link>
+          <PrintNow />
+        </div>
       </div>
       {doc.kind === "exam" ? (
         <>
