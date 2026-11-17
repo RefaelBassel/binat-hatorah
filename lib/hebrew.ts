@@ -108,6 +108,32 @@ export function israelWallTimeToUnix(dateStr: string, timeStr: string): number {
   return Math.floor(guessMs / 1000);
 }
 
+// "24.11 · 08:00" in Israel time — the scheduled-publication label.
+export function formatScheduledAt(unixSeconds: number): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jerusalem",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(unixSeconds * 1000));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return `${get("day")}.${get("month")} · ${hour}:${get("minute")}`;
+}
+
+// Israel wall-clock "YYYY-MM-DD" and "HH:MM" of a unix time, for form inputs.
+export function israelDateTimeInputs(unixSeconds: number): { date: string; time: string } {
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(unixSeconds * 1000));
+  return { date, time: formatHebTime(unixSeconds) };
+}
+
 export function formatWorkTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);

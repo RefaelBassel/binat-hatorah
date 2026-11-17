@@ -156,10 +156,17 @@ export async function getTask(taskId: number): Promise<TaskRow | null> {
 
 export async function isAssigned(taskId: number, userId: number) {
   const res = await db().execute({
-    sql: "SELECT 1 FROM task_assignments WHERE task_id = ? AND user_id = ?",
-    args: [taskId, userId],
+    // a task scheduled for later is not reachable yet, even when assigned
+    sql: `SELECT 1 FROM task_assignments a JOIN tasks t ON t.id = a.task_id
+          WHERE a.task_id = ? AND a.user_id = ? AND t.published_at <= ?`,
+    args: [taskId, userId, now()],
   });
   return res.rows.length > 0;
+}
+
+// A task whose publication time is still ahead (scheduled publication).
+export function isScheduled(publishedAt: number): boolean {
+  return publishedAt > now();
 }
 
 export async function ensureProgress(taskId: number, userId: number) {
@@ -349,6 +356,8 @@ export async function cancelTaskAssignment(taskId: number) {
 // Republish = clear the mark and assign every onboarded student again.
 export async function republishTask(taskId: number) {
   await ensureCancellationsTable();
+  // a leftover future publication time would hide the task again
+  await publishTaskNow(taskId);
   await db().execute({
     sql: "DELETE FROM task_cancellations WHERE task_id = ?",
     args: [taskId],
@@ -369,6 +378,24 @@ export async function republishTask(taskId: number) {
       args: [taskId, Number(r.id), t],
     });
   }
+}
+
+// Scheduled publication: published_at in the future hides the task from
+// students everywhere (all student queries compare it with now), and it
+// appears by itself when the time arrives.
+export async function setTaskPublishAt(taskId: number, publishAt: number) {
+  await db().execute({
+    sql: "UPDATE tasks SET published_at = ? WHERE id = ?",
+    args: [publishAt, taskId],
+  });
+}
+
+// Publish a scheduled task right now (no-op for one already published).
+export async function publishTaskNow(taskId: number) {
+  await db().execute({
+    sql: "UPDATE tasks SET published_at = ? WHERE id = ? AND published_at > ?",
+    args: [now(), taskId, now()],
+  });
 }
 
 export async function updateTaskDueDate(taskId: number, dueAt: number) {
@@ -397,7 +424,8 @@ export async function publishTaskForClass(
   contentRef: string,
   title: string,
   dueAt: number,
-  teacherId: number
+  teacherId: number,
+  publishAt?: number // future time = scheduled publication; omitted = now
 ): Promise<PublishResult> {
   await ensureCancellationsTable();
   const active = await db().execute({ sql: ACTIVE_TASK_FOR_REF, args: [contentRef] });
@@ -417,6 +445,7 @@ export async function publishTaskForClass(
     const taskId = Number(cancelled.rows[0].id);
     await updateTaskDueDate(taskId, dueAt);
     await republishTask(taskId);
+    if (publishAt) await setTaskPublishAt(taskId, publishAt);
     return { status: "republished", taskId };
   }
 
@@ -425,7 +454,7 @@ export async function publishTaskForClass(
     sql: `INSERT INTO tasks (content_ref, title, published_at, due_at, created_by, created_at)
           SELECT ?, ?, ?, ?, ?, ?
           WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE content_ref = ?)`,
-    args: [contentRef, title, t, dueAt, teacherId, t, contentRef],
+    args: [contentRef, title, publishAt ?? t, dueAt, teacherId, t, contentRef],
   });
   if (res.rowsAffected === 0) {
     // another request published it a moment ago

@@ -74,8 +74,8 @@ export async function sweepOverdue() {
           JOIN tasks t ON t.id = a.task_id
           JOIN users u ON u.id = a.user_id
           LEFT JOIN task_progress p ON p.task_id = t.id AND p.user_id = a.user_id
-          WHERE t.due_at < ? AND (p.submitted_at IS NULL)`,
-    args: [now()],
+          WHERE t.due_at < ? AND t.published_at <= ? AND (p.submitted_at IS NULL)`,
+    args: [now(), now()],
   });
   for (const r of res.rows) {
     const taskId = Number(r.task_id);

@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 // Dashboard "publish a new task" form. The button locks on the first click
 // ("מפרסם…") until the server answers, and a unit that is already active
 // is never published twice — the teacher is offered a due-date change.
 export type PublishState =
   | { status: "idle" }
-  | { status: "created" | "republished"; title: string }
+  | { status: "created" | "republished"; title: string; scheduledFor?: string }
   | {
       status: "exists";
       taskId: number;
@@ -34,6 +34,7 @@ export default function PublishTaskForm({
   rescheduleAction: (prev: RescheduleState, formData: FormData) => Promise<RescheduleState>;
 }) {
   const [state, formAction, pending] = useActionState(publishAction, { status: "idle" });
+  const [schedule, setSchedule] = useState(false);
 
   return (
     <div>
@@ -75,6 +76,60 @@ export default function PublishTaskForm({
             className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
           />
         </label>
+        <fieldset className="block">
+          <legend className="mb-1 text-xs font-semibold text-[color:var(--primary)]/70">
+            מועד הפרסום
+          </legend>
+          <div className="flex items-center gap-3 py-2 text-sm">
+            <label className="inline-flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="publishMode"
+                value="now"
+                checked={!schedule}
+                onChange={() => setSchedule(false)}
+              />
+              לפרסם מיד
+            </label>
+            <label className="inline-flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="publishMode"
+                value="schedule"
+                checked={schedule}
+                onChange={() => setSchedule(true)}
+              />
+              לתזמן פרסום
+            </label>
+          </div>
+        </fieldset>
+        {schedule && (
+          <>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
+                תאריך הפרסום
+              </span>
+              <input
+                type="date"
+                name="publishDate"
+                required
+                className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold text-[color:var(--primary)]/70">
+                בשעה (שעון ישראל)
+              </span>
+              <input
+                type="time"
+                name="publishTime"
+                defaultValue="08:00"
+                required
+                className="rounded-lg border border-[color:var(--border)] bg-[color:var(--field)] px-3 py-2 text-sm"
+              />
+            </label>
+          </>
+        )}
         <button
           type="submit"
           disabled={pending}
@@ -89,13 +144,21 @@ export default function PublishTaskForm({
               className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
             />
           )}
-          {pending ? "מפרסם..." : "פרסום והקצאה לכל הכיתה"}
+          {pending
+            ? schedule
+              ? "מתזמן..."
+              : "מפרסם..."
+            : schedule
+              ? "תזמון הפרסום לכל הכיתה"
+              : "פרסום והקצאה לכל הכיתה"}
         </button>
       </form>
 
       {!pending && (state.status === "created" || state.status === "republished") && (
         <p aria-live="polite" className="mt-3 text-sm font-semibold text-[color:var(--success)]">
-          ✓ ״{state.title}״ פורסמה והוקצתה לכל הכיתה
+          {state.scheduledFor
+            ? `✓ ״${state.title}״ תתפרסם לכל הכיתה ב-${state.scheduledFor}`
+            : `✓ ״${state.title}״ פורסמה והוקצתה לכל הכיתה`}
         </p>
       )}
       {!pending && state.status === "error" && (
