@@ -213,10 +213,10 @@ export async function taskBooklet(userId: number, units: SummaryUnit[]): Promise
     const tasks = await db().execute({
       sql: `SELECT t.id FROM tasks t
             WHERE t.content_ref = ?
-              AND (EXISTS (SELECT 1 FROM task_assignments a WHERE a.task_id = t.id AND a.user_id = ?)
+              AND ((t.published_at <= ? AND EXISTS (SELECT 1 FROM task_assignments a WHERE a.task_id = t.id AND a.user_id = ?))
                    OR EXISTS (SELECT 1 FROM task_progress p WHERE p.task_id = t.id AND p.user_id = ?))
             ORDER BY t.id`,
-      args: [unit.taskRef, userId, userId],
+      args: [unit.taskRef, Math.floor(Date.now() / 1000), userId, userId],
     });
     const questions = await gradableQuestions(unit.taskRef);
     const answers: Record<string, string> = {};

@@ -20,11 +20,17 @@ import {
   cancelTaskAssignment,
   republishTask,
   updateTaskDueDate,
+  setTaskPublishAt,
+  publishTaskNow,
+  now as nowUnix,
 } from "@/lib/tasks";
+import ScheduleControls, { type ScheduleState } from "@/components/dashboard/schedule-controls";
 import { COMPLETION_META } from "@/lib/completion-meta";
 import {
   formatHebDate,
   formatHebTime,
+  formatScheduledAt,
+  israelDateTimeInputs,
   formatWorkTime,
   israelWallTimeToUnix,
 } from "@/lib/hebrew";
@@ -48,8 +54,10 @@ async function requireTeacherAction() {
 // טרם נלמדה), work time, progress, and links into each submission.
 export default async function DashboardTaskPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ taskId: string }>;
+  searchParams: Promise<{ dueError?: string }>;
 }) {
   const session = await auth();
   const user = session?.user;
@@ -57,10 +65,12 @@ export default async function DashboardTaskPage({
   if (user.role !== "teacher") redirect("/");
 
   const { taskId: raw } = await params;
+  const { dueError } = await searchParams;
   const taskId = Number(raw);
   const task = await getTask(taskId);
   if (!task) notFound();
   const cancelled = await isTaskCancelled(taskId);
+  const scheduled = !cancelled && task.published_at > nowUnix();
 
   // ----- management actions (teacher-only, verified inside each action) -----
   async function changeDueDate(formData: FormData) {
@@ -70,9 +80,71 @@ export default async function DashboardTaskPage({
     const dueTimeRaw = String(formData.get("dueTime") ?? "");
     const dueTime = /^\d{2}:\d{2}$/.test(dueTimeRaw) ? dueTimeRaw : "23:59";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return;
-    await updateTaskDueDate(taskId, israelWallTimeToUnix(dueDate, dueTime));
+    const dueAt = israelWallTimeToUnix(dueDate, dueTime);
+    const fresh = await getTask(taskId);
+    // the due date must stay after a still-pending publication time
+    if (fresh && dueAt <= fresh.published_at) redirect(`/dashboard/task/${taskId}?dueError=1`);
+    await updateTaskDueDate(taskId, dueAt);
     revalidatePath(`/dashboard/task/${taskId}`);
     revalidatePath("/dashboard");
+  }
+
+  function refreshTaskViews() {
+    revalidatePath(`/dashboard/task/${taskId}`);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/content");
+    revalidatePath("/tasks");
+  }
+
+  async function changePublishAt(_prev: ScheduleState, formData: FormData): Promise<ScheduleState> {
+    "use server";
+    if (!(await requireTeacherAction())) return { status: "error", message: "אין הרשאה" };
+    const date = String(formData.get("publishDate") ?? "");
+    const time = String(formData.get("publishTime") ?? "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
+      return { status: "error", message: "יש לבחור תאריך ושעה לפרסום" };
+    }
+    const fresh = await getTask(taskId);
+    if (!fresh) return { status: "error", message: "המשימה לא נמצאה" };
+    const publishAt = israelWallTimeToUnix(date, time);
+    if (publishAt <= nowUnix()) {
+      return { status: "error", message: "מועד הפרסום חייב להיות בעתיד. כדי לפרסם עכשיו לחצי ״פרסום עכשיו״." };
+    }
+    if (fresh.due_at <= publishAt) {
+      return { status: "error", message: "מועד ההגשה חייב להיות אחרי מועד הפרסום" };
+    }
+    try {
+      await setTaskPublishAt(taskId, publishAt);
+    } catch {
+      return { status: "error", message: "שגיאה בחיבור — המועד לא עודכן. נסו שוב." };
+    }
+    refreshTaskViews();
+    return { status: "done", label: `המועד עודכן: תתפרסם ב-${formatScheduledAt(publishAt)}` };
+  }
+
+  async function publishNow(): Promise<ScheduleState> {
+    "use server";
+    if (!(await requireTeacherAction())) return { status: "error", message: "אין הרשאה" };
+    try {
+      await publishTaskNow(taskId);
+    } catch {
+      return { status: "error", message: "שגיאה בחיבור — המשימה לא פורסמה. נסו שוב." };
+    }
+    refreshTaskViews();
+    return { status: "done", label: "פורסמה" };
+  }
+
+  // cancelling the schedule = back to unpublished (the existing cancelled state)
+  async function cancelSchedule(): Promise<ScheduleState> {
+    "use server";
+    if (!(await requireTeacherAction())) return { status: "error", message: "אין הרשאה" };
+    try {
+      await cancelTaskAssignment(taskId);
+    } catch {
+      return { status: "error", message: "שגיאה בחיבור — התזמון לא בוטל. נסו שוב." };
+    }
+    refreshTaskViews();
+    return { status: "done", label: "התזמון בוטל" };
   }
 
   async function cancelForClass() {
@@ -121,7 +193,7 @@ export default async function DashboardTaskPage({
   return (
     <PageShell
       title={task.title}
-      subtitle={`להגשה עד ${formatHebDate(task.due_at)} בשעה ${formatHebTime(task.due_at)} · ${roster.length} בכיתה`}
+      subtitle={`${scheduled ? `מתוזמנת — תתפרסם ב-${formatScheduledAt(task.published_at)} · ` : ""}להגשה עד ${formatHebDate(task.due_at)} בשעה ${formatHebTime(task.due_at)} · ${roster.length} בכיתה`}
     >
       <ClassPulseDrawer taskId={task.id} />
       <p className="mb-6 flex items-center justify-center gap-5 text-center">
@@ -153,6 +225,22 @@ export default async function DashboardTaskPage({
           ✨ אור פותח
         </Link>
       </p>
+
+      {scheduled && (
+        <ScheduleControls
+          publishLabel={formatScheduledAt(task.published_at)}
+          publishDate={israelDateTimeInputs(task.published_at).date}
+          publishTime={israelDateTimeInputs(task.published_at).time}
+          changeAction={changePublishAt}
+          publishNowAction={publishNow}
+          cancelAction={cancelSchedule}
+        />
+      )}
+      {dueError && (
+        <p aria-live="polite" className="mb-4 text-center text-sm font-semibold text-[color:var(--danger)]">
+          מועד ההגשה חייב להיות אחרי מועד הפרסום
+        </p>
+      )}
 
       {/* ===== task management: due date + cancellation ===== */}
       {cancelled ? (

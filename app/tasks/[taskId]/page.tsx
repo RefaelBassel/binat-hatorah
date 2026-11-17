@@ -16,7 +16,10 @@ import {
   getProgress,
   getAnswers,
   getMarkings,
+  isScheduled,
 } from "@/lib/tasks";
+import PageShell from "@/components/page-shell";
+import Link from "next/link";
 import { getTaskContent, countTaskUnits } from "@/content/tasks/registry";
 import { isStudentMode } from "@/lib/student-mode";
 import { formatFullDate, formatHebTime, formatEnDate } from "@/lib/hebrew";
@@ -44,6 +47,20 @@ export default async function TaskPage({
   const userId = Number(user.id);
   const isTeacher = user.role === "teacher";
   const guest = Boolean(user.guest);
+
+  // scheduled publication: until the time arrives students (and guests) get a
+  // plain notice — never the content
+  if (!isTeacher && isScheduled(task.published_at)) {
+    return (
+      <PageShell title="המשימה עדיין לא פורסמה" subtitle="היא תופיע ברשימת המשימות ברגע שהמורה תפרסם אותה">
+        <p className="text-center">
+          <Link href="/tasks" className="text-sm font-semibold text-[color:var(--accent)] hover:underline">
+            → חזרה למשימות
+          </Link>
+        </p>
+      </PageShell>
+    );
+  }
 
   if (!isTeacher && !guest && !(await isAssigned(taskId, userId))) {
     redirect("/tasks");

@@ -11,6 +11,7 @@ import {
   getTask,
   publishTaskForClass,
   updateTaskDueDate,
+  now as nowUnix,
 } from "@/lib/tasks";
 import PublishTaskForm, {
   type PublishState,
@@ -18,7 +19,12 @@ import PublishTaskForm, {
 } from "@/components/dashboard/publish-task-form";
 import { sweepOverdue } from "@/lib/notify";
 import { TASK_REGISTRY } from "@/content/tasks/registry";
-import { formatHebDate, formatHebTime, israelWallTimeToUnix } from "@/lib/hebrew";
+import {
+  formatHebDate,
+  formatHebTime,
+  formatScheduledAt,
+  israelWallTimeToUnix,
+} from "@/lib/hebrew";
 import { revalidatePath } from "next/cache";
 
 export default async function DashboardPage() {
@@ -98,8 +104,25 @@ export default async function DashboardPage() {
     }
     const dueAt = israelWallTimeToUnix(dueDate, dueTime);
     const title = TASK_REGISTRY[contentRef].content.title;
+    // optional scheduled publication (Israel time); must be ahead of now and
+    // before the due date
+    let publishAt: number | undefined;
+    if (formData.get("publishMode") === "schedule") {
+      const publishDate = String(formData.get("publishDate") ?? "");
+      const publishTimeRaw = String(formData.get("publishTime") ?? "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(publishDate) || !/^\d{2}:\d{2}$/.test(publishTimeRaw)) {
+        return { status: "error", message: "יש לבחור תאריך ושעה לפרסום" };
+      }
+      publishAt = israelWallTimeToUnix(publishDate, publishTimeRaw);
+      if (publishAt <= nowUnix()) {
+        return { status: "error", message: "מועד הפרסום חייב להיות בעתיד. כדי לפרסם עכשיו בחרו ״לפרסם מיד״." };
+      }
+      if (dueAt <= publishAt) {
+        return { status: "error", message: "מועד ההגשה חייב להיות אחרי מועד הפרסום" };
+      }
+    }
     try {
-      const res = await publishTaskForClass(contentRef, title, dueAt, Number(session.user.id));
+      const res = await publishTaskForClass(contentRef, title, dueAt, Number(session.user.id), publishAt);
       revalidatePath("/dashboard");
       revalidatePath("/tasks");
       if (res.status === "exists") {
@@ -113,7 +136,11 @@ export default async function DashboardPage() {
           dueTime,
         };
       }
-      return { status: res.status, title };
+      return {
+        status: res.status,
+        title,
+        scheduledFor: publishAt ? formatScheduledAt(publishAt) : undefined,
+      };
     } catch {
       return { status: "error", message: "שגיאה בחיבור — המשימה לא פורסמה. נסו שוב." };
     }
@@ -136,6 +163,9 @@ export default async function DashboardPage() {
       const task = await getTask(taskId);
       if (!task) return { status: "error", message: "המשימה לא נמצאה" };
       const dueAt = israelWallTimeToUnix(dueDate, dueTime);
+      if (dueAt <= task.published_at) {
+        return { status: "error", message: "מועד ההגשה חייב להיות אחרי מועד הפרסום" };
+      }
       await updateTaskDueDate(taskId, dueAt);
       revalidatePath("/dashboard");
       revalidatePath("/tasks");
@@ -145,6 +175,7 @@ export default async function DashboardPage() {
     }
   }
 
+  const nowTs = nowUnix();
   const publishedRefs = new Set(tasks.map((t) => t.contentRef));
   const availableRefs = Object.entries(TASK_REGISTRY).filter(
     ([ref]) => !publishedRefs.has(ref)
@@ -206,7 +237,11 @@ export default async function DashboardPage() {
       {/* stats */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="תלמידים ותלמידות" value={students.length} emoji="👩‍🎓" />
-        <Stat label="משימות פורסמו" value={tasks.length} emoji="📚" />
+        <Stat
+          label="משימות פורסמו"
+          value={tasks.filter((t) => t.publishedAt <= nowTs).length}
+          emoji="📚"
+        />
         <Stat
           label="הגשות ממתינות לבדיקה"
           value={tasks.reduce((s, t) => s + (t.submitted - t.graded), 0)}
@@ -382,9 +417,17 @@ export default async function DashboardPage() {
                 {t.title}
               </h3>
               <p className="mt-1 text-xs text-[color:var(--primary)]/55">
-                📅 פורסמה {formatHebDate(t.publishedAt)} · להגשה עד {formatHebDate(t.dueAt)}
+                {!t.cancelled && t.publishedAt > nowTs
+                  ? `📅 תתפרסם ב-${formatScheduledAt(t.publishedAt)}`
+                  : `📅 פורסמה ${formatHebDate(t.publishedAt)}`}{" "}
+                · להגשה עד {formatHebDate(t.dueAt)}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
+                {!t.cancelled && t.publishedAt > nowTs && (
+                  <span className="rounded-full bg-[color:var(--accent)]/15 px-3 py-1 text-[color:var(--accent)]">
+                    ⏰ מתוזמנת · תתפרסם ב-{formatScheduledAt(t.publishedAt)}
+                  </span>
+                )}
                 {t.cancelled && (
                   <span className="rounded-full bg-[color:var(--danger)]/10 px-3 py-1 text-[color:var(--danger)]">
                     🚫 מבוטלת — לא מוצגת לתלמידים

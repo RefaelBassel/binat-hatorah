@@ -36,6 +36,14 @@ export default async function ContentEditPage({
     args: [ref],
   });
   const taskId = t.rows[0] ? Number(t.rows[0].id) : null;
+  let scheduledAt: number | null = null;
+  if (taskId != null) {
+    const { getTask, isTaskCancelled, now } = await import("@/lib/tasks");
+    const task = await getTask(taskId);
+    if (task && task.published_at > now() && !(await isTaskCancelled(taskId))) {
+      scheduledAt = task.published_at;
+    }
+  }
 
   return (
     <PageShell title={content.title} subtitle={`${content.bookRef} · תוכן השיעור`}>
@@ -58,6 +66,12 @@ export default async function ContentEditPage({
             </>
           )}
         </p>
+
+        {scheduledAt != null && (
+          <p className="rounded-xl bg-[color:var(--accent)]/10 px-4 py-2 text-sm font-bold text-[color:var(--accent)]">
+            ⏰ המשימה מתוזמנת — תתפרסם לכיתה ב-{(await import("@/lib/hebrew")).formatScheduledAt(scheduledAt)}
+          </p>
+        )}
 
         {!reg.content.worksheetOnly && (<>
         <section>

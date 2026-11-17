@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import PageShell from "@/components/page-shell";
 import { TASK_REGISTRY } from "@/content/tasks/registry";
 import { getOverrides, applyOverrides } from "@/lib/content-overrides";
+import { ensureCancellationsTable, now } from "@/lib/tasks";
+import { formatScheduledAt } from "@/lib/hebrew";
+import { db } from "@/lib/db";
 
 // תוכן השיעורים — one place to read and edit, for every lesson in the
 // library, the teacher-editable layer: the comprehension check, the open
@@ -15,6 +18,22 @@ export default async function ContentHubPage() {
   const user = session?.user;
   if (!user) redirect("/login");
   if (user.role !== "teacher") redirect("/");
+
+  // units whose task is scheduled for later (not cancelled, publication ahead)
+  const scheduledAt = new Map<string, number>();
+  try {
+    await ensureCancellationsTable();
+    const sch = await db().execute({
+      sql: `SELECT t.content_ref, MIN(t.published_at) AS at FROM tasks t
+            WHERE t.published_at > ?
+              AND NOT EXISTS (SELECT 1 FROM task_cancellations c WHERE c.task_id = t.id)
+            GROUP BY t.content_ref`,
+      args: [now()],
+    });
+    for (const r of sch.rows) scheduledAt.set(String(r.content_ref), Number(r.at));
+  } catch {
+    // DB unavailable — show the hub without the scheduling tags
+  }
 
   const rows = await Promise.all(
     Object.entries(TASK_REGISTRY).map(async ([ref, reg]) => {
@@ -30,6 +49,7 @@ export default async function ContentHubPage() {
         hasOpening: Boolean(c.opening?.opener),
         worksheetOnly: c.worksheetOnly === true,
         edited: Object.keys(ov),
+        scheduledAt: scheduledAt.get(ref) ?? null,
       };
     })
   );
@@ -63,6 +83,11 @@ export default async function ContentHubPage() {
                     <Pill ok={r.hasPlenary} label="💬 מליאה" />
                     <Pill ok={r.hasOpening} label="✨ פתיחה" />
                   </>
+                )}
+                {r.scheduledAt != null && (
+                  <span className="rounded-full bg-[color:var(--accent)]/15 px-2 py-0.5 text-[color:var(--accent)]">
+                    ⏰ מתוזמנת · תתפרסם ב-{formatScheduledAt(r.scheduledAt)}
+                  </span>
                 )}
                 {r.edited.length > 0 && (
                   <span className="rounded-full bg-[color:var(--accent)]/15 px-2 py-0.5 text-[color:var(--accent)]">
