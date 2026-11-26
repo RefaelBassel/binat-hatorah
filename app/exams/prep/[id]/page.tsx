@@ -6,6 +6,7 @@ import { PrepView } from "@/components/exams/doc-view";
 import MySummaries from "@/components/exams/my-summaries";
 import { getDoc, prepBodyOf } from "@/lib/exams";
 import { getSummaries, summaryContextForPrep } from "@/lib/exam-summaries";
+import { getExamTips } from "@/lib/exam-tips";
 import type { SummaryValues } from "@/lib/exam-summary-types";
 
 export const dynamic = "force-dynamic";
@@ -35,10 +36,11 @@ export default async function PrepReadPage({ params }: { params: Promise<{ id: s
   } catch (e) {
     console.error("summaries failed", e);
   }
+  const tips = await getExamTips();
   return (
     <PageShell title="דף הכנה">
       <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-sm sm:p-8">
-        <PrepView title={doc.title} body={prepBodyOf(doc)} />
+        <PrepView title={doc.title} body={prepBodyOf(doc)} tips={tips} />
       </div>
       {summaries && !teacherView && (
         <MySummaries

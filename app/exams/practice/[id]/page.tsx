@@ -19,6 +19,7 @@ import {
   quizPool,
   studentProgress,
 } from "@/lib/practice";
+import { getExamTips } from "@/lib/exam-tips";
 import { getUserTaskView } from "@/lib/task-view";
 import type { UnitProgress } from "@/lib/practice-types";
 
@@ -74,6 +75,7 @@ export default async function PracticePage({
   // always does (to preview, with a pointer to the editor)
   const tabs = TABS.filter((t) => t.key !== "deck" || deck != null || realTeacher);
 
+  const tips = tab === "prep" || tab === "guide" ? await getExamTips() : null;
   let content: React.ReactNode = null;
   if (tab === "deck") {
     content = deck ? (
@@ -84,7 +86,7 @@ export default async function PracticePage({
   } else if (tab === "prep") {
     content = prep ? (
       <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-sm sm:p-8">
-        <PrepView title={prep.title} body={prepBodyOf(prep)} />
+        <PrepView title={prep.title} body={prepBodyOf(prep)} tips={tips} />
       </div>
     ) : (
       <Empty text="דף ההכנה עוד לא פורסם." />
@@ -93,9 +95,9 @@ export default async function PracticePage({
     content =
       guides.length > 0 ? (
         <div className="space-y-6">
-          {guides.map((g) => (
+          {guides.map((g, gi) => (
             <div key={g.id} className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-sm sm:p-8">
-              <PrepView title={g.title} body={prepBodyOf(g)} />
+              <PrepView title={g.title} body={prepBodyOf(g)} tips={gi === 0 ? tips : null} />
             </div>
           ))}
         </div>

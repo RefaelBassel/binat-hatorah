@@ -3,6 +3,7 @@ import PageShell from "@/components/page-shell";
 import DocEditor from "@/components/exams/doc-editor";
 import { requireTeacherPage } from "@/lib/exam-page-guard";
 import { attemptCounts, examBodyOf, getDoc, listDocs, prepBodyOf } from "@/lib/exams";
+import { getExamTips } from "@/lib/exam-tips";
 import PracticeEditor from "@/components/exams/practice-editor";
 import PracticeStats from "@/components/exams/practice-stats";
 import { allChapterUnits, classPractice, effectiveCards, effectiveOpenQuestions, getPracticeState } from "@/lib/practice";
@@ -18,6 +19,7 @@ export default async function ExamEditPage({ params }: { params: Promise<{ id: s
   const all = doc.kind === "prep" ? await listDocs() : [];
   const pairedExam = all.find((d) => d.kind === "exam" && d.prepId === doc.id);
   const linkedExam = pairedExam ?? all.find((d) => d.kind === "exam" && d.id === doc.linkedExamId);
+  const tips = doc.kind === "prep" ? await getExamTips() : null;
   const counts = doc.kind === "exam" ? await attemptCounts() : null;
 
   return (
@@ -38,6 +40,7 @@ export default async function ExamEditPage({ params }: { params: Promise<{ id: s
           isGeneral: doc.kind === "prep" && !pairedExam,
           examOptions: all.filter((d) => d.kind === "exam").map((d) => ({ id: d.id, title: d.title || "מבחן ללא כותרת" })),
           attemptCount: counts?.get(doc.id)?.total ?? 0,
+          tips,
         }}
       />
       {doc.kind === "exam" && <PracticeSection examId={doc.id} />}

@@ -10,6 +10,7 @@ import {
   questionPoints,
   subLabel,
 } from "@/lib/exam-types";
+import type { ExamTips } from "@/lib/exam-tips";
 
 // Read-only rendering of an exam / prep sheet — for printing, for the
 // teacher's marking-guide print, and for students' reading page. The marking
@@ -146,12 +147,35 @@ function Rubric({ text }: { text: string }) {
   );
 }
 
-export function PrepView({ title, body }: { title: string; body: PrepBody }) {
+// The shared "tips from marking the previous exam" box (issue #65). Solid
+// borders and a light tint, so it survives printing in black and white.
+export function TipsBox({ tips }: { tips: ExamTips }) {
+  if (tips.items.length === 0) return null;
+  return (
+    <aside
+      dir="rtl"
+      className="break-inside-avoid rounded-xl border-2 border-s-8 border-[color:var(--accent)] bg-[color:var(--accent)]/10 p-4 text-start"
+      style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
+    >
+      <h2 className="font-display text-lg font-extrabold text-[color:var(--primary)]">{tips.title}</h2>
+      <ol className="mt-2 list-decimal space-y-1.5 ps-6">
+        {tips.items.map((x, i) => (
+          <li key={i} className="whitespace-pre-wrap">
+            {x}
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
+}
+
+export function PrepView({ title, body, tips }: { title: string; body: PrepBody; tips?: ExamTips | null }) {
   return (
     <article className="exam-doc space-y-4 leading-7">
       <h1 className="border-b-2 border-[color:var(--primary)]/40 pb-3 text-center font-display text-2xl font-extrabold">
         {title || "דף הכנה"}
       </h1>
+      {tips && <TipsBox tips={tips} />}
       {body.blocks.map((b) => {
         if (b.type === "heading")
           return (
