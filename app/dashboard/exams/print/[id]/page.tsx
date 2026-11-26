@@ -4,6 +4,7 @@ import { requireTeacherPage } from "@/lib/exam-page-guard";
 import { examBodyOf, getDoc, prepBodyOf } from "@/lib/exams";
 import { ExamView, PrepView } from "@/components/exams/doc-view";
 import { withSeedRubricsForView } from "@/lib/exam-rubric";
+import { getExamTips } from "@/lib/exam-tips";
 import { PrintNow } from "@/components/exams/list-actions";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default async function ExamPrintPage({
   const { mode } = await searchParams;
   const doc = await getDoc(Number(id));
   if (!doc) notFound();
+  const tips = doc.kind === "prep" ? await getExamTips() : null;
   const rubric = doc.kind === "exam" && mode === "rubric";
   const examBody = doc.kind === "exam" ? (rubric ? withSeedRubricsForView(examBodyOf(doc)) : examBodyOf(doc)) : null;
   const missing = rubric && examBody
@@ -63,7 +65,7 @@ export default async function ExamPrintPage({
           <p className="mt-10 text-center text-sm font-semibold">בהצלחה!</p>
         </>
       ) : (
-        <PrepView title={doc.title} body={prepBodyOf(doc)} />
+        <PrepView title={doc.title} body={prepBodyOf(doc)} tips={tips} />
       )}
     </main>
   );

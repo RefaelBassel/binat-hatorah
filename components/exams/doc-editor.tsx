@@ -20,6 +20,7 @@ import {
   subLabel,
 } from "@/lib/exam-types";
 import { AddButton, NikudBar, NumField, SortRow, TextField, move, trackFocus } from "./editor-kit";
+import type { ExamTips } from "@/lib/exam-tips";
 import PublishPanel from "./publish-panel";
 
 type SaveState = "saved" | "pending" | "saving" | "error";
@@ -39,6 +40,7 @@ export interface EditorDoc {
   isGeneral: boolean; // a prep sheet that is not an exam's own prep
   examOptions: { id: number; title: string }[];
   attemptCount: number;
+  tips: ExamTips | null; // the shared tips box (prep sheets only)
 }
 
 export default function DocEditor({ doc }: { doc: EditorDoc }) {
@@ -191,7 +193,10 @@ export default function DocEditor({ doc }: { doc: EditorDoc }) {
       {isExam ? (
         <ExamBodyEditor body={body as ExamBody} setBody={(b) => setBody(b)} />
       ) : (
-        <PrepBodyEditor body={body as PrepBody} setBody={(b) => setBody(b)} />
+        <>
+          {doc.tips && <TipsEditor initial={doc.tips} />}
+          <PrepBodyEditor body={body as PrepBody} setBody={(b) => setBody(b)} />
+        </>
       )}
     </div>
   );
@@ -768,5 +773,89 @@ function PrepBodyEditor({ body, setBody }: { body: PrepBody; setBody: (b: PrepBo
         ))}
       </div>
     </div>
+  );
+}
+
+// The shared "tips from marking the previous exam" box: one text for all prep
+// sheets, saved with its own button (not part of this sheet's autosave).
+function TipsEditor({ initial }: { initial: ExamTips }) {
+  const router = useRouter();
+  const [title, setTitle] = useState(initial.title);
+  const [items, setItems] = useState<string[]>(initial.items.length ? initial.items : [""]);
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const edit = (fn: () => void) => {
+    fn();
+    setState("idle");
+  };
+  const save = async () => {
+    setState("saving");
+    setError(null);
+    try {
+      const res = await fetch("/api/exams/tips", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, items }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "לא נשמר");
+      setState("saved");
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "לא נשמר");
+      setState("error");
+    }
+  };
+
+  return (
+    <section className="space-y-3 rounded-2xl border-2 border-[color:var(--accent)]/60 bg-[color:var(--accent)]/5 p-4">
+      <div>
+        <h2 className="font-display text-lg font-bold">תיבת ״מה למדנו מבדיקת המבחן״</h2>
+        <p className="text-xs text-[color:var(--foreground)]/70">
+          התיבה משותפת: היא מופיעה בראש כל דפי ההכנה ובדף ״איך לומדים למבחן״, ובהדפסה. שינוי כאן משנה את כולם. אם תמחקי את כל הנקודות, התיבה תיעלם.
+        </p>
+      </div>
+      <TextField label="כותרת התיבה" value={title} onChange={(v) => edit(() => setTitle(v))} className="font-display font-bold" />
+      <div className="space-y-1.5">
+        {items.map((it, ii) => (
+          <SortRow
+            key={ii}
+            list="tips"
+            index={ii}
+            count={items.length}
+            onMove={(x, y) => edit(() => setItems(move(items, x, y)))}
+            onRemove={() => edit(() => setItems(items.filter((_, i) => i !== ii)))}
+            removeLabel="למחוק את הנקודה"
+            className="rounded-lg"
+          >
+            {(tools) => (
+              <div className="flex items-start gap-2">
+                <span className="w-6 pt-1.5 text-center font-semibold">{ii + 1}.</span>
+                <TextField
+                  label={`נקודה ${ii + 1}`}
+                  value={it}
+                  onChange={(v) => edit(() => setItems(items.map((x, i) => (i === ii ? v : x))))}
+                />
+                {tools}
+              </div>
+            )}
+          </SortRow>
+        ))}
+        <AddButton onClick={() => edit(() => setItems([...items, ""]))}>נקודה</AddButton>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={save}
+          disabled={state === "saving"}
+          className="rounded-full bg-[color:var(--primary-fill)] px-5 py-1.5 text-sm font-bold text-white shadow transition hover:scale-[1.02] disabled:opacity-60"
+        >
+          {state === "saving" ? "שומר…" : "שמירת התיבה"}
+        </button>
+        {state === "saved" && <span className="text-xs font-semibold text-[color:var(--success)]">✓ נשמר, התיבה עודכנה בכל דפי ההכנה</span>}
+        {state === "error" && <span className="text-xs font-semibold text-[color:var(--danger)]">✕ {error ?? "לא נשמר"}</span>}
+      </div>
+    </section>
   );
 }
